@@ -21,13 +21,14 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/ISelection.h"
 #include "AnalysisTools/ICut.h"
+#include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Cut.h"
 
 using namespace std;
 
 namespace AnalysisTools {
     
-    template <class T>
+    template <class T, class U>
     class Selection : public ISelection {
         
         /**
@@ -41,8 +42,23 @@ namespace AnalysisTools {
             m_name(name)
         {};
         
+        Selection (const string& name, const vector<string>& categories) :
+            m_name(name)
+        {
+            addCategories(categories);
+        };
+        
         // Destructor(s).
-        ~Selection () {};
+        ~Selection () {
+            for (auto cutvec : m_cuts) {
+                for (auto cut : cutvec.second) {
+                    if (cut) {
+                        delete cut;
+                        cut = nullptr;
+                    }
+                }
+            }
+        };
         
         
     public:
@@ -60,7 +76,7 @@ namespace AnalysisTools {
         unsigned               nCategories      ();
         vector<string>         categories       ();
         bool                   categoriesLocked ();
-        map< string, CutsPtr > cuts             ();
+        map< string, vector< Cut<U>* > > cuts             ();
         
         
         // High-level management method(s).
@@ -69,19 +85,31 @@ namespace AnalysisTools {
         void setCategories   (const vector<string>& categories);
         void clearCategories ();
         
-        void addCut (ICut* cut);
-        void addCut (ICut* cut, const string& category);
+        void addCut (Cut<U>* cut);
+        void addCut (Cut<U>* cut, const string& category);
+        
+        void setInput (const vector<T>* candidates);
+        void setInput (const vector<T>  candidates);
+        
+        //template<class U>
+        void addInfo (const string& name, const vector<float> * info);
+        void addInfo (const string& name, const vector<int>   * info);
+        void addInfo (const string& name, const vector<bool>  * info);
+        
+        template <class W>
+        const vector<W>* info (const string& name);
         
         virtual void run () {};
         
         vector< TH1F* > histograms ();
-        CutsPtr         listCuts   ();
+        vector< ICut* > cuts       (const string& category);
+        vector< ICut* > listCuts   ();
         
         
     protected:
         
         // Low-level management method(s).
-        void setDir     (TDirectory* dir);
+        void setDir (TDirectory* dir);
         
         bool hasCategory      (const string& category);
         bool canAddCategories ();
@@ -89,7 +117,7 @@ namespace AnalysisTools {
         
         void lock ();
         
-        void grab (ICut* cut);
+        void grab (const string& category, ICut* cut);
         
         void write ();
         
@@ -100,19 +128,23 @@ namespace AnalysisTools {
         
         string m_name    = "";
         
-        TDirectory* m_dir = nullptr;
+        const vector<T>* m_input = nullptr; // Not separated by category names.
+        
+        map<string, const vector<float>* > m_infoFloat;
+        map<string, const vector<int>* >   m_infoInt;
+        map<string, const vector<bool>* >  m_infoBool;
         
         vector<string> m_categories;
         bool           m_categoriesLocked = false;
         
-        map< string, CutsPtr > m_cuts;
+        map< string, vector< Cut<U>* > > m_cuts;
         
         bool m_hasRun = false;
         
     };
     
-    template <class T>
-    using Selections = vector< Selection<T> >;
+    template <class T, class U>
+    using Selections = vector< Selection<T, U> >;
 
     using SelectionsPtr = vector< ISelection* >;
     

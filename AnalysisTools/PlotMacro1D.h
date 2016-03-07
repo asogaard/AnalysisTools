@@ -23,13 +23,14 @@ namespace  AnalysisTools {
     template <class T>
     class Cut;
     
-    template <class T>
+    template <class T, class U>
     class Selection;
 }
 
 // AnalysisTools include(s).
 #include "AnalysisTools/IPlotMacro.h"
 #include "AnalysisTools/Utilities.h"
+#include "AnalysisTools/PhysicsObject.h"
 
 using namespace std;
 
@@ -39,7 +40,11 @@ namespace AnalysisTools {
     class PlotMacro1D : public IPlotMacro {
         
         friend class Cut<T>;
-        friend class Selection<T>;
+        friend class Selection<T, AnalysisTools::PhysicsObject>;
+        friend class Selection<T, double>;
+        friend class Selection<T, float>;
+        friend class Selection<T, bool>;
+        friend class Selection<T, int>;
         
     public:
 

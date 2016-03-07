@@ -22,14 +22,15 @@
 
 // Forward declaration(s).
 namespace  AnalysisTools {
-    template <class T>
+    template <class T, class U>
     class Selection;
 }
 
 // AnalysisTools include(s).
 #include "AnalysisTools/ICut.h"
-#include "AnalysisTools/PlotMacro1D.h"
+#include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Range.h"
+#include "AnalysisTools/PlotMacro1D.h"
 
 using namespace std;
 
@@ -37,8 +38,14 @@ namespace AnalysisTools {
     
     template <class T>
     class Cut : public ICut {
+
+        friend class Selection<TLorentzVector, T>;
+        friend class Selection<T, AnalysisTools::PhysicsObject>;
+        friend class Selection<T, double>;
+        friend class Selection<T, float>;
+        friend class Selection<T, bool>;
+        friend class Selection<T, int>;
         
-        friend class Selection<T>;
         
     public:
 
@@ -52,6 +59,16 @@ namespace AnalysisTools {
             setName(name);
             setBasePlots();
         };
+        
+        Cut (const Cut<T>& other) :
+            m_name(other.m_name),
+            m_dir(other.m_dir),
+            m_function(other.m_function),
+            m_ranges(other.m_ranges)
+        {
+            setBasePlots();
+        };
+
         
         // Destructor(s).
         ~Cut () {
@@ -91,7 +108,7 @@ namespace AnalysisTools {
         // Get method(s).
         string name    () const;
         
-        vector< IPlotMacro* > plots      ();
+        vector< IPlotMacro* > plots      () const;
         vector< TH1F* >       histograms ();
         
         

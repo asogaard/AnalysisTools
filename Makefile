@@ -15,10 +15,15 @@ CXXFLAGS = --std=c++11 $(INCFLAGS) $(ROOTCFLAGS)
 # Rules.
 .PHONY: all
 
-libs: Range PlotMacro1D Cut Selection ObjectDefinition Analysis Test
+libs: PhysicsObject Range PlotMacro1D Cut Selection ObjectDefinition Analysis Test
 
-all: Range PlotMacro1D Cut Selection ObjectDefinition Analysis Test
+all: PhysicsObject Range PlotMacro1D Cut Selection ObjectDefinition Analysis Test
 #AnalysisTools
+
+PhysicsObject:
+	@echo "[Compiling: $@]"
+	$(CC) src/$@.cxx -o lib/$@.o -c -Wall -Werror -fpic -O2 $(CXXFLAGS)
+	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS)
 
 Range:
 	@echo "[Compiling: $@]"
@@ -33,26 +38,26 @@ PlotMacro1D:
 Cut:
 	@echo "[Compiling: $@]"
 	$(CC) src/$@.cxx -o lib/$@.o -c -Wall -Werror -fpic -O2 $(CXXFLAGS)
-	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lRange -lPlotMacro1D
+	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lRange -lPlotMacro1D -lPhysicsObject
 
 Selection:
 	@echo "[Compiling: $@]"
 	$(CC) src/$@.cxx -o lib/$@.o -c -Wall -Werror -fpic -O2 $(CXXFLAGS)
-	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lCut -lPlotMacro1D
+	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lCut -lPlotMacro1D -lPhysicsObject
 
 ObjectDefinition:
 	@echo "[Compiling: $@]"
 	$(CC) src/$@.cxx -o lib/$@.o -c -Wall -Werror -fpic -O2 $(CXXFLAGS)
-	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lSelection -lCut
+	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lSelection -lCut -lPhysicsObject
 
 Analysis:
 	@echo "[Compiling: $@]"
 	$(CC) src/$@.cxx -o lib/$@.o -c -Wall -Werror -fpic -O2 $(CXXFLAGS)
-	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lSelection -lObjectDefinition -lCut -lPlotMacro1D
+	$(CC) -shared -o lib/lib$@.so lib/$@.o $(ROOTLIBS) $(LINKFLAGS) -lSelection -lObjectDefinition -lCut -lPlotMacro1D -lPhysicsObject
 
 Test:
 	@echo "[Compiling: $@]"
-	$(CC) src/$@.cxx -o bin/$@.exe $(CXXFLAGS) $(LINKFLAGS) -lRange -lCut -lPlotMacro1D -lAnalysis -lObjectDefinition -lSelection
+	$(CC) src/$@.cxx -o bin/$@.exe $(CXXFLAGS) $(LINKFLAGS) -lRange -lCut -lPlotMacro1D -lAnalysis -lObjectDefinition -lSelection -lPhysicsObject
 
 
 clean:

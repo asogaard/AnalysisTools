@@ -54,7 +54,7 @@ namespace AnalysisTools {
         
         // High-level management method(s).
         virtual vector< TH1F* > histograms  () = 0;
-        virtual vector< IPlotMacro* > plots () = 0;
+        virtual vector< IPlotMacro* > plots () const = 0;
         
         //virtual bool select (const TLorentzVector& p) const = 0;
         

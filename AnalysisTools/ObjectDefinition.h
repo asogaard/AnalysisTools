@@ -16,6 +16,7 @@
 // ..
 
 // AnalysisTools include(s).
+#include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Selection.h"
 #include "AnalysisTools/Cut.h"
 
@@ -24,13 +25,13 @@ using namespace std;
 namespace AnalysisTools {
 
     template<class T>
-    class ObjectDefinition : public Selection<T> {
+    class ObjectDefinition : public Selection<T, PhysicsObject> {
 
     public:
 
         // Constructor(s).
         ObjectDefinition (const string& name) :
-            Selection<T>(name)
+            Selection<T,PhysicsObject>(name)
         {
             this->setName(name);
         };
@@ -50,12 +51,11 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        // ...
         
         void run ();
         
-        vector< T* > result ();
-        vector< T* > result (const string& category);
+        PhysicsObjects result ();
+        PhysicsObjects result (const string& category);
         
         
     protected:
@@ -65,7 +65,8 @@ namespace AnalysisTools {
         
     private:
         
-        map< string, vector< T* > > m_candidates;
+
+        map<string, PhysicsObjects> m_candidates;
         
         bool m_hasRun = false;
         int  m_branch = -1;

@@ -50,20 +50,21 @@ namespace AnalysisTools {
         // Get method(s).
         virtual string name   () = 0;
         virtual bool   locked () = 0;
-        
+        virtual vector< string > categories () = 0;
         
         // High-level management method(s).
         virtual void run () = 0;
         
         virtual vector< TH1F* > histograms () = 0;
-        virtual vector< ICut* > listCuts () = 0;
+        virtual vector< ICut* > listCuts   () = 0;
+        virtual vector< ICut* > cuts       (const string& category) = 0;
         
         
     protected:
         
         // Low-level management method(s).
         virtual void setDir (TDirectory* dir) = 0;
-        virtual void grab   (ICut* cut) = 0;
+        virtual void grab   (const string& category, ICut* cut) = 0;
         virtual void lock   () = 0;
         virtual void write  () = 0;
         
@@ -72,7 +73,7 @@ namespace AnalysisTools {
         
         string m_name    = "";
         
-        TDirectory* m_dir;
+        TDirectory* m_dir = nullptr;
         
     };
  

@@ -65,12 +65,17 @@ namespace AnalysisTools {
     }
     
     void Analysis::grab (ISelection* selection) {
+        cout << "<Analysis::grab> Entering." << endl;
         selection->lock();
         assert(m_dir);
         selection->setDir( m_dir->mkdir(selection->name().c_str()) );
-        for (auto& cut : selection->listCuts()) {
-            selection->grab(cut);
+        for (const auto& category : selection->categories()) {
+            for (auto& cut : selection->cuts(category)) {
+                cout << "<Analysis::grab>   Grab selection with category '" << category << "'." << endl;
+                selection->grab(category, cut);
+            }
         }
+        cout << "<Analysis::grab> Exiting." << endl;
         return;
     }
     

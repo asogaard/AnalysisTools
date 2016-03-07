@@ -119,7 +119,7 @@ namespace AnalysisTools {
     }
   
     template <class T>
-    vector< IPlotMacro* > Cut<T>::plots () {
+    vector< IPlotMacro* > Cut<T>::plots () const {
         return m_plots;
     }
     
@@ -136,10 +136,12 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     bool Cut<T>::select (const T& obj) const {
+        cout << "<Cut<T>::select> Entering: " << m_name << endl;
         assert(m_function);
         bool passes = false;
         double val = m_function(obj);
         if (m_ranges.size()) {
+            cout << "<Cut<T>::select>   Has ranges." << endl;
             for (const Range& range : m_ranges) {
                 passes |= range.contains(val);
                 if (passes) { break; }
@@ -147,6 +149,12 @@ namespace AnalysisTools {
         } else {
             //Debug("No ranges provided. Interpreting output of cut '" << m_name << "' to be boolean.");
             passes = (val == 1);
+        }
+        cout << "<Cut<T>::select> Exiting." << endl;
+        if (passes) {
+            for (auto& plot : plots()) {
+                ((PlotMacro1D<T>*) plot)->fill(obj);
+            }
         }
         return passes;
     }
@@ -189,6 +197,7 @@ namespace AnalysisTools {
     template <class T>
     void Cut<T>::grab (IPlotMacro* plot) {
         if (m_dir) {
+            cout << "<Cut<T>::grab> ===> " << m_dir->GetName() << endl;
             plot->setDir( m_dir );
         }
         return;
@@ -205,3 +214,4 @@ namespace AnalysisTools {
 }
 
 template class AnalysisTools::Cut<TLorentzVector>;
+template class AnalysisTools::Cut<AnalysisTools::PhysicsObject>;
