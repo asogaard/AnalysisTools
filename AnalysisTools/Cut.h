@@ -109,13 +109,12 @@ namespace AnalysisTools {
         string name    () const;
         
         vector< IPlotMacro* > plots      () const;
-        vector< TH1F* >       histograms ();
+        vector< TNtuple* >    ntuples ();
         
         
         // High-level management method(s).
         bool select (const T& obj) const;
 
-        // histogrammin methods
         
     protected:
         

@@ -30,14 +30,17 @@ int main (int argc, char* argv[]) {
     cout << "----------------------------------------------------------------------" << endl;
     
     if (argc < 2) {
-        cout << "Please provide an input file." << endl;
+        cout << "Please provide at least one input file." << endl;
         return 0;
     }
+
+    /* *
+     * Loop input files.
+     */
     
     string input = string(argv[1]);
     
-    cout << "Using input file: '" << input << "'." << endl;
-    
+
     
     // Get input file.
     TFile inputFile(input.c_str(), "READ");
@@ -129,6 +132,7 @@ int main (int argc, char* argv[]) {
     inputTree->SetBranchAddress( "passedJetCleaning",   &passedJetCleaning,   &passedJetCleaningBranch );
     
     
+    
      // Set up AnalysisTools
     // -------------------------------------------------------------------
     
@@ -141,10 +145,13 @@ int main (int argc, char* argv[]) {
      * PhysicsObject class internally.
      */
     
+    
+    
      // Pre-selection
     // -------------------------------------------------------------------
     
     // ...
+    
     
     
      // Object definitions
@@ -209,6 +216,7 @@ int main (int argc, char* argv[]) {
     //eventSelection.setCategories( regions );
 
     
+    
      // Adding analyses.
     // -------------------------------------------------------------------
     
@@ -216,16 +224,32 @@ int main (int argc, char* argv[]) {
     
 
     
+     // Stuff for binding selections together.
+    // -------------------------------------------------------------------
     
-
-    for (unsigned int iEvent = 0; iEvent < 100; iEvent++) {
+    /* *
+     * This should not change dynamically!
+     */
+    
+    PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
+    
+    
+    
+     // Event loop.
+    // -------------------------------------------------------------------
+    
+    for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
+        
+        if (iEvent == nEvents) { break; }
         
         inputTree->GetEvent(iEvent);
         
         // Run AnalysisTools.
+        analysis.run(iEvent, nEvents, mcChannelNumber);
         
-        cout << "electrons: " << electrons << " | size: " << electrons->size() << endl;
-        analysis.run();
+        SelectedElectrons = ElectronObjdef.result("Nominal");
+        
+        
         
     }
     

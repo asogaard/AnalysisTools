@@ -54,8 +54,8 @@ namespace AnalysisTools {
         
         void run ();
         
-        PhysicsObjects result ();
-        PhysicsObjects result (const string& category);
+        PhysicsObjects* result ();
+        PhysicsObjects* result (const string& category);
         
         
     protected:

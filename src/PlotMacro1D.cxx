@@ -6,14 +6,9 @@ namespace AnalysisTools {
     template <class T>
     void PlotMacro1D<T>::setName      (const string& name) {
         m_name = name;
-        m_hist.SetName((m_basedir + m_name).c_str());
-        return;
-    }
-    
-    template <class T>
-    void PlotMacro1D<T>::setHistogram (const TH1& hist) {
-        m_hist.GetXaxis()->Copy(*hist.GetXaxis());
-        // Sufficient?
+        if (m_ntuple) {
+            m_ntuple->SetName((m_basedir + m_name).c_str());
+        }
         return;
     }
     
@@ -23,6 +18,7 @@ namespace AnalysisTools {
         return;
     }
     
+    /*
     template <class T>
     void PlotMacro1D<T>::setVariable  (const string& variable) {
         m_variable = variable;
@@ -34,7 +30,7 @@ namespace AnalysisTools {
         m_unit = unit;
         return;
     }
-
+     */
     
     // Get method(s).
     template <class T>
@@ -42,9 +38,10 @@ namespace AnalysisTools {
         return m_name;
     }
     
+
     template <class T>
-    TH1F* PlotMacro1D<T>::histogram () {
-        return &m_hist;
+    TNtuple* PlotMacro1D<T>::ntuple () {
+        return m_ntuple;
     }
     
     template <class T>
@@ -56,16 +53,15 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     void PlotMacro1D<T>::fill (const T& obj) {
-        fill(obj, 1.);
+        if (!m_ntuple) {
+            gDirectory = m_dir;
+            //m_ntuple = new TNtuple(m_name.c_str(), m_variable.c_str(), "value");
+            m_ntuple = new TNtuple(m_name.c_str(), "", "value");
+        }
+        m_ntuple->Fill( m_function(obj) );
         return;
     }
     
-    template <class T>
-    void PlotMacro1D<T>::fill (const T& obj, const double& weight) {
-        assert(m_function);
-        m_hist.Fill( m_function(obj) , weight);
-        return;
-    }
     
     // Low-level management method(s).
     template <class T>
@@ -79,7 +75,7 @@ namespace AnalysisTools {
         if (m_dir) { m_dir->cd(); } else {
             cout << "<PlotMacro1D<T>::write> No directory was provided. Writing to current (default) location." << endl;
         }
-        histogram()->Write();
+        //m_ntuple->Write(); // Not necessary. Leads to duplications.
         return;
     }
     

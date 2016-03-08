@@ -101,7 +101,7 @@ namespace AnalysisTools {
         
         virtual void run () {};
         
-        vector< TH1F* > histograms ();
+        vector< TNtuple* > ntuples ();
         vector< ICut* > cuts       (const string& category);
         vector< ICut* > listCuts   ();
         

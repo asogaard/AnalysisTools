@@ -41,21 +41,18 @@ namespace AnalysisTools {
     
     template <class T>
     void ObjectDefinition<T>::run () {
-        // Set up PhysicsObject candidates. [Within a private 'init' function?]
-        cout << "------------------------------------" << endl;
-        cout << "<ObjectDefinition<T>::run> Entering." << endl;
+
         assert( this->m_input );
-        cout << "<ObjectDefinition<T>::run>   m_input: " << this->m_input << endl;
-        cout << "<ObjectDefinition<T>::run>   Storing candidates as PhysicsObjects." << endl;
-        cout << "<ObjectDefinition<T>::run>     Number of candidates: " << this->m_input->size() << endl;
         /* *
          * Check that input- and info containers have same length.
          */
-        m_candidates.clear();
+        for (const auto& category : this->m_categories) {
+            m_candidates[category].clear();
+        }
+        
+        // Set up PhysicsObject candidates. [Within a private 'init' function?]
         for (unsigned i = 0; i < this->m_input->size(); i++) {
-            cout << "<ObjectDefinition<T>::run>     Candidate " << i + 1 << "/" << this->m_input->size() << endl;
             for (const auto& category : this->m_categories) {
-                cout << "<ObjectDefinition<T>::run>       Category: " << category << endl;
                 PhysicsObject p ((T) this->m_input->at(i));
                 for (const auto& name_val : this->m_infoFloat) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
@@ -70,41 +67,43 @@ namespace AnalysisTools {
                 m_candidates[category].push_back(p);
             }
         }
+        
         // Run selection.
-        cout << "<ObjectDefinition<T>::run>   Performing selection." << endl;
+
         for (const auto& category : this->m_categories) {
-            cout << "<ObjectDefinition<T>::run>     Category: " << category << endl;
-            cout << "<ObjectDefinition<T>::run>       Number of candidates: " << m_candidates[category].size() << endl;
             if (!m_candidates[category].size()) { continue; }
-            for (const auto* cutPtr : this->m_cuts[category]) {
-                // Make use of branching?
-                // Reduce candidates list.
-                //const Cut<T>& cut = dynamic_cast< const Cut<T>& >(*cutPtr);
-                //cut.select(this->m_candidates[category].at(0));
-                cutPtr->select(this->m_candidates[category].at(0));
+            for (auto* cut : this->m_cuts[category]) {
+                // [Make use of branching?]
+                
+                // Loop candidates.
+                for (unsigned i = this->m_candidates[category].size(); i --> 0; ) {
+                    bool passes = cut->select(this->m_candidates[category].at(i));
+                    if (!passes) {
+                        this->m_candidates[category].erase(this->m_candidates[category].begin() + i);
+                    }
+                }
                 
             }
         }
-        cout << "<ObjectDefinition<T>::run> Exiting." << endl;
-        cout << "------------------------------------" << endl;
+        this->m_hasRun = true;
         return;
     }
     
     template <class T>
-    PhysicsObjects ObjectDefinition<T>::result () {
-        if (!this->m_hasRun) { run(); }
+    PhysicsObjects* ObjectDefinition<T>::result () {
+        //if (!this->m_hasRun) { run(); }
         if (this->nCategories() > 1) {
             //AnalysisTools::Warning("Call is ambiguous, since more than one category has been registered.");
-            return PhysicsObjects();
+            return nullptr; //PhysicsObjects();
         }
-        return this->m_candidates.begin()->second;
+        return &this->m_candidates.begin()->second;
     }
     
     template <class T>
-    PhysicsObjects ObjectDefinition<T>::result (const string& category) {
-        if (!this->m_hasRun) { run(); }
+    PhysicsObjects* ObjectDefinition<T>::result (const string& category) {
+        //if (!this->m_hasRun) { run(); }
         assert( this->hasCategory(category) );
-        return this->m_candidates[category];
+        return &this->m_candidates[category];
     }
     
     

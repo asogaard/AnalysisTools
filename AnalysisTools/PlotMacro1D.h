@@ -49,36 +49,42 @@ namespace AnalysisTools {
     public:
 
         // Constructor(s).
-        PlotMacro1D () {};
+        PlotMacro1D () {
+        };
+        
         PlotMacro1D (const string& name) {
             setName(name);
         };
         
         // Destructor(s).
-        ~PlotMacro1D () {};
+        ~PlotMacro1D () {
+            if (m_ntuple) {
+                delete m_ntuple;
+                m_ntuple = nullptr;
+            }
+        };
         
         
     public:
         
         // Set method(s).
         void setName      (const string& name);
-        void setHistogram (const TH1& hist);
+        void setNtuple (const TNtuple& ntuple);
         
-        void setVariable  (const string& variable);
-        void setUnit      (const string& unit);
+        //void setVariable  (const string& variable);
+        //void setUnit      (const string& unit);
         
         void setFunction  (function< double(T) > f);
 
         
         // Get method(s).
         string name () const;
-        TH1F* histogram ();
+        TNtuple* ntuple ();
         TDirectory* dir ();
         
         
         // High-level management method(s).
         void fill (const T& obj);
-        void fill (const T& obj, const double& weight);
         
         
     protected:
@@ -92,12 +98,12 @@ namespace AnalysisTools {
         
         string m_name     = "";
         string m_basedir  = "";
-        string m_variable = "";
-        string m_unit     = "";
+        //string m_variable = "";
+        //string m_unit     = "";
         
         TDirectory* m_dir = nullptr;
         
-        TH1F m_hist;
+        TNtuple* m_ntuple = nullptr;
         
         function< double(T) > m_function;
         

@@ -11,6 +11,9 @@
 #include <string>
 #include <vector>
 #include <memory> /* std::unique_ptr */
+#include <ctime> /* std::clock_t */
+#include <iomanip> /* std::setprecision */
+
 
 // xAOD include(s)
 // ...
@@ -18,7 +21,7 @@
 // ROOT include(s).
 #include "TDirectory.h"
 #include "TFile.h"
-#include "TH1.h"
+#include "TNtuple.h"
 
 // Forward declaration(s).
 namespace AnalysisTools {
@@ -72,13 +75,15 @@ namespace AnalysisTools {
         void closeOutput ();
         bool hasOutput   ();
         
+        void run (const unsigned& current, const unsigned& maximum, const int& DSID);
+        void run (const unsigned& current, const unsigned& maximum);
         void run ();
         
         void save ();
         
         void grab (ISelection* selection);
         
-        vector< TH1F* > histograms();
+        vector< TNtuple* > ntuples();
         
         
     private:
@@ -91,6 +96,8 @@ namespace AnalysisTools {
         SelectionsPtr m_selections;
 
         //vector< TH1F& > m_histograms;
+        
+        std::clock_t m_start;
         
     };
 

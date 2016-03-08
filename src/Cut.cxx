@@ -124,24 +124,32 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    vector< TH1F* > Cut<T>::histograms () {
-        vector< TH1F* > hists;
+    vector< TNtuple* > Cut<T>::ntuples () {
+        vector< TNtuple* > ntuples;
         for (auto& plot : plots()) {
-            hists.push_back( plot->histogram() );
+            ntuples.push_back( plot->ntuple() );
         }
-        return hists;
+        return ntuples;
     }
     
     
     // High-level management method(s).
     template <class T>
     bool Cut<T>::select (const T& obj) const {
-        cout << "<Cut<T>::select> Entering: " << m_name << endl;
         assert(m_function);
+        
+        // * Pre-cut distributions.
+        for (auto& plot : plots()) {
+            if (plot->name().find("Pre-cut") == string::npos) {
+                continue;
+            }
+            ((PlotMacro1D<T>*) plot)->fill(obj);
+        }
+        
+        // * Selection.
         bool passes = false;
         double val = m_function(obj);
         if (m_ranges.size()) {
-            cout << "<Cut<T>::select>   Has ranges." << endl;
             for (const Range& range : m_ranges) {
                 passes |= range.contains(val);
                 if (passes) { break; }
@@ -150,9 +158,13 @@ namespace AnalysisTools {
             //Debug("No ranges provided. Interpreting output of cut '" << m_name << "' to be boolean.");
             passes = (val == 1);
         }
-        cout << "<Cut<T>::select> Exiting." << endl;
+        
+        // * Post-cut distributions.
         if (passes) {
             for (auto& plot : plots()) {
+                if (plot->name().find("Pre-cut") != string::npos) {
+                    continue;
+                }
                 ((PlotMacro1D<T>*) plot)->fill(obj);
             }
         }
@@ -169,26 +181,15 @@ namespace AnalysisTools {
     
     template <class T>
     void Cut<T>::setBasePlots () {
-
-        /*
-         AnalysisTools::PlotMacro1D<T> precut  (m_basedir + m_name + "/Pre-cut");
-         AnalysisTools::PlotMacro1D<T> postcut (m_basedir + m_name + "/Post-cut");
-         */
+        
         PlotMacro1D<T>* precut  = new PlotMacro1D<T> ("Pre-cut");
         PlotMacro1D<T>* postcut = new PlotMacro1D<T> ("Post-cut");
-        
-        precut ->histogram()->SetBins(m_nBins, m_axisDown, m_axisUp);
-        postcut->histogram()->SetBins(m_nBins, m_axisDown, m_axisUp);
-        
-        precut->setVariable(m_variable);
-        precut->setUnit    (m_unit);
         
         precut ->setFunction(m_function);
         postcut->setFunction(m_function);
         
         addPlot(precut);
         addPlot(postcut);
-
         
         return;
     }
@@ -197,7 +198,6 @@ namespace AnalysisTools {
     template <class T>
     void Cut<T>::grab (IPlotMacro* plot) {
         if (m_dir) {
-            cout << "<Cut<T>::grab> ===> " << m_dir->GetName() << endl;
             plot->setDir( m_dir );
         }
         return;

@@ -15,7 +15,7 @@
 
 // ROOT include(s).
 #include "TDirectory.h"
-#include "TH1.h"
+#include "TNtuple.h"
 
 // Forward declaration(s).
 // ...
@@ -55,7 +55,7 @@ namespace AnalysisTools {
         // High-level management method(s).
         virtual void run () = 0;
         
-        virtual vector< TH1F* > histograms () = 0;
+        virtual vector< TNtuple* > ntuples () = 0;
         virtual vector< ICut* > listCuts   () = 0;
         virtual vector< ICut* > cuts       (const string& category) = 0;
         

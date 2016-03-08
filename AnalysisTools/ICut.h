@@ -15,7 +15,7 @@
 
 // ROOT include(s).
 #include "TDirectory.h"
-#include "TH1.h"
+#include "TNtuple.h"
 
 // Forward declaration(s).
 // ...
@@ -53,7 +53,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        virtual vector< TH1F* > histograms  () = 0;
+        virtual vector< TNtuple* > ntuples  () = 0;
         virtual vector< IPlotMacro* > plots () const = 0;
         
         //virtual bool select (const TLorentzVector& p) const = 0;

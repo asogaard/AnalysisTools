@@ -78,8 +78,6 @@ namespace AnalysisTools {
     template <class T, class U>
     void Selection<T,U>::addCut (Cut<U>* cut) {
         assert( !m_locked );
-        cout << "<Selection<T,U>::addCut> Entering." << endl;
-        cout << "<Selection<T,U>::addCut>   Number of categories: " << m_cuts.size() << endl;
         if (nCategories() == 0) {
             addCategory("Nominal");
         }
@@ -87,7 +85,6 @@ namespace AnalysisTools {
         for (const auto& cat_cuts : m_cuts) {
             addCut(cut, cat_cuts.first);
         }
-        cout << "<Selection<T,U>::addCut> Exiting." << endl;
         return;
     }
     
@@ -102,21 +99,13 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::setInput (const vector<T>* input) {
-        cout << "<Selection<T,U>::setInput> Entering." << endl;
-        cout << "<Selection<T,U>::setInput>   input->size() = " << input->size() << endl;
         m_input = input;
-        cout << "<Selection<T,U>::setInput>   m_input: " << m_input << endl;
-        cout << "<Selection<T,U>::setInput> Exiting." << endl;
         return;
     }
 
     template <class T, class U>
     void Selection<T,U>::setInput (const vector<T>  input) {
-        cout << "<Selection<T,U>::setInput> Entering." << endl;
-        cout << "<Selection<T,U>::setInput>   input.size() = " << input.size() << endl;
         m_input = &input;
-        cout << "<Selection<T,U>::setInput>   m_input: " << m_input << endl;
-        cout << "<Selection<T,U>::setInput> Exiting." << endl;
         return;
     }
     
@@ -164,31 +153,26 @@ namespace AnalysisTools {
     
     
     template <class T, class U>
-    vector< TH1F* > Selection<T,U>::histograms () {
-        cout << "<Selection<T,U>::histograms> Entering." << endl;
-        vector< TH1F* > hists;
-        cout << "<Selection<T,U>::histograms>   Number of cuts: " << m_cuts.size() << endl;
+    vector< TNtuple* > Selection<T,U>::ntuples () {
+        vector< TNtuple* > ntuples;
         for (auto& cuts : m_cuts) {
             for (auto& cut : cuts.second) {
-                for (auto& hist : cut->histograms()) {
-                    hists.push_back( hist );
+                for (auto& ntuple : cut->ntuples()) {
+                    ntuples.push_back( ntuple );
                 }
             }
         }
-        cout << "<Selection<T,U>::histograms> Exiting." << endl;
-        return hists;
+        return ntuples;
     }
     
     template <class T, class U>
     vector< ICut* > Selection<T,U>::listCuts () {
-        cout << "<Selection<T,U>::listCuts> Entering." << endl;
         CutsPtr cutsList;
         for (auto& cuts : m_cuts) {
             for (auto& cut : cuts.second) {
                 cutsList.push_back( cut );
             }
         }
-        cout << "<Selection<T,U>::listCuts> Exiting." << endl;
         return cutsList;
     }
     
@@ -235,26 +219,26 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::grab (const string& category, ICut* cut) {
-        cout << "<Selection<T,U>::grab> Entering." << endl;
-        cout << "<Selection<T,U>::grab>   Category: '" << category << "'" << endl;
         if (m_dir) {
             assert (cut);
-            //m_dir->cd();
             TDirectory* categoryDir = m_dir;
             categoryDir->cd();
-            if (!categoryDir->cd(category.c_str())) {
+
+            // Expect error.
+            bool hasDir = (categoryDir->GetDirectory(category.c_str()) != nullptr);
+            
+            if (!hasDir) {
                 categoryDir = categoryDir->mkdir(category.c_str());
             } else {
                 categoryDir = gDirectory;
             }
-            cout << "<Selection<T,U>::grab>   categoryDir->GetName(): " << categoryDir->GetName() << endl;
+            
+            
             cut->setDir( categoryDir->mkdir(cut->name().c_str()) );
-            cout << "<Selection<T,U>::grab>   cut->dir()->GetName(): " << endl;
             for (auto plot : cut->plots()) {
                 ((Cut<U>*) cut)->grab(plot);
             }
         }
-        cout << "<Selection<T,U>::grab> Exiting." << endl;
         return;
     }
     

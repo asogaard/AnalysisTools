@@ -15,7 +15,7 @@
 
 // ROOT include(s).
 #include "TDirectory.h"
-#include "TH1.h"
+#include "TNtuple.h"
 
 // Forward declaration(s).
 // ...
@@ -50,7 +50,7 @@ namespace AnalysisTools {
         // Get method(s).
         virtual string name () const = 0;
         
-        virtual TH1F* histogram () = 0;
+        virtual TNtuple* ntuple () = 0;
         
         virtual TDirectory* dir () = 0;
         
