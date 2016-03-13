@@ -80,6 +80,7 @@ namespace AnalysisTools {
     }
     
     void Analysis::run () {
+        int it = 0;
         for (ISelection* selection : m_selections) {
             selection->run();
         }

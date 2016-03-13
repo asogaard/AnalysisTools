@@ -18,6 +18,10 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/Utilities.h"
 
+/*
+ * Make templated? Derive from same base class as Event? (Both have 'info' member and related methods.)
+ */
+
 using namespace std;
 
 namespace AnalysisTools {

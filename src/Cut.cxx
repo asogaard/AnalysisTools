@@ -137,7 +137,6 @@ namespace AnalysisTools {
     template <class T>
     bool Cut<T>::select (const T& obj) const {
         assert(m_function);
-        
         // * Pre-cut distributions.
         for (auto& plot : plots()) {
             if (plot->name().find("Pre-cut") == string::npos) {
@@ -215,3 +214,4 @@ namespace AnalysisTools {
 
 template class AnalysisTools::Cut<TLorentzVector>;
 template class AnalysisTools::Cut<AnalysisTools::PhysicsObject>;
+template class AnalysisTools::Cut<AnalysisTools::Event>;

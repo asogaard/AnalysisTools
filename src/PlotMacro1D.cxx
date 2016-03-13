@@ -83,3 +83,4 @@ namespace AnalysisTools {
 
 template class AnalysisTools::PlotMacro1D<TLorentzVector>;
 template class AnalysisTools::PlotMacro1D<AnalysisTools::PhysicsObject>;
+template class AnalysisTools::PlotMacro1D<AnalysisTools::Event>;

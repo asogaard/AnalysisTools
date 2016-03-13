@@ -31,6 +31,7 @@ namespace  AnalysisTools {
 #include "AnalysisTools/IPlotMacro.h"
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/PhysicsObject.h"
+#include "AnalysisTools/Event.h"
 
 using namespace std;
 
@@ -41,6 +42,7 @@ namespace AnalysisTools {
         
         friend class Cut<T>;
         friend class Selection<T, AnalysisTools::PhysicsObject>;
+        friend class Selection<T, AnalysisTools::Event>;
         friend class Selection<T, double>;
         friend class Selection<T, float>;
         friend class Selection<T, bool>;

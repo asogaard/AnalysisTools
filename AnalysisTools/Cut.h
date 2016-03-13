@@ -29,6 +29,7 @@ namespace  AnalysisTools {
 // AnalysisTools include(s).
 #include "AnalysisTools/ICut.h"
 #include "AnalysisTools/PhysicsObject.h"
+#include "AnalysisTools/Event.h"
 #include "AnalysisTools/Range.h"
 #include "AnalysisTools/PlotMacro1D.h"
 
@@ -41,6 +42,7 @@ namespace AnalysisTools {
 
         friend class Selection<TLorentzVector, T>;
         friend class Selection<T, AnalysisTools::PhysicsObject>;
+        friend class Selection<T, AnalysisTools::Event>;
         friend class Selection<T, double>;
         friend class Selection<T, float>;
         friend class Selection<T, bool>;

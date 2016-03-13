@@ -22,6 +22,7 @@
 #include "AnalysisTools/ISelection.h"
 #include "AnalysisTools/ICut.h"
 #include "AnalysisTools/PhysicsObject.h"
+#include "AnalysisTools/Event.h"
 #include "AnalysisTools/Cut.h"
 
 using namespace std;
@@ -90,11 +91,14 @@ namespace AnalysisTools {
         
         void setInput (const vector<T>* candidates);
         void setInput (const vector<T>  candidates);
+        /* @TODO: Only applicable to ObjectDefinition? */
         
         //template<class U>
         void addInfo (const string& name, const vector<float> * info);
         void addInfo (const string& name, const vector<int>   * info);
         void addInfo (const string& name, const vector<bool>  * info);
+        /* @TODO: Do proper templating? */
+        /* @TODO: Versions without vectors for EventSelection? */
         
         template <class W>
         const vector<W>* info (const string& name);
@@ -129,6 +133,7 @@ namespace AnalysisTools {
         string m_name    = "";
         
         const vector<T>* m_input = nullptr; // Not separated by category names.
+        /* @TODO: Only applicable to ObjectDefinition? */
         
         map<string, const vector<float>* > m_infoFloat;
         map<string, const vector<int>* >   m_infoInt;

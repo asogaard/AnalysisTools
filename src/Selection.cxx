@@ -219,6 +219,7 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::grab (const string& category, ICut* cut) {
+
         if (m_dir) {
             assert (cut);
             TDirectory* categoryDir = m_dir;
@@ -230,6 +231,7 @@ namespace AnalysisTools {
             if (!hasDir) {
                 categoryDir = categoryDir->mkdir(category.c_str());
             } else {
+                categoryDir->cd(category.c_str());
                 categoryDir = gDirectory;
             }
             
@@ -254,3 +256,4 @@ namespace AnalysisTools {
 }
 
 template class AnalysisTools::Selection<TLorentzVector, AnalysisTools::PhysicsObject>;
+template class AnalysisTools::Selection<AnalysisTools::Event, AnalysisTools::Event>;
