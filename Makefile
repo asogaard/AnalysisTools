@@ -25,7 +25,8 @@ EXTOBJS := $(shell find $(EXTDIR) -name '*.o')
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
 # Dependencies
-CXXFLAGS  = --std=c++11 -I$(INCDIR) -I$(EXTDIR) $(ROOTCFLAGS) 
+CXXFLAGS  = --std=c++11 -I$(INCDIR) $(ROOTCFLAGS) 
+# -I$(EXTDIR)
 LINKFLAGS = -O2 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
 
 # Libraries
@@ -35,7 +36,9 @@ LIBS += $(ROOTLIBS)
 all: $(PACKAGENAME)
 
 $(PACKAGENAME) : $(OBJS) 
-	$(CXX) -shared -o $(LIBDIR)/lib$@.so $(OBJS) $(EXTOBJS) $(LIBS)
+	$(CXX) -shared -o $(LIBDIR)/lib$@.so $(OBJS) $(LIBS)
+
+# ... $(OBJS) $(EXTOBJS) $(LIBS) ...
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.$(SRCEXT)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
