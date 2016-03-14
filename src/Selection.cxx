@@ -83,6 +83,16 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
+    void Selection<T,U>::addPlot (CutPosition pos, const PlotMacro1D<U>& plot) {
+        /* Will only add this plot to the existing cuts. */
+        for (auto cut : listCuts()) {
+            ((Cut<U>*) cut)->addPlot(pos, new PlotMacro1D<U>(plot));
+        }
+        
+        return;
+    }
+    
+    template <class T, class U>
     void Selection<T,U>::setInput (const vector<T>* input) {
         m_input = input;
         return;

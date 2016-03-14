@@ -43,7 +43,7 @@ namespace AnalysisTools {
         assert( tree );
         // @TODO: if m_tree is already set, remove branch before making a new one?
         m_tree = tree;
-        tree->Branch("value", &m_value);
+        tree->Branch((m_name != "" ? m_name : "value").c_str(), &m_value);
         return;
     }
     

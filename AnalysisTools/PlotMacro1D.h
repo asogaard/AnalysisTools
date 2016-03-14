@@ -61,6 +61,16 @@ namespace AnalysisTools {
             Localised(name)
         {};
         
+        PlotMacro1D (const string& name, function< double(T) > f) :
+            Localised(name),
+            m_function(f)
+        {};
+        
+        PlotMacro1D (const PlotMacro1D& other) :
+            Localised(other.m_name, other.m_dir),
+            m_function(other.m_function)
+        {};
+        
         // Destructor(s).
         ~PlotMacro1D () {};
         

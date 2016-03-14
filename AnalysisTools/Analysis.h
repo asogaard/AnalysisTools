@@ -66,7 +66,7 @@ namespace AnalysisTools {
         
         // Get method(s).
         void clearSelections ();
-        void addSelection (ISelection* selection);
+        void addSelection    (ISelection* selection);
         
         
         // High-level management method(s).

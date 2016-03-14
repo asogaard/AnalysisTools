@@ -220,6 +220,10 @@ int main (int argc, char* argv[]) {
     ElectronObjdef.addCut(el_d0);
 
     
+    // * Check distributions.
+    PlotMacro1D<PhysicsObject> el_check_pT("CHECK_el_pT", [](PhysicsObject p) { return p.Pt() / 1000.; });
+    ElectronObjdef.addPlot(CutPosition::Post, el_check_pT);
+    
     // Event selection
 
     EventSelection eventSelection ("EventSelection");

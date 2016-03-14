@@ -95,8 +95,8 @@ namespace AnalysisTools {
     
     template <class T>
     void Cut<T>::addPlot (CutPosition pos, IPlotMacro* plot) {
-        plot->setTree(m_trees[pos]);
-        m_plots.push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
+        //plot->setTree(m_trees[pos]);
+        m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
   
@@ -110,11 +110,17 @@ namespace AnalysisTools {
       
     
     // Get method(s).
-    template <class T> // @asogaard: Remove? Switch to 'm_children'?
-    vector< IPlotMacro* > Cut<T>::plots () const {
-        return m_plots;
+    template <class T>
+    vector< IPlotMacro* > Cut<T>::plots (const CutPosition& pos) const {
+        return m_plots.at(pos);
     }
 
+    template <class T>
+    vector< IPlotMacro* > Cut<T>::plots () const {
+        vector< IPlotMacro* > plotsOut = m_plots.at(CutPosition::Pre);
+        plotsOut.insert( plotsOut.end(), m_plots.at(CutPosition::Post).begin(), m_plots.at(CutPosition::Post).end() );
+        return plotsOut;
+    }
     
     // High-level management method(s).
     template <class T>
@@ -124,20 +130,9 @@ namespace AnalysisTools {
         if (!m_initialised) { init(); }
         
         // * Pre-cut distributions.
-        for (auto& plot : plots()) {
-            if (plot->tree() == m_trees[CutPosition::Pre]) {
-                ((PlotMacro1D<T>*) plot)->fill(obj);
-            }
-        }
-        /*
-        / * @TODO: Loop branches (somehow)... * /
-        for (auto& plot : plots()) {
-            if (plot->name().find("Pre-cut") == string::npos) {
-                continue;
-            }
+        for (auto& plot : plots(CutPosition::Pre)) {
             ((PlotMacro1D<T>*) plot)->fill(obj);
         }
-        */
         
         // * Selection.
         bool passes = false;
@@ -154,23 +149,12 @@ namespace AnalysisTools {
         
         // * Post-cut distributions.
         if (passes) {
-            for (auto& plot : plots()) {
-                if (plot->tree() == m_trees[CutPosition::Post]) {
-                    ((PlotMacro1D<T>*) plot)->fill(obj);
-                }
-            }
-            /* @TODO: Loop branches (somehow)... */
-            /*
-            for (auto& plot : plots()) {
-                if (plot->name().find("Pre-cut") != string::npos) {
-                    continue;
-                }
+            for (auto& plot : plots(CutPosition::Post)) {
                 ((PlotMacro1D<T>*) plot)->fill(obj);
             }
-             */
         }
         
-        m_trees[CutPosition::Pre ]->Fill();
+        m_trees[CutPosition::Pre]->Fill();
         if (passes) {
             m_trees[CutPosition::Post]->Fill();
         }
@@ -183,19 +167,27 @@ namespace AnalysisTools {
     void Cut<T>::init () {
         
         assert ( this->dir() );
+        
         this->dir()->cd();
         
         m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
         m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
         
-        PlotMacro1D<T>* precut  = new PlotMacro1D<T> ("Pre-cut");
-        PlotMacro1D<T>* postcut = new PlotMacro1D<T> ("Post-cut");
+        if (m_variable == "") {
+            m_variable = "CutVariable";
+        }
+        
+        PlotMacro1D<T>* precut  = new PlotMacro1D<T> (m_variable);
+        PlotMacro1D<T>* postcut = new PlotMacro1D<T> (m_variable);
         
         precut ->setFunction(m_function);
         postcut->setFunction(m_function);
         
         addPlot(CutPosition::Pre,  precut);
         addPlot(CutPosition::Post, postcut);
+        
+        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(m_trees[CutPosition::Pre]);  }
+        for (auto plot : plots(CutPosition::Post)) { plot->setTree(m_trees[CutPosition::Post]); }
         
         m_initialised = true;
         

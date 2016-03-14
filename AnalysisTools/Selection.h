@@ -84,6 +84,8 @@ namespace AnalysisTools {
         
         void addCut (const Cut<U>& cut);
         void addCut (const Cut<U>& cut, const string& category);
+
+        void addPlot (CutPosition pos, const PlotMacro1D<U>& plot);
         
         void setInput (const vector<T>* candidates);
         void setInput (const vector<T>  candidates);
@@ -134,7 +136,7 @@ namespace AnalysisTools {
     template <class T, class U>
     using Selections = vector< Selection<T, U> >;
 
-    using SelectionsPtr = vector< ISelection* >;
+    using SelectionsPtr      = vector< ISelection* >;
     
 }
 

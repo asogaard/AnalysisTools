@@ -56,7 +56,6 @@ namespace AnalysisTools {
     }
     
     void Localised::put (ILocalised* other, const string& postfix) {
-        
         assert( !locked() );
         assert( m_name != "" );
         

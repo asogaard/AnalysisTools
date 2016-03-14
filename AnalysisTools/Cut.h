@@ -114,7 +114,8 @@ namespace AnalysisTools {
         void prependName    (const string& prefix); // @asogaard: Move to Localised?
         
         // Get method(s).
-        vector< IPlotMacro* > plots   () const;  // @asogaard: Remove?
+        vector< IPlotMacro* > plots () const;
+        vector< IPlotMacro* > plots (const CutPosition& pos) const;
         
         
         // High-level management method(s).
@@ -140,9 +141,10 @@ namespace AnalysisTools {
         string m_variable = "";
         string m_unit     = "";
         
-        vector< IPlotMacro* > m_plots;
+        map<CutPosition, vector< IPlotMacro* > > m_plots =  { {CutPosition::Pre, vector< IPlotMacro* >()}, {CutPosition::Post, vector< IPlotMacro* >()} };
+;
         
-        map<CutPosition, TTree*> m_trees;
+        map<CutPosition, TTree*> m_trees = { {CutPosition::Pre, nullptr}, {CutPosition::Post, nullptr} };
         
         bool m_initialised = false;
     };
