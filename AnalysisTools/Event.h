@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 #include <assert.h> /* assert */
+#include <memory> /* shared_ptr */
 
 // ROOT include(s).
 #include "TLorentzVector.h"
@@ -38,15 +39,15 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void addInfo       (const string& name, const double&         val);
-        void addCollection (const string& name, const PhysicsObjects& collection);
+        void addInfo       (const string& name, const double&              val);
+        void addCollection (const string& name, shared_ptr<PhysicsObjects> collection);
         void addGRL        (GRL* grl);
 
         
         // Get method(s).
-        double         info       (const string& name);
-        PhysicsObjects collection (const string& name);
-        GRL*           grl        ();
+        double                     info       (const string& name);
+        shared_ptr<PhysicsObjects> collection (const string& name);
+        GRL*                       grl        ();
         
         
         // High-level management method(s).
@@ -56,7 +57,7 @@ namespace AnalysisTools {
     private:
         
         map<string, double> m_info;
-        map<string, PhysicsObjects> m_collections;
+        map<string, shared_ptr<PhysicsObjects> > m_collections;
         GRL* m_grl = nullptr;
         
     };

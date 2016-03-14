@@ -53,6 +53,7 @@ namespace AnalysisTools {
         
         // Destructor(s).
         ~Selection () {
+            cout << "<Selection::~Selection>" << endl;
             for (auto cutvec : m_cuts) {
                 for (auto cut : cutvec.second) {
                     if (cut) {
@@ -61,6 +62,7 @@ namespace AnalysisTools {
                     }
                 }
             }
+            cout << "<Selection::~Selection> Done." << endl;
         };
         
         

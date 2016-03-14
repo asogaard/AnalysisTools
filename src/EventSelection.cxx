@@ -3,7 +3,7 @@
 namespace AnalysisTools {
     
     // Set method(s).
-    void EventSelection::addCollection (const string& name, const PhysicsObjects& collection) {
+    void EventSelection::addCollection (const string& name, shared_ptr<PhysicsObjects> collection) {
         assert( m_collections.count(name) == 0);
         m_collections[name] = collection;
         return;
@@ -14,9 +14,8 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool EventSelection::run () {
-        
         for (const auto& category : this->m_categories) {
-            
+
             // * Setup
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
             

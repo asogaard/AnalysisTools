@@ -13,7 +13,7 @@ namespace AnalysisTools {
         /* *
          * Check that input- and info containers have same length.
          */
-        for (const auto& category : this->m_categories) {
+        for (const auto& category : this->m_categories) {  
             m_candidates[category].clear();
         }
         
@@ -59,20 +59,15 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    PhysicsObjects* ObjectDefinition<T>::result () {
-        //if (!this->m_hasRun) { run(); }
-        if (this->nCategories() > 1) {
-            //AnalysisTools::Warning("Call is ambiguous, since more than one category has been registered.");
-            return nullptr; //PhysicsObjects();
-        }
-        return &this->m_candidates.begin()->second;
+    shared_ptr<PhysicsObjects> ObjectDefinition<T>::result () {
+        assert( this->nCategories() == 1);
+        return shared_ptr<PhysicsObjects>(&this->m_candidates[this->m_categories.front()]);
     }
     
     template <class T>
-    PhysicsObjects* ObjectDefinition<T>::result (const string& category) {
-        //if (!this->m_hasRun) { run(); }
+        shared_ptr<PhysicsObjects> ObjectDefinition<T>::result (const string& category) {
         assert( this->hasCategory(category) );
-        return &this->m_candidates[category];
+        return shared_ptr<PhysicsObjects>(&this->m_candidates[category]);
     }
     
     

@@ -114,5 +114,12 @@ namespace AnalysisTools {
         m_outfile->Write();
         return;
     }
+
+    void Analysis::save (const string& path) {
+        assert( hasOutput() );
+        m_outfile->Write(path.c_str());
+        return;
+    }
+
     
 }

@@ -7,10 +7,12 @@
  **/
 
 // STL include(s).
+#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <assert.h> /* assert */
+#include <memory> /* shared_ptr */
 
 // ROOT include(s).
 #include "TLorentzVector.h"
@@ -62,6 +64,15 @@ namespace AnalysisTools {
 
     using PhysicsObjects = vector<PhysicsObject>;
     
+    // PhysicsObject-specific utility functions.
+    // -------------------------------------------------------------------
+    
+    // -- Perform overlap removal.
+    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2, function< bool(PhysicsObject,PhysicsObject) > constraint);
+    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2);
+    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R);
+    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R, function< bool(PhysicsObject,PhysicsObject) > constraint);
+
 }
 
 #endif

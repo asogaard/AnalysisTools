@@ -37,13 +37,15 @@ namespace AnalysisTools {
         
 
         // Destructor(s).
-        ~EventSelection () {};
+        ~EventSelection () {
+            cout << "<EventSelection::~EventSelection>" << endl;
+        };
 
         
     public:
         
         // Set method(s).
-        void addCollection (const string& name, const PhysicsObjects& collection);
+        void addCollection (const string& name, shared_ptr<PhysicsObjects> collection);
         
         
         // Get method(s).
@@ -65,9 +67,9 @@ namespace AnalysisTools {
 
     private:
         
-        map<string, Event>          m_events;
-        map<string, PhysicsObjects> m_collections;
-        map<string, bool>           m_passes;
+        map<string, Event>                       m_events;
+        map<string, shared_ptr<PhysicsObjects> > m_collections;
+        map<string, bool>                        m_passes;
         
         bool m_hasRun = false;
         int  m_branch = -1;

@@ -54,6 +54,7 @@ namespace AnalysisTools {
         
         // Destructor(s).
         ~Analysis () {
+            cout << "<Analysis::~Analysis>" << endl;
             closeOutput();
         };
         
@@ -79,6 +80,7 @@ namespace AnalysisTools {
         bool run ();
         
         void save ();
+        void save (const string& path);
         
         
     private:

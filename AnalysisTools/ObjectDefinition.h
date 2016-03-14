@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 #include <assert.h>
+#include <memory> /* shared_ptr */
 
 // ROOT include(s).
 // ..
@@ -36,7 +37,9 @@ namespace AnalysisTools {
         
 
         // Destructor(s).
-        ~ObjectDefinition () {};
+        ~ObjectDefinition () {
+            cout << "<ObjectDefinition::~ObjectDefinition>" << endl;
+        };
 
         
     public:
@@ -52,8 +55,8 @@ namespace AnalysisTools {
         
         bool run ();
         
-        PhysicsObjects* result ();
-        PhysicsObjects* result (const string& category);
+        shared_ptr<PhysicsObjects> result ();
+        shared_ptr<PhysicsObjects> result (const string& category);
         
         
     protected:

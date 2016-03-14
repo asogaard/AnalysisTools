@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <memory> /* shared_ptr */
 
 // ROOT include(s).
 #include "TROOT.h"
@@ -146,7 +147,7 @@ int main (int argc, char* argv[]) {
      // Set up AnalysisTools
     // -------------------------------------------------------------------
     
-    Analysis analysis ("BoostedWR");
+    Analysis analysis ("ResolvedWR");
     
     analysis.openOutput("output.root");
 
@@ -160,13 +161,40 @@ int main (int argc, char* argv[]) {
      // Pre-selection
     // -------------------------------------------------------------------
     
-    // ...
+    EventSelection preSelection ("PreSelection");
     
+    /*
+     eventSelection.addInfo("eventCleaning", passedEventCleaning);
+     eventSelection.addInfo("jetCleaning",   passedJetCleaning);
+     eventSelection.addInfo("LB",            lumiBlock);
+     eventSelection.addInfo("run",           runNumber);
+     eventSelection.addInfo("DSID",          mc_channel_number);
+     */
+
+    
+    // * GRL
+    Cut<Event> event_grl ("GRL");
+    event_grl.setFunction( [grl, mcChannelNumber, lumiBlock, runNumber](Event e) { return true; }); //mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
+    preSelection.addCut(event_grl);
+    /*
+    // * Event cleaning
+    Cut<Event> event_eventCleaning ("EventCleaning");
+    event_eventCleaning.setFunction( [passedEventCleaning](Event e) { return passedEventCleaning; } );
+    preSelection.addCut(event_eventCleaning);
+    
+    // * Jet cleaning
+    Cut<Event> event_jetCleaning ("JetCleaning");
+    event_jetCleaning.setFunction( [passedJetCleaning](Event e) { return passedJetCleaning; } );
+    preSelection.addCut(event_jetCleaning);
+    */
     
     
      // Object definitions
     // -------------------------------------------------------------------
 
+     // Electrons
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
     ObjectDefinition<TLorentzVector> ElectronObjdef ("Electrons");
     
     ElectronObjdef.setInput(electrons);
@@ -223,55 +251,166 @@ int main (int argc, char* argv[]) {
     // * Check distributions.
     PlotMacro1D<PhysicsObject> el_check_pT("CHECK_el_pT", [](PhysicsObject p) { return p.Pt() / 1000.; });
     ElectronObjdef.addPlot(CutPosition::Post, el_check_pT);
-    
-    // Event selection
-
-    EventSelection eventSelection ("EventSelection");
-    vector<string> regions = {"SR", "CRZ", "CRT"};
-    eventSelection.setCategories( regions );
-
-    //eventSelection.addCollect(SelectedElectrons); // Somehow...
-    /*
-    eventSelection.addInfo("eventCleaning", passedEventCleaning);
-    eventSelection.addInfo("jetCleaning",   passedJetCleaning);
-    eventSelection.addInfo("LB",            lumiBlock);
-    eventSelection.addInfo("run",           runNumber);
-    eventSelection.addInfo("DSID",          mc_channel_number);
-     */
-
-    // * GRL
-    Cut<Event> event_grl ("GRL");
-    event_grl.setFunction( [grl, mcChannelNumber, lumiBlock, runNumber](Event e) { return true; }); //mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
-    eventSelection.addCut(event_grl);
-
-    // * Event cleaning
-    Cut<Event> event_eventCleaning ("EventCleaning");
-    event_eventCleaning.setFunction( [passedEventCleaning](Event e) { return passedEventCleaning; } );
-    eventSelection.addCut(event_eventCleaning);
-
-    // * Jet cleaning
-    Cut<Event> event_jetCleaning ("JetCleaning");
-    event_jetCleaning.setFunction( [passedJetCleaning](Event e) { return passedJetCleaning; } );
-    eventSelection.addCut(event_jetCleaning);
 
     
+     // Muons.
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
-     // Adding analyses.
-    // -------------------------------------------------------------------
+    ObjectDefinition<TLorentzVector> MuonObjdef ("Muons");
     
-    analysis.addSelection(&ElectronObjdef);
-    analysis.addSelection(&eventSelection);
+    MuonObjdef.setInput(muons);
     
+    MuonObjdef.addInfo("id_medium",          mu_id_medium);
+    MuonObjdef.addInfo("iso_loosetrackonly", mu_iso_loosetrackonly);
+    MuonObjdef.addInfo("z0sintheta",         mu_z0sintheta);
+    MuonObjdef.addInfo("d0BLsignificance",   mu_d0BLsignificance);
+    
+    //MuonObjdef.setCategories( {"Loose", "Tight"} ); // Just nominal
+    
+    // * pT
+    Cut<PhysicsObject> mu_pT ("pT");
+    mu_pT.setFunction( [](PhysicsObject p) { return p.Pt() / 1000.; } );
+    mu_pT.setRange(20., inf);
+    MuonObjdef.addCut(mu_pT); // , "Loose");
+    
+    // * eta
+    Cut<PhysicsObject> mu_eta ("Eta");
+    mu_eta.setFunction( [](PhysicsObject p) { return p.Eta(); } );
+    mu_eta.setRange(-3.0, 3.0);
+    MuonObjdef.addCut(mu_eta);
+    
+    // * ID (medium).
+    Cut<PhysicsObject> mu_ID ("MediumID");
+    mu_ID.setFunction( [](PhysicsObject p) { return p.info("id_medium"); } );
+    MuonObjdef.addCut(mu_ID);
+    
+    // * Isolation (loose).
+    Cut<PhysicsObject> mu_iso ("LooseTrackOnlyIso");
+    mu_iso.setFunction( [](PhysicsObject p) { return p.info("iso_loosetrackonly"); } );
+    MuonObjdef.addCut(mu_iso);
+    
+    // * z0 * sin(theta)
+    Cut<PhysicsObject> mu_z0 ("z0sintheta");
+    mu_z0.setFunction( [](PhysicsObject p) { return fabs(p.info("z0sintheta")); } );
+    mu_z0.addRange(0, 0.5);
+    MuonObjdef.addCut(mu_z0);
+    
+    // * d0 (BL significance)
+    Cut<PhysicsObject> mu_d0 ("d0BLsignificance");
+    mu_d0.setFunction( [](PhysicsObject p) { return fabs(p.info("d0BLsignificance")); } );
+    mu_d0.addRange(0, 3.);
+    MuonObjdef.addCut(mu_d0);
+    
+    // * Check distributions.
+    PlotMacro1D<PhysicsObject> mu_check_pT("CHECK_mu_pT", [](PhysicsObject p) { return p.Pt() / 1000.; });
+    MuonObjdef.addPlot(CutPosition::Post, mu_check_pT);
 
     
-     // Stuff for binding selections together.
+     // Jets.
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    ObjectDefinition<TLorentzVector> JetObjdef ("Jets");
+    
+    JetObjdef.setInput(jets);
+  
+    // * eta
+    Cut<PhysicsObject> jet_eta ("Eta");
+    jet_eta.setFunction( [](PhysicsObject p) { return p.Eta(); } );
+    jet_eta.setRange(-2.8, 2.8);
+    JetObjdef.addCut(jet_eta);
+    
+    
+    // Stuff for binding selections together.
     // -------------------------------------------------------------------
     
     /* *
      * This should not change dynamically!
      */
     
-    //PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
+    shared_ptr<PhysicsObjects> SelectedElectrons = ElectronObjdef.result("Nominal");
+    shared_ptr<PhysicsObjects> SelectedMuons     = MuonObjdef    .result();
+    shared_ptr<PhysicsObjects> SelectedJets      = JetObjdef     .result();
+    
+    
+    
+    
+     // Event selection
+    // -------------------------------------------------------------------
+    
+    EventSelection eventSelection ("EventSelection");
+    vector<string> regions = { "SR_ee", "SR_mm", "CRZ_ee", "CRZ_mm" };
+    eventSelection.setCategories( regions );
+
+    eventSelection.addCollection("Electrons", SelectedElectrons);
+    eventSelection.addCollection("Muons",     SelectedMuons);
+    eventSelection.addCollection("Jets",      SelectedJets);
+    
+    // * Jet-electron OR
+    Cut<Event> event_OR_je ("JetElectronOverlapRemoval");
+    event_OR_je.setFunction( [](Event e) {
+        AnalysisTools::OverlapRemoval(e.collection("Jets"), e.collection("Electrons"), 0.2, [](PhysicsObject j, PhysicsObject e) { return e.Pt() > 2. * j.Pt(); });
+        return true;
+    });
+    eventSelection.addCut(event_OR_je);
+    
+    // * Electron-jet OR
+    Cut<Event> event_OR_ej ("ElectronJetOverlapRemoval");
+    event_OR_ej.setFunction( [](Event e) {
+        AnalysisTools::OverlapRemoval(e.collection("Electrons"), e.collection("Jets"), 0.2, 0.4);
+        return true;
+    });
+    eventSelection.addCut(event_OR_ej);
+    
+    // * Jet count
+    Cut<Event> event_Njets ("Njets");
+    event_Njets.setFunction( [](Event e) { return e.collection("Jets")->size(); });
+    event_Njets.addRange(2, inf);
+    eventSelection.addCut(event_Njets);
+    
+    // * Leptons
+    Cut<Event> event_ee ("ee");
+    event_ee.setFunction( [](Event e) { return e.collection("Electrons")->size(); });
+    event_ee.addRange(2, 2);
+    eventSelection.addCut(event_ee, "SR_ee");
+    eventSelection.addCut(event_ee, "CRZ_ee");
+    
+    Cut<Event> event_mm ("mm");
+    event_mm.setFunction( [](Event e) { return e.collection("Muons")->size(); });
+    event_mm.addRange(2, 2);
+    eventSelection.addCut(event_mm, "SR_mm");
+    eventSelection.addCut(event_mm, "CRZ_mm");
+    
+    
+    // * Recombination (hadronic, leptonic).
+    /*
+    eventSelection.addRecombination("jj", [](Event e) { return e.collection("Jets")->at(0) + e.collection("Jets")->at(1); });
+    eventSelection.addRecombination("ll", [](Event e) {
+        if (e.collection("Electrons")->size()) {
+            return e.collection("Electrons")->at(0) + e.collection("Electrons")->at(1);
+        } else {
+            return e.collection("Muons")->at(0) + e.collection("Muons")->at(1);
+        }
+    });
+     */
+    
+    // * Check distributions.
+    PlotMacro1D<Event> event_check_Njet("CHECK_event_Njet", [](Event e) { return e.collection("Jets")->size(); });
+    eventSelection.addPlot(CutPosition::Pre,  event_check_Njet);
+    eventSelection.addPlot(CutPosition::Post, event_check_Njet);
+
+    PlotMacro1D<Event> event_check_Nel("CHECK_event_Nel", [](Event e) { return e.collection("Electrons")->size(); });
+    eventSelection.addPlot(CutPosition::Pre,  event_check_Nel);
+    eventSelection.addPlot(CutPosition::Post, event_check_Nel);
+
+    
+     // Adding analyses.
+    // -------------------------------------------------------------------
+    
+    analysis.addSelection(&preSelection);
+    analysis.addSelection(&ElectronObjdef);
+    analysis.addSelection(&MuonObjdef);
+    analysis.addSelection(&JetObjdef);
+    analysis.addSelection(&eventSelection);
     
     
     
@@ -298,13 +437,9 @@ int main (int argc, char* argv[]) {
     
     analysis.save();
     
-
     cout << "----------------------------------------------------------------------" << endl;
     cout << " Done." << endl;
     cout << "======================================================================" << endl;
-    
-
-
     
     return 1;
 }
