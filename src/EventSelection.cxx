@@ -9,6 +9,7 @@ namespace AnalysisTools {
         return;
     }
     
+    
     // Get methods(s).
     // ...
     
@@ -35,7 +36,6 @@ namespace AnalysisTools {
             for (const auto& name_val : m_collections) {
                 m_events[category].addCollection(name_val.first, name_val.second);
             }
-        
             
             // * Run selection.
             unsigned int iCut = 0;

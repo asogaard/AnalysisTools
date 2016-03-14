@@ -82,7 +82,7 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::setFunction (function< double(T) > f) {
+    void Cut<T>::setFunction (function< double(T&) > f) {
         m_function = f;
         return;
     }
@@ -124,7 +124,7 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     template <class T>
-    bool Cut<T>::select (const T& obj) {
+    bool Cut<T>::select (T& obj) { // (const T& obj)
 
         assert(m_function);
         if (!m_initialised) { init(); }

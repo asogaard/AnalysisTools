@@ -61,10 +61,11 @@ namespace AnalysisTools {
             Localised(name)
         {};
         
-        PlotMacro1D (const string& name, function< double(T) > f) :
-            Localised(name),
-            m_function(f)
-        {};
+        PlotMacro1D (const string& name, function< double(T&) > f) :
+            Localised(name)
+        {
+            setFunction(f);
+        };
         
         PlotMacro1D (const PlotMacro1D& other) :
             Localised(other.m_name, other.m_dir),
@@ -81,7 +82,7 @@ namespace AnalysisTools {
         //void setVariable  (const string& variable);
         //void setUnit      (const string& unit);
         
-        void setFunction  (function< double(T) > f);
+        void setFunction  (function< double(T&) > f);
 
         
         // Get method(s).
@@ -89,7 +90,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        void fill (const T& obj);
+        void fill (T& obj); // (const T& obj)
         
         
     protected:
@@ -101,7 +102,7 @@ namespace AnalysisTools {
         
     private:
         
-        function< double(T) > m_function;
+        function< double(T&) > m_function;
         
         
     };

@@ -46,7 +46,7 @@ namespace AnalysisTools {
         
         // Set method(s).
         void addCollection (const string& name, shared_ptr<PhysicsObjects> collection);
-        
+                
         
         // Get method(s).
         // ...

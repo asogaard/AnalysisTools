@@ -87,7 +87,11 @@ namespace AnalysisTools {
         
         void addCut (const Cut<U>& cut);
         void addCut (const Cut<U>& cut, const string& category);
-
+        void addCut (const string& name, const function< double(U&) >& f);
+        void addCut (const string& name, const function< double(U&) >& f, const string& category);
+        void addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max);
+        void addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max, const string& category);
+        
         void addPlot (CutPosition pos, const PlotMacro1D<U>& plot);
         
         void setInput (const vector<T>* candidates);

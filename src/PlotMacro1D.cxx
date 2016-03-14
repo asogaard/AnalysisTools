@@ -4,7 +4,7 @@ namespace AnalysisTools {
 
     // Set method(s).
     template <class T>
-    void PlotMacro1D<T>::setFunction  (function< double(T) > f) {
+    void PlotMacro1D<T>::setFunction  (function< double(T&) > f) {
         m_function = f;
         return;
     }
@@ -30,7 +30,7 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     template <class T>
-    void PlotMacro1D<T>::fill (const T& obj) {
+    void PlotMacro1D<T>::fill (T& obj) { // (const T& obj)
         assert( m_tree );
         m_value = m_function(obj);
         return;

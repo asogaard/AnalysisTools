@@ -42,11 +42,12 @@ namespace AnalysisTools {
         void addInfo       (const string& name, const double&              val);
         void addCollection (const string& name, shared_ptr<PhysicsObjects> collection);
         void addGRL        (GRL* grl);
-
+        void               setParticle   (const string& name, const PhysicsObject& particle);
         
         // Get method(s).
         double                     info       (const string& name);
         shared_ptr<PhysicsObjects> collection (const string& name);
+        PhysicsObject&             particle   (const string& name);
         GRL*                       grl        ();
         
         
@@ -58,6 +59,7 @@ namespace AnalysisTools {
         
         map<string, double> m_info;
         map<string, shared_ptr<PhysicsObjects> > m_collections;
+        map<string, PhysicsObject> m_particles;
         GRL* m_grl = nullptr;
         
     };

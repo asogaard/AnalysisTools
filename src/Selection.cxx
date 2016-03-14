@@ -8,17 +8,17 @@ namespace AnalysisTools {
     
     // Get method(s).
     template <class T, class U>
-    unsigned               Selection<T,U>::nCategories () {
+    unsigned Selection<T,U>::nCategories () {
         return m_categories.size();
     }
     
     template <class T, class U>
-    vector<string>         Selection<T,U>::categories () {
+    vector<string> Selection<T,U>::categories () {
         return m_categories;
     }
     
     template <class T, class U>
-    bool                   Selection<T,U>::categoriesLocked () {
+    bool Selection<T,U>::categoriesLocked () {
         return m_categoriesLocked;
     }
     
@@ -79,6 +79,40 @@ namespace AnalysisTools {
         assert( hasCategory(category) );
         m_cuts[category].push_back( new Cut<U>(cut) );
         this->grab( m_cuts[category].back(), category );
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        addCut(cut);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const string& category) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        addCut(cut, category);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        cut.addRange(min,max);
+        addCut(cut);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max, const string& category) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        cut.addRange(min,max);
+        addCut(cut, category);
         return;
     }
     

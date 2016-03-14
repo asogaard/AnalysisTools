@@ -106,7 +106,7 @@ namespace AnalysisTools {
         void addRanges (const Ranges& ranges);
         void addRanges (const vector< pair<double, double> >& vec_limits);
         
-        void setFunction (function< double(T) > f);
+        void setFunction (function< double(T&) > f);
         
         void clearPlots ();
         void addPlot (CutPosition pos, IPlotMacro* plot);
@@ -119,7 +119,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        bool select (const T& obj);
+        bool select (T& obj); // (const T& obj)
 
         
     protected:
@@ -135,7 +135,7 @@ namespace AnalysisTools {
         double   m_axisDown =  0.;
         double   m_axisUp   =  1.;
 
-        function< double(T) > m_function;
+        function< double(T&) > m_function;
         Ranges m_ranges;
         
         string m_variable = "";
