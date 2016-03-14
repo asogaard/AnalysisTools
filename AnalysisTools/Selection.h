@@ -17,6 +17,7 @@
 // ROOT include(s).
 #include "TDirectory.h"
 #include "TLorentzVector.h"
+#include "TH1F.h"
 
 // AnalysisTools include(s).
 #include "AnalysisTools/ISelection.h"
@@ -113,6 +114,8 @@ namespace AnalysisTools {
         bool hasCategory      (const string& category);
         bool canAddCategories ();
         void lockCategories   ();
+        bool hasCutflow       (const string& category);
+        void setupCutflow     (const string& category);
         
         
     protected:
@@ -128,6 +131,8 @@ namespace AnalysisTools {
         bool           m_categoriesLocked = false;
         
         map< string, vector< Cut<U>* > > m_cuts;
+        
+        map< string, TH1F*> m_cutflow;
         
         bool m_hasRun = false;
         

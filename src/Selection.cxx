@@ -8,12 +8,12 @@ namespace AnalysisTools {
     
     // Get method(s).
     template <class T, class U>
-    unsigned               Selection<T,U>::nCategories      () {
+    unsigned               Selection<T,U>::nCategories () {
         return m_categories.size();
     }
     
     template <class T, class U>
-    vector<string>         Selection<T,U>::categories       () {
+    vector<string>         Selection<T,U>::categories () {
         return m_categories;
     }
     
@@ -23,7 +23,7 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    map< string, vector< Cut<U>* > > Selection<T,U>::cuts             () {
+    map< string, vector< Cut<U>* > > Selection<T,U>::cuts () {
         return m_cuts;
     }
     
@@ -183,6 +183,29 @@ namespace AnalysisTools {
     template <class T, class U>
     void Selection<T,U>::lockCategories () {
         m_categoriesLocked = true;
+        return;
+    }
+    
+    
+    template <class T, class U>
+    bool Selection<T,U>::hasCutflow (const string& category) {
+        return (m_cutflow.count(category) > 0);
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::setupCutflow (const string& category) {
+        this->dir()->cd(category.c_str());
+        assert( hasCategory(category) );
+        
+        unsigned int nCuts = m_cuts[category].size();
+        m_cutflow[category] = new TH1F("Cutflow", "", nCuts + 1, -0.5, nCuts + 0.5);
+        
+        // * Set bin labels.
+        m_cutflow[category]->GetXaxis()->SetBinLabel(1, "All");
+        unsigned int iCut = 1;
+        for (auto cut : m_cuts[category]) {
+            m_cutflow[category]->GetXaxis()->SetBinLabel(++iCut, cut->name().c_str());
+        }
         return;
     }
     

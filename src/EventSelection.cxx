@@ -14,7 +14,12 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool EventSelection::run () {
+        
         for (const auto& category : this->m_categories) {
+            
+            // * Setup
+            if (!this->hasCutflow(category)) { this->setupCutflow(category); }
+            
             m_events[category] = Event();
             m_passes[category] = true;
             
@@ -31,17 +36,19 @@ namespace AnalysisTools {
             for (const auto& name_val : m_collections) {
                 m_events[category].addCollection(name_val.first, name_val.second);
             }
-
-        }
         
-        // Run selection.
-        for (const auto& category : this->m_categories) {
+            
+            // * Run selection.
+            unsigned int iCut = 0;
+            this->m_cutflow[category]->Fill(iCut++);
             for (auto* cut : this->m_cuts[category]) {
                 // [Make use of branching?]
                 bool passes = cut->select(this->m_events[category]);
                 m_passes[category] &= passes;
                 if (!m_passes[category]) { break; }
+                this->m_cutflow[category]->Fill(iCut++);
             }
+            
         }
         
         this->m_hasRun = true;

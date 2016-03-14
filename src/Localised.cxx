@@ -2,10 +2,6 @@
 
 namespace AnalysisTools {
 
-    // Constructor(s).
-    // ...
-    
-    
     // Set method(s).
     void Localised::setName (const string& name) {
         assert( !locked() );

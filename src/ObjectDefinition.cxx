@@ -17,7 +17,7 @@ namespace AnalysisTools {
             m_candidates[category].clear();
         }
         
-        // Set up PhysicsObject candidates. [Within a private 'init' function?]
+        // * Set up PhysicsObject candidates. [Within a private 'init' function?]
         for (unsigned i = 0; i < this->m_input->size(); i++) {
             for (const auto& category : this->m_categories) {
                 PhysicsObject p ((T) this->m_input->at(i));
@@ -35,10 +35,12 @@ namespace AnalysisTools {
             }
         }
         
-        // Run selection.
-
+        // * Run selection.
         for (const auto& category : this->m_categories) {
             if (!m_candidates[category].size()) { continue; }
+            if (!this->hasCutflow(category)) { this->setupCutflow(category); }
+            unsigned int iCut = 0;
+            this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
             for (auto* cut : this->m_cuts[category]) {
                 // [Make use of branching?]
                 
@@ -49,7 +51,7 @@ namespace AnalysisTools {
                         this->m_candidates[category].erase(this->m_candidates[category].begin() + i);
                     }
                 }
-                
+                this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
             }
         }
         this->m_hasRun = true;
