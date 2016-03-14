@@ -34,7 +34,7 @@ namespace AnalysisTools {
         assert( !locked() );
         assert( canAddCategories() );
         m_categories.push_back(category);
-        m_cuts[category] = vector< Cut<U>* >(); //; CutsPtr();
+        m_cuts[category] = vector< Cut<U>* >();
         return;
     }
     
@@ -61,7 +61,7 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (Cut<U>* cut) {
+    void Selection<T,U>::addCut (const Cut<U>& cut) {
         assert( !locked() );
         if (nCategories() == 0) {
             addCategory("Nominal");
@@ -74,11 +74,10 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (Cut<U>* cut, const string& category) {
+    void Selection<T,U>::addCut (const Cut<U>& cut, const string& category) {
         assert( !locked() );
         assert( hasCategory(category) );
-        m_cuts[category].push_back( new Cut<U>(*cut) );
-        //grab( category, m_cuts[category].back() );
+        m_cuts[category].push_back( new Cut<U>(cut) );
         this->grab( m_cuts[category].back(), category );
         return;
     }
@@ -137,20 +136,6 @@ namespace AnalysisTools {
         return nullptr;
     }
     
-    
-    template <class T, class U>
-    vector< TNtuple* > Selection<T,U>::ntuples () {
-        vector< TNtuple* > ntuples;
-        for (auto& cuts : m_cuts) {
-            for (auto& cut : cuts.second) {
-                for (auto& ntuple : cut->ntuples()) {
-                    ntuples.push_back( ntuple );
-                }
-            }
-        }
-        return ntuples;
-    }
-    
     template <class T, class U>
     vector< ICut* > Selection<T,U>::listCuts () {
         CutsPtr cutsList;
@@ -188,14 +173,6 @@ namespace AnalysisTools {
     template <class T, class U>
     void Selection<T,U>::lockCategories () {
         m_categoriesLocked = true;
-        return;
-    }
-      
-    template <class T, class U>
-    void Selection<T,U>::write () {
-        for (auto cut : listCuts()) {
-            cut->write();
-        }
         return;
     }
     

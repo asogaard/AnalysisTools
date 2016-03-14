@@ -13,8 +13,7 @@ namespace AnalysisTools {
     // ...
     
     // High-level management method(s).
-    void EventSelection::run () {
-
+    bool EventSelection::run () {
         for (const auto& category : this->m_categories) {
             m_events[category] = Event();
             m_passes[category] = true;
@@ -40,14 +39,14 @@ namespace AnalysisTools {
             for (auto* cut : this->m_cuts[category]) {
                 // [Make use of branching?]
                 bool passes = cut->select(this->m_events[category]);
-                m_passes[category] |= passes;
+                m_passes[category] &= passes;
                 if (!m_passes[category]) { break; }
             }
         }
         
         this->m_hasRun = true;
         
-        return;
+        return (std::count_if(m_passes.begin(), m_passes.end(), [](const pair<string, bool>& p) { return p.second; }) > 0);
     }
     
     bool EventSelection::result () {

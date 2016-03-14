@@ -87,16 +87,16 @@ namespace AnalysisTools {
         return;
     }
     
-    template <class T>
+    template <class T> // @asogaard: Move to Localised? (clearChildren)
     void Cut<T>::clearPlots () {
         m_plots.clear();
         return;
     }
     
     template <class T>
-    void Cut<T>::addPlot (IPlotMacro* plot) {
-        this->grab(plot);
-        m_plots.push_back(plot);
+    void Cut<T>::addPlot (CutPosition pos, IPlotMacro* plot) {
+        plot->setTree(m_trees[pos]);
+        m_plots.push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
   
@@ -110,37 +110,34 @@ namespace AnalysisTools {
       
     
     // Get method(s).
-    template <class T>
+    template <class T> // @asogaard: Remove? Switch to 'm_children'?
     vector< IPlotMacro* > Cut<T>::plots () const {
         return m_plots;
     }
-    
-    template <class T>
-    vector< TNtuple* > Cut<T>::ntuples () {
-        vector< TNtuple* > ntuples;
-        for (auto& plot : plots()) {
-            ntuples.push_back( plot->ntuple() );
-        }
-        return ntuples;
-    }
-    
+
     
     // High-level management method(s).
     template <class T>
-    bool Cut<T>::select (const T& obj) const {
-        cout << "<Cut<T>::select> Entering." << endl;
-        cout << "<Cut<T>::select>   Name: '" << this->name() << "'" << endl;
+    bool Cut<T>::select (const T& obj) {
+
         assert(m_function);
+        if (!m_initialised) { init(); }
         
         // * Pre-cut distributions.
-        cout << "<Cut<T>::select>   Filling (pre-cut) plots." << endl;
+        for (auto& plot : plots()) {
+            if (plot->tree() == m_trees[CutPosition::Pre]) {
+                ((PlotMacro1D<T>*) plot)->fill(obj);
+            }
+        }
+        /*
+        / * @TODO: Loop branches (somehow)... * /
         for (auto& plot : plots()) {
             if (plot->name().find("Pre-cut") == string::npos) {
                 continue;
             }
             ((PlotMacro1D<T>*) plot)->fill(obj);
         }
-        cout << "<Cut<T>::select>   Done filling (pre-cut) plots." << endl;
+        */
         
         // * Selection.
         bool passes = false;
@@ -152,28 +149,44 @@ namespace AnalysisTools {
             }
         } else {
             //Debug("No ranges provided. Interpreting output of cut '" << m_name << "' to be boolean.");
-            passes = (val == 1);
+            passes = (bool) val;
         }
         
         // * Post-cut distributions.
-        cout << "<Cut<T>::select>   Filling (post-cut) plots." << endl;
         if (passes) {
+            for (auto& plot : plots()) {
+                if (plot->tree() == m_trees[CutPosition::Post]) {
+                    ((PlotMacro1D<T>*) plot)->fill(obj);
+                }
+            }
+            /* @TODO: Loop branches (somehow)... */
+            /*
             for (auto& plot : plots()) {
                 if (plot->name().find("Pre-cut") != string::npos) {
                     continue;
                 }
                 ((PlotMacro1D<T>*) plot)->fill(obj);
             }
+             */
         }
-        cout << "<Cut<T>::select>   Done filling (post-cut) plots." << endl;
-        cout << "<Cut<T>::select> Exiting." << endl;
+        
+        m_trees[CutPosition::Pre ]->Fill();
+        if (passes) {
+            m_trees[CutPosition::Post]->Fill();
+        }
         return passes;
     }
     
     
     // Low-level management method(s).
     template <class T>
-    void Cut<T>::setBasePlots () {
+    void Cut<T>::init () {
+        
+        assert ( this->dir() );
+        this->dir()->cd();
+        
+        m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
+        m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
         
         PlotMacro1D<T>* precut  = new PlotMacro1D<T> ("Pre-cut");
         PlotMacro1D<T>* postcut = new PlotMacro1D<T> ("Post-cut");
@@ -181,17 +194,11 @@ namespace AnalysisTools {
         precut ->setFunction(m_function);
         postcut->setFunction(m_function);
         
-        addPlot(precut);
-        addPlot(postcut);
+        addPlot(CutPosition::Pre,  precut);
+        addPlot(CutPosition::Post, postcut);
         
-        return;
-    }
-      
-    template <class T>
-    void Cut<T>::write () {
-        for (auto plot : plots()) {
-            plot->write();
-        }
+        m_initialised = true;
+        
         return;
     }
     

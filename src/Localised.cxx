@@ -31,6 +31,10 @@ namespace AnalysisTools {
         return m_name;
     }
     
+    TDirectory* Localised::dir () const {
+        return m_dir;
+    }
+    
     bool Localised::locked () const {
         return m_locked;
     }
@@ -46,19 +50,12 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     void Localised::grab (ILocalised* other, const string& postfix) {
-        cout << "<Localised::grab> Entering." << endl;
-        cout << "<Localised::grab>   this->name()  = '" << this->name() << "'" << endl;
-        cout << "<Localised::grab>   other->name() = '" << other->name() << "'" << endl;
-        cout << "<Localised::grab>   postfix       = '" << postfix << "'" << endl;
         addChild(other, postfix);
         other->put(this, postfix);
-        cout << "<Localised::grab> Exiting." << endl;
         return;
     }
     
     void Localised::put (ILocalised* other, const string& postfix) {
-        
-        cout << "<Localised::put> Entering." << endl;
         
         assert( !locked() );
         assert( m_name != "" );
@@ -92,8 +89,6 @@ namespace AnalysisTools {
             child_postfix.first->put(this, child_postfix.second);
         }
 
-        cout << "<Localised::put> Exiting." << endl;
-        
         return;
     }
     

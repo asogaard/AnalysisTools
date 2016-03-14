@@ -39,28 +39,27 @@ namespace AnalysisTools {
     public:
         
         ICut() {};
-        virtual ~ICut (){};
+        virtual ~ICut () {};
         
     public:
         
         // Set method(s).
         // ...
         
+        
         // Get method(s).
         // ...
         
         
         // High-level management method(s).
-        virtual vector< TNtuple* > ntuples  () = 0;
+        /* @TODO: Should Cut have access to these? */
         virtual vector< IPlotMacro* > plots () const = 0;
-        
-        //virtual bool select (const TLorentzVector& p) const = 0;
         
         
     public:
         
         // Low-level management method(s).
-        virtual void write   ()                 = 0;
+        // ...
         
     };
  

@@ -23,7 +23,7 @@ OBJS := $(patsubst $(SRCDIR)/%.$(SRCEXT),$(OBJDIR)/%.o,$(SRCS))
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
 # Dependencies
-CXXFLAGS  = --std=c++11 -I$(INCDIR) $(ROOTCFLAGS) 
+CXXFLAGS  = --std=c++11 -O2 -I$(INCDIR) $(ROOTCFLAGS)
 LINKFLAGS = -O2 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
 
 # Libraries

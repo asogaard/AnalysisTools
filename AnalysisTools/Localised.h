@@ -33,27 +33,13 @@ namespace AnalysisTools {
     public:
 
         // Constructor(s).
-        Localised () {
-            cout << "<Localised::Localised> Entering (default)." << endl;
-            cout << "<Localised::Localised> Exiting." << endl;
-        };
+        Localised () {};
         Localised (const string& name) {
-            cout << "<Localised::Localised> Entering (name)." << endl;
-            cout << "<Localised::Localised>   Name: '" << name << "'" << endl;
             setName(name);
-            cout << "<Localised::Localised> Exiting." << endl;
         };
         Localised (const string& name, TDirectory* dir) {
-            cout << "<Localised::Localised> Entering (name + dir)." << endl;
-            cout << "<Localised::Localised>   Name: '" << name << "'" << endl;
-            if (dir != nullptr) {
-                cout << "<Localised::Localised>   Dir:  '" << dir->GetName() << "'" << endl;
-            } else {
-                cout << "<Localised::Localised>   Dir:  'null'" << endl;
-            }
             setName(name);
             setDir(dir);
-            cout << "<Localised::Localised> Exiting." << endl;
         };
 
         
@@ -70,6 +56,7 @@ namespace AnalysisTools {
                 
         // Get method(s).
         string      name     () const;
+        TDirectory* dir      () const;
         bool        locked   () const;
         bool        hasChild (ILocalised* other, const string& postfix = "") const;
         ILocalised* parent   () const;
@@ -87,17 +74,6 @@ namespace AnalysisTools {
         void        lockAll ();
         TDirectory* parentDir ();
 
-        /*
-    protected:
-        
-        string      m_name   = "";
-        TDirectory* m_dir    = nullptr;
-        
-        bool        m_locked = false;
-        
-        vector< pair<ILocalised*, string> > m_children;
-*/
-        
     };
     
 }

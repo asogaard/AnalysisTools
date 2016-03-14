@@ -82,8 +82,8 @@ namespace AnalysisTools {
         void setCategories   (const vector<string>& categories);
         void clearCategories ();
         
-        void addCut (Cut<U>* cut);
-        void addCut (Cut<U>* cut, const string& category);
+        void addCut (const Cut<U>& cut);
+        void addCut (const Cut<U>& cut, const string& category);
         
         void setInput (const vector<T>* candidates);
         void setInput (const vector<T>  candidates);
@@ -99,9 +99,8 @@ namespace AnalysisTools {
         template <class W>
         const vector<W>* info (const string& name);
         
-        virtual void run () {};
+        virtual bool run () = 0; /* No implementation. */
         
-        vector< TNtuple* > ntuples ();
         vector< ICut* > cuts       (const string& category);
         vector< ICut* > listCuts   ();
         
@@ -112,8 +111,6 @@ namespace AnalysisTools {
         bool hasCategory      (const string& category);
         bool canAddCategories ();
         void lockCategories   ();
-        
-        void write ();
         
         
     protected:

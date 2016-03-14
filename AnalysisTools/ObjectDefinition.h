@@ -50,7 +50,7 @@ namespace AnalysisTools {
         
         // High-level management method(s).
         
-        void run ();
+        bool run ();
         
         PhysicsObjects* result ();
         PhysicsObjects* result (const string& category);
@@ -60,6 +60,7 @@ namespace AnalysisTools {
         
         // Low-level management method(s).
         // ...
+        
         
     private:
         

@@ -16,7 +16,8 @@
 // ROOT include(s).
 #include "TDirectory.h"
 #include "TLorentzVector.h"
-#include "TH1.h"
+#include "TTree.h"
+#include "TBranch.h"
 
 // Forward declaration(s).
 namespace  AnalysisTools {
@@ -61,19 +62,12 @@ namespace AnalysisTools {
         {};
         
         // Destructor(s).
-        ~PlotMacro1D () {
-            if (m_ntuple) {
-                delete m_ntuple;
-                m_ntuple = nullptr;
-            }
-        };
+        ~PlotMacro1D () {};
         
         
     public:
         
         // Set method(s).
-        void setNtuple (const TNtuple& ntuple);
-        
         //void setVariable  (const string& variable);
         //void setUnit      (const string& unit);
         
@@ -81,7 +75,8 @@ namespace AnalysisTools {
 
         
         // Get method(s).
-        TNtuple* ntuple ();
+        // ...
+        
         
         // High-level management method(s).
         void fill (const T& obj);
@@ -90,14 +85,14 @@ namespace AnalysisTools {
     protected:
         
         // Low-level management method(s).
-        void write ();
+        void   setTree (TTree* tree);
+        TTree* tree    ();
         
         
     private:
         
-        TNtuple* m_ntuple = nullptr;
-        
         function< double(T) > m_function;
+        
         
     };
     

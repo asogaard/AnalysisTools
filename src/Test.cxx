@@ -177,50 +177,51 @@ int main (int argc, char* argv[]) {
     ElectronObjdef.addInfo("d0BLsignificance",   el_d0BLsignificance);
 
     //ElectronObjdef.setCategories( {"Loose", "Tight"} ); // Just nominal
-    
+
     // * pT
     Cut<PhysicsObject> el_pT ("pT");
     el_pT.setFunction( [](PhysicsObject p) { return p.Pt() / 1000.; } );
     el_pT.setRange(20., inf);
-    ElectronObjdef.addCut(&el_pT); // , "Loose");
+    ElectronObjdef.addCut(el_pT); // , "Loose");
 
     // * eta
     Cut<PhysicsObject> el_eta ("Eta");
     el_eta.setFunction( [](PhysicsObject p) { return p.Eta(); } );
     el_eta.setRange(-2.47, 2.47);
-    ElectronObjdef.addCut(&el_eta);
+    ElectronObjdef.addCut(el_eta);
     
     // * eta, crack-region
     Cut<PhysicsObject> el_etaCrack ("EtaCrack");
     el_etaCrack.setFunction( [](PhysicsObject p) { return fabs(p.Eta()); } );
     el_etaCrack.addRange(0, 1.37);
     el_etaCrack.addRange(1.52, inf);
-    ElectronObjdef.addCut(&el_etaCrack);
+    ElectronObjdef.addCut(el_etaCrack);
     
     // * ID (medium).
     Cut<PhysicsObject> el_ID ("MediumID");
     el_ID.setFunction( [](PhysicsObject p) { return p.info("id_medium"); } );
-    ElectronObjdef.addCut(&el_ID);
+    ElectronObjdef.addCut(el_ID);
     
     // * Isolation (loose).
     Cut<PhysicsObject> el_iso ("LooseTrackOnlyIso");
     el_iso.setFunction( [](PhysicsObject p) { return p.info("iso_loosetrackonly"); } );
-    ElectronObjdef.addCut(&el_iso);
+    ElectronObjdef.addCut(el_iso);
     
     // * z0 * sin(theta)
     Cut<PhysicsObject> el_z0 ("z0sintheta");
     el_z0.setFunction( [](PhysicsObject p) { return fabs(p.info("z0sintheta")); } );
     el_z0.addRange(0, 0.5);
-    ElectronObjdef.addCut(&el_z0);
+    ElectronObjdef.addCut(el_z0);
     
     // * d0 (BL significance)
     Cut<PhysicsObject> el_d0 ("d0BLsignificance");
     el_d0.setFunction( [](PhysicsObject p) { return fabs(p.info("d0BLsignificance")); } );
     el_d0.addRange(0, 5.);
-    ElectronObjdef.addCut(&el_d0);
-    
+    ElectronObjdef.addCut(el_d0);
+
     
     // Event selection
+
     EventSelection eventSelection ("EventSelection");
     vector<string> regions = {"SR", "CRZ", "CRT"};
     eventSelection.setCategories( regions );
@@ -233,21 +234,21 @@ int main (int argc, char* argv[]) {
     eventSelection.addInfo("run",           runNumber);
     eventSelection.addInfo("DSID",          mc_channel_number);
      */
-    
+
     // * GRL
     Cut<Event> event_grl ("GRL");
-    event_grl.setFunction( [grl, mcChannelNumber, lumiBlock, runNumber](Event e) { cout << mcChannelNumber << endl; return mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
-    eventSelection.addCut(&event_grl);
+    event_grl.setFunction( [grl, mcChannelNumber, lumiBlock, runNumber](Event e) { return true; }); //mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
+    eventSelection.addCut(event_grl);
 
     // * Event cleaning
     Cut<Event> event_eventCleaning ("EventCleaning");
     event_eventCleaning.setFunction( [passedEventCleaning](Event e) { return passedEventCleaning; } );
-    eventSelection.addCut(&event_eventCleaning);
+    eventSelection.addCut(event_eventCleaning);
 
     // * Jet cleaning
     Cut<Event> event_jetCleaning ("JetCleaning");
     event_jetCleaning.setFunction( [passedJetCleaning](Event e) { return passedJetCleaning; } );
-    eventSelection.addCut(&event_jetCleaning);
+    eventSelection.addCut(event_jetCleaning);
 
     
     
@@ -255,7 +256,7 @@ int main (int argc, char* argv[]) {
     // -------------------------------------------------------------------
     
     analysis.addSelection(&ElectronObjdef);
-    //analysis.addSelection(&eventSelection);
+    analysis.addSelection(&eventSelection);
     
 
     
@@ -266,23 +267,26 @@ int main (int argc, char* argv[]) {
      * This should not change dynamically!
      */
     
-    PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
+    //PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
     
     
     
      // Event loop.
     // -------------------------------------------------------------------
     
-    for (unsigned int iEvent = 0; iEvent < 2; iEvent++) {
+    for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
         
         if (iEvent == nEvents) { break; }
         
         inputTree->GetEvent(iEvent);
         
         // Run AnalysisTools.
-        analysis.run(iEvent, nEvents, mcChannelNumber);
+        bool status = analysis.run(iEvent, nEvents, mcChannelNumber);
         
-        SelectedElectrons = ElectronObjdef.result("Nominal");
+        // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
+        if (!status) { continue; }
+        
+        //SelectedElectrons = ElectronObjdef.result("Nominal");
         
         
         

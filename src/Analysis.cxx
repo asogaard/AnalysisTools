@@ -13,16 +13,14 @@ namespace AnalysisTools {
     }
     
     void Analysis::addSelection (ISelection* selection) {
-        cout <<  "<Analysis::addSelection> Entering." << endl;
         m_selections.push_back( selection );
         this->grab(selection);
-        cout << "<Analysis::addSelection> Exiting." << endl;
         return;
     }
     
     
     // High-level management method(s).
-    void Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
+    bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
         // * Progress bar.
 
         int barWidth = 68;
@@ -65,27 +63,24 @@ namespace AnalysisTools {
             std::clock_t stop = std::clock();
             std::cout << "] " << maximum;
             std::cout << " | " << std::setprecision(3) << (stop - m_start) / (double)(CLOCKS_PER_SEC) << " s";
-            std::cout << " | " << std::setprecision(3) << (stop - m_start) / (double)(CLOCKS_PER_SEC) / 1000. / double(maximum) << " ms/evt" << endl;
+            std::cout << " | " << std::setprecision(3) << (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum) << " ms/evt" << endl;
         }
         
         // * Running.
-        run();
+        return run();
     }
     
-    void Analysis::run (const unsigned& current, const unsigned& maximum) {
-        run (current, maximum, -1);
-        return;
+    bool Analysis::run (const unsigned& current, const unsigned& maximum) {
+        return run (current, maximum, -1);;
     }
     
-    void Analysis::run () {
-        cout << "<Analysis::run> Entering." << endl;
-        int it = 0;
+    bool Analysis::run () {
+        bool status = true;
         for (ISelection* selection : m_selections) {
-            cout << "<Analysis::run>   Running selection " << ++it << "/" << m_selections.size() << endl;
-            selection->run();
+            status &= selection->run();
+            if (!status) { break; }
         }
-        cout << "<Analysis::run> Exiting." << endl;
-        return;
+        return status;
     }
     
     void Analysis::openOutput  (const string& filename) {
@@ -102,8 +97,10 @@ namespace AnalysisTools {
     void Analysis::closeOutput () {
         if (m_outfile) {
             m_outfile->Close();
+            /*
             delete m_outfile;
             m_outfile = nullptr;
+             */
         }
         return;
     }
@@ -114,20 +111,8 @@ namespace AnalysisTools {
     
     void Analysis::save () {
         assert( hasOutput() );
-        for (auto selection : m_selections) {
-            selection->write();
-        }
         m_outfile->Write();
         return;
-    }
-  
-     vector< TNtuple* > Analysis::ntuples () {
-        vector< TNtuple* > ntuples;
-        for (ISelection* selection : m_selections) {
-            vector< TNtuple* > newNtuples = selection->ntuples();
-            ntuples.insert( ntuples.end(), newNtuples.begin(), newNtuples.end() );
-        }
-        return ntuples;
     }
     
 }

@@ -15,7 +15,7 @@
 
 // ROOT include(s).
 #include "TDirectory.h"
-#include "TNtuple.h"
+#include "TTree.h"
 
 // Forward declaration(s).
 // ...
@@ -38,16 +38,18 @@ namespace AnalysisTools {
     public:
         
         IPlotMacro () {};
-        virtual ~IPlotMacro (){};
+        virtual ~IPlotMacro () {};
         
     
     public:
         
         // Set method(s).
-        // ..
+        // ...
 
+        
         // Get method(s).
-        virtual TNtuple* ntuple () = 0;
+        // ...
+        
         
         // High-level management method(s).
         // ...
@@ -56,8 +58,16 @@ namespace AnalysisTools {
     public:
         
         // Low-level management method(s).
-        virtual void write  ()                = 0;
-                
+        virtual void   setTree (TTree* tree) = 0;
+        virtual TTree* tree    ()            = 0;
+
+        
+    protected:
+        
+        double m_value;
+        TTree* m_tree = nullptr;
+
+        
     };
  
 }

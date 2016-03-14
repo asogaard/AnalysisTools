@@ -8,8 +8,7 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     template <class T>
-    void ObjectDefinition<T>::run () {
-
+    bool ObjectDefinition<T>::run () {
         assert( this->m_input );
         /* *
          * Check that input- and info containers have same length.
@@ -54,7 +53,7 @@ namespace AnalysisTools {
             }
         }
         this->m_hasRun = true;
-        return;
+        return true; /* Always true for ObjectDefinition (i.e. cannot break the analysis pipeline). */
     }
     
     template <class T>

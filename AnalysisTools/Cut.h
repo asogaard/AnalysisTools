@@ -18,6 +18,7 @@
 
 // ROOT include(s).
 #include "TDirectory.h"
+#include "TTree.h"
 #include "TLorentzVector.h"
 
 // Forward declaration(s).
@@ -38,6 +39,8 @@ using namespace std;
 
 namespace AnalysisTools {
     
+    enum class CutPosition { Pre, Post};
+    
     template <class T>
     class Cut : public ICut, public Localised {
 
@@ -48,6 +51,10 @@ namespace AnalysisTools {
         friend class Selection<T, float>;
         friend class Selection<T, bool>;
         friend class Selection<T, int>;
+    
+        /* *
+         * @TODO: Implement 'addPlot(CutPosition, PlotMacro1D)' function.
+         */
         
         
     public:
@@ -55,36 +62,27 @@ namespace AnalysisTools {
         // Constructor(s).
         Cut () :
             Localised("Cut")
-        {
-            cout << "<Cut::Cut> Entering (default)." << endl;
-            setBasePlots();
-            cout << "<Cut::Cut> Exiting." << endl;
-        };
+        {};
         
         Cut (const string& name) :
             Localised(name)
-        {
-            cout << "<Cut::Cut> Entering (name)." << endl;
-            cout << "<Cut::Cut>   Name: '" << name << "'" << endl;
-            setBasePlots();
-            cout << "<Cut::Cut> Exiting." << endl;
-        };
+        {};
         
         Cut (const Cut<T>& other) :
             Localised(other.m_name, other.m_dir),
             m_function(other.m_function),
             m_ranges(other.m_ranges)
-        {
-            cout << "<Cut::Cut> Entering (copy)." << endl;
-            setBasePlots();
-            cout << "<Cut::Cut> Exiting." << endl;
-        };
+        {};
 
         
         // Destructor(s).
         ~Cut () {
-            for (auto& plot : m_plots) {
-                delete plot;
+            for (auto pos_tree : m_trees) {
+                TTree* tree = pos_tree.second;
+                if (tree) {
+                    delete tree;
+                    tree = nullptr;
+                }
             }
         };
         
@@ -111,25 +109,23 @@ namespace AnalysisTools {
         void setFunction (function< double(T) > f);
         
         void clearPlots ();
-        void addPlot (IPlotMacro* plot);
+        void addPlot (CutPosition pos, IPlotMacro* plot);
         
-        //void setName        (const string& name);
-        void prependName    (const string& prefix);
+        void prependName    (const string& prefix); // @asogaard: Move to Localised?
         
         // Get method(s).
-        vector< IPlotMacro* > plots      () const;
-        vector< TNtuple* >    ntuples ();
+        vector< IPlotMacro* > plots   () const;  // @asogaard: Remove?
         
         
         // High-level management method(s).
-        bool select (const T& obj) const;
+        bool select (const T& obj);
 
         
     protected:
         
         // Low-level management method(s).
-        void setBasePlots ();
-        void write  ();
+        void init  ();
+        void write ();
 
         
     private:
@@ -146,6 +142,9 @@ namespace AnalysisTools {
         
         vector< IPlotMacro* > m_plots;
         
+        map<CutPosition, TTree*> m_trees;
+        
+        bool m_initialised = false;
     };
  
     template <class T>

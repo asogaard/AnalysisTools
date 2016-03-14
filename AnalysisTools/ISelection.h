@@ -38,7 +38,7 @@ namespace AnalysisTools {
     public:
         
         ISelection() {};
-        virtual ~ISelection (){};
+        virtual ~ISelection () {};
         
     
     public:
@@ -46,13 +46,14 @@ namespace AnalysisTools {
         // Set method(s).
         // ...
         
+        
         // Get method(s).
         virtual vector< string > categories () = 0;
         
-        // High-level management method(s).
-        virtual void run () = 0;
         
-        virtual vector< TNtuple* > ntuples () = 0; // @TODO: Should parent classes have access to children class PlotMacros?
+        // High-level management method(s).
+        virtual bool run () = 0;
+        
         virtual vector< ICut* > listCuts   () = 0;
         virtual vector< ICut* > cuts       (const string& category) = 0;
         
@@ -60,7 +61,7 @@ namespace AnalysisTools {
     protected:
         
         // Low-level management method(s).
-        virtual void write  () = 0;
+        // ...
         
     };
  

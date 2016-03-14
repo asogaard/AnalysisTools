@@ -74,13 +74,11 @@ namespace AnalysisTools {
         void closeOutput ();
         bool hasOutput   ();
         
-        void run (const unsigned& current, const unsigned& maximum, const int& DSID);
-        void run (const unsigned& current, const unsigned& maximum);
-        void run ();
+        bool run (const unsigned& current, const unsigned& maximum, const int& DSID);
+        bool run (const unsigned& current, const unsigned& maximum);
+        bool run ();
         
         void save ();
-        
-        vector< TNtuple* > ntuples();
         
         
     private:
@@ -88,8 +86,6 @@ namespace AnalysisTools {
         TFile*      m_outfile = nullptr;
 
         SelectionsPtr m_selections;
-
-        //vector< TH1F& > m_histograms;
         
         std::clock_t m_start;
         

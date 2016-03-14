@@ -25,40 +25,31 @@ namespace AnalysisTools {
     
     
     // Get method(s).
-    template <class T>
-    TNtuple* PlotMacro1D<T>::ntuple () {
-        return m_ntuple;
-    }
+    // ...
+    
     
     // High-level management method(s).
     template <class T>
     void PlotMacro1D<T>::fill (const T& obj) {
-        cout << "<PlotMacro1D<T>::fill> Entering." << endl;
-        if (!m_ntuple) {
-            cout << "<PlotMacro1D<T>::fill>   Creating new directory." << endl;
-            cout << "<PlotMacro1D<T>::fill>   this->m_dir is null? " << (this->m_dir == nullptr ? "Yes" : "No") << endl;
-            if (this->parentDir()) {
-                gDirectory = this->parentDir();
-            }
-            //m_ntuple = new TNtuple(m_name.c_str(), m_variable.c_str(), "value");
-            cout << "<PlotMacro1D<T>::fill>   Name: '" << this->m_name << "'" << endl;
-            m_ntuple = new TNtuple(this->m_name.c_str(), "", "value");
-        }
-        cout << "<PlotMacro1D<T>::fill>   Filling." << endl;
-        m_ntuple->Fill( m_function(obj) );
-        cout << "<PlotMacro1D<T>::fill> Entering." << endl;
+        assert( m_tree );
+        m_value = m_function(obj);
         return;
     }
     
     
     // Low-level management method(s).
-   template <class T>
-    void PlotMacro1D<T>::write () {
-        if (m_dir) { m_dir->cd(); } else {
-            cout << "<PlotMacro1D<T>::write> No directory was provided. Writing to current (default) location." << endl;
-        }
-        //m_ntuple->Write(); // Not necessary. Leads to duplications.
+    template <class T>
+    void PlotMacro1D<T>::setTree (TTree* tree) {
+        assert( tree );
+        // @TODO: if m_tree is already set, remove branch before making a new one?
+        m_tree = tree;
+        tree->Branch("value", &m_value);
         return;
+    }
+    
+    template <class T>
+    TTree* PlotMacro1D<T>::tree () {
+        return m_tree;
     }
     
 }

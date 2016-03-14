@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 #include <assert.h>
+#include <algorithm> /* std::count_if */
 
 // ROOT include(s).
 // ..
@@ -32,9 +33,7 @@ namespace AnalysisTools {
         // Constructor(s).
         EventSelection (const string& name) :
             Selection<Event,Event>(name)
-        {
-            //this->setName(name);
-        };
+        {};
         
 
         // Destructor(s).
@@ -52,7 +51,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        void run ();
+        bool run ();
         
         bool result ();
         bool result (const string& category);
