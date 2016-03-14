@@ -21,6 +21,7 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/ISelection.h"
 #include "AnalysisTools/ICut.h"
+#include "AnalysisTools/Localised.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
 #include "AnalysisTools/Cut.h"
@@ -30,7 +31,7 @@ using namespace std;
 namespace AnalysisTools {
     
     template <class T, class U>
-    class Selection : public ISelection {
+    class Selection : public ISelection , public Localised {
         
         /**
          * Base class for all selection-type objects: Pre-selection, object definition, event selection, and possibly others.
@@ -40,11 +41,11 @@ namespace AnalysisTools {
         
         // Constructor(s).
         Selection (const string& name) :
-            m_name(name)
+            Localised(name)
         {};
         
         Selection (const string& name, const vector<string>& categories) :
-            m_name(name)
+            Localised(name)
         {
             addCategories(categories);
         };
@@ -65,15 +66,10 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setName    (const string& name);
+        // ...
         
         
         // Get method(s).
-        bool locked ();
-        
-        string name    ();
-        string basedir ();
-        
         unsigned               nCategories      ();
         vector<string>         categories       ();
         bool                   categoriesLocked ();
@@ -113,24 +109,14 @@ namespace AnalysisTools {
     protected:
         
         // Low-level management method(s).
-        void setDir (TDirectory* dir);
-        
         bool hasCategory      (const string& category);
         bool canAddCategories ();
         void lockCategories   ();
-        
-        void lock ();
-        
-        void grab (const string& category, ICut* cut);
         
         void write ();
         
         
     protected:
-        
-        bool m_locked = false;
-        
-        string m_name    = "";
         
         const vector<T>* m_input = nullptr; // Not separated by category names.
         /* @TODO: Only applicable to ObjectDefinition? */

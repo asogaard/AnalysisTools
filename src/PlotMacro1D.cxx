@@ -4,15 +4,6 @@ namespace AnalysisTools {
 
     // Set method(s).
     template <class T>
-    void PlotMacro1D<T>::setName      (const string& name) {
-        m_name = name;
-        if (m_ntuple) {
-            m_ntuple->SetName((m_basedir + m_name).c_str());
-        }
-        return;
-    }
-    
-    template <class T>
     void PlotMacro1D<T>::setFunction  (function< double(T) > f) {
         m_function = f;
         return;
@@ -32,45 +23,36 @@ namespace AnalysisTools {
     }
      */
     
-    // Get method(s).
-    template <class T>
-    string PlotMacro1D<T>::name () const {
-        return m_name;
-    }
     
-
+    // Get method(s).
     template <class T>
     TNtuple* PlotMacro1D<T>::ntuple () {
         return m_ntuple;
     }
     
-    template <class T>
-    TDirectory* PlotMacro1D<T>::dir () {
-        return m_dir;
-    }
-    
-    
     // High-level management method(s).
     template <class T>
     void PlotMacro1D<T>::fill (const T& obj) {
+        cout << "<PlotMacro1D<T>::fill> Entering." << endl;
         if (!m_ntuple) {
-            gDirectory = m_dir;
+            cout << "<PlotMacro1D<T>::fill>   Creating new directory." << endl;
+            cout << "<PlotMacro1D<T>::fill>   this->m_dir is null? " << (this->m_dir == nullptr ? "Yes" : "No") << endl;
+            if (this->parentDir()) {
+                gDirectory = this->parentDir();
+            }
             //m_ntuple = new TNtuple(m_name.c_str(), m_variable.c_str(), "value");
-            m_ntuple = new TNtuple(m_name.c_str(), "", "value");
+            cout << "<PlotMacro1D<T>::fill>   Name: '" << this->m_name << "'" << endl;
+            m_ntuple = new TNtuple(this->m_name.c_str(), "", "value");
         }
+        cout << "<PlotMacro1D<T>::fill>   Filling." << endl;
         m_ntuple->Fill( m_function(obj) );
+        cout << "<PlotMacro1D<T>::fill> Entering." << endl;
         return;
     }
     
     
     // Low-level management method(s).
-    template <class T>
-    void PlotMacro1D<T>::setDir (TDirectory* dir) {
-        m_dir = dir;
-        return;
-    }
-    
-    template <class T>
+   template <class T>
     void PlotMacro1D<T>::write () {
         if (m_dir) { m_dir->cd(); } else {
             cout << "<PlotMacro1D<T>::write> No directory was provided. Writing to current (default) location." << endl;

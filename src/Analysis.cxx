@@ -7,18 +7,16 @@ namespace AnalysisTools {
     
     
     // Get method(s).
-    string Analysis::name () const {
-        return m_name;
-    }
-    
     void Analysis::clearSelections () {
         m_selections.clear();
         return;
     }
     
     void Analysis::addSelection (ISelection* selection) {
+        cout <<  "<Analysis::addSelection> Entering." << endl;
         m_selections.push_back( selection );
         this->grab(selection);
+        cout << "<Analysis::addSelection> Exiting." << endl;
         return;
     }
     
@@ -80,10 +78,13 @@ namespace AnalysisTools {
     }
     
     void Analysis::run () {
+        cout << "<Analysis::run> Entering." << endl;
         int it = 0;
         for (ISelection* selection : m_selections) {
+            cout << "<Analysis::run>   Running selection " << ++it << "/" << m_selections.size() << endl;
             selection->run();
         }
+        cout << "<Analysis::run> Exiting." << endl;
         return;
     }
     
@@ -93,7 +94,7 @@ namespace AnalysisTools {
         /* Separate histogram and physics output? */
         m_outfile = new TFile(filename.c_str(), "RECREATE");
         
-        m_dir = m_outfile->mkdir(m_name.c_str());
+        this->m_dir = m_outfile->mkdir(this->m_name.c_str());
 
         return;
     }
@@ -119,20 +120,8 @@ namespace AnalysisTools {
         m_outfile->Write();
         return;
     }
-    
-    void Analysis::grab (ISelection* selection) {
-        selection->lock();
-        assert(m_dir);
-        selection->setDir( m_dir->mkdir(selection->name().c_str()) );
-        for (const auto& category : selection->categories()) {
-            for (auto& cut : selection->cuts(category)) {
-                selection->grab(category, cut);
-            }
-        }
-        return;
-    }
-    
-    vector< TNtuple* > Analysis::ntuples () {
+  
+     vector< TNtuple* > Analysis::ntuples () {
         vector< TNtuple* > ntuples;
         for (ISelection* selection : m_selections) {
             vector< TNtuple* > newNtuples = selection->ntuples();

@@ -14,11 +14,14 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/PhysicsObject.h"
+#include "AnalysisTools/Event.h"
 #include "AnalysisTools/Range.h"
+#include "AnalysisTools/GRL.h"
 #include "AnalysisTools/Cut.h"
 
 #include "AnalysisTools/Analysis.h"
 #include "AnalysisTools/ObjectDefinition.h"
+#include "AnalysisTools/EventSelection.h"
 
 using namespace std;
 using namespace AnalysisTools;
@@ -133,6 +136,13 @@ int main (int argc, char* argv[]) {
     
     
     
+     // Get GRL.
+    // -------------------------------------------------------------------
+    
+    GRL grl("share/GRL/data15_13TeV.periodAllYear_DetStatus-v73-pro19-08_DQDefects-00-01-02_PHYS_StandardGRL_All_Good_25ns.txt");
+    
+    
+    
      // Set up AnalysisTools
     // -------------------------------------------------------------------
     
@@ -211,9 +221,33 @@ int main (int argc, char* argv[]) {
     
     
     // Event selection
-    //Selection;
-    //vector<string> regions = {"SR", "CRZ", "CRT"};
-    //eventSelection.setCategories( regions );
+    EventSelection eventSelection ("EventSelection");
+    vector<string> regions = {"SR", "CRZ", "CRT"};
+    eventSelection.setCategories( regions );
+
+    //eventSelection.addCollect(SelectedElectrons); // Somehow...
+    /*
+    eventSelection.addInfo("eventCleaning", passedEventCleaning);
+    eventSelection.addInfo("jetCleaning",   passedJetCleaning);
+    eventSelection.addInfo("LB",            lumiBlock);
+    eventSelection.addInfo("run",           runNumber);
+    eventSelection.addInfo("DSID",          mc_channel_number);
+     */
+    
+    // * GRL
+    Cut<Event> event_grl ("GRL");
+    event_grl.setFunction( [grl, mcChannelNumber, lumiBlock, runNumber](Event e) { cout << mcChannelNumber << endl; return mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
+    eventSelection.addCut(&event_grl);
+
+    // * Event cleaning
+    Cut<Event> event_eventCleaning ("EventCleaning");
+    event_eventCleaning.setFunction( [passedEventCleaning](Event e) { return passedEventCleaning; } );
+    eventSelection.addCut(&event_eventCleaning);
+
+    // * Jet cleaning
+    Cut<Event> event_jetCleaning ("JetCleaning");
+    event_jetCleaning.setFunction( [passedJetCleaning](Event e) { return passedJetCleaning; } );
+    eventSelection.addCut(&event_jetCleaning);
 
     
     
@@ -221,6 +255,7 @@ int main (int argc, char* argv[]) {
     // -------------------------------------------------------------------
     
     analysis.addSelection(&ElectronObjdef);
+    //analysis.addSelection(&eventSelection);
     
 
     
@@ -238,7 +273,7 @@ int main (int argc, char* argv[]) {
      // Event loop.
     // -------------------------------------------------------------------
     
-    for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
+    for (unsigned int iEvent = 0; iEvent < 2; iEvent++) {
         
         if (iEvent == nEvents) { break; }
         

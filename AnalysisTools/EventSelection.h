@@ -33,7 +33,7 @@ namespace AnalysisTools {
         EventSelection (const string& name) :
             Selection<Event,Event>(name)
         {
-            this->setName(name);
+            //this->setName(name);
         };
         
 

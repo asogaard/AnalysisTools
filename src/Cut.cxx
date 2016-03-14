@@ -95,29 +95,21 @@ namespace AnalysisTools {
     
     template <class T>
     void Cut<T>::addPlot (IPlotMacro* plot) {
+        this->grab(plot);
         m_plots.push_back(plot);
         return;
     }
-    
-    template <class T>
-    void Cut<T>::setName    (const string& name) {
-        m_name = name;
-        return;
-    }
+  
     
     template <class T>
     void Cut<T>::prependName (const string& prefix) {
-        m_name = prefix + m_name;
+        this->m_name = prefix + this->m_name;
         return;
     }
+    /* @TODO: If we should have this function, move to Localised? */
       
     
     // Get method(s).
-    template <class T>
-    string Cut<T>::name () const {
-        return m_name;
-    }
-  
     template <class T>
     vector< IPlotMacro* > Cut<T>::plots () const {
         return m_plots;
@@ -136,14 +128,19 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     bool Cut<T>::select (const T& obj) const {
+        cout << "<Cut<T>::select> Entering." << endl;
+        cout << "<Cut<T>::select>   Name: '" << this->name() << "'" << endl;
         assert(m_function);
+        
         // * Pre-cut distributions.
+        cout << "<Cut<T>::select>   Filling (pre-cut) plots." << endl;
         for (auto& plot : plots()) {
             if (plot->name().find("Pre-cut") == string::npos) {
                 continue;
             }
             ((PlotMacro1D<T>*) plot)->fill(obj);
         }
+        cout << "<Cut<T>::select>   Done filling (pre-cut) plots." << endl;
         
         // * Selection.
         bool passes = false;
@@ -159,6 +156,7 @@ namespace AnalysisTools {
         }
         
         // * Post-cut distributions.
+        cout << "<Cut<T>::select>   Filling (post-cut) plots." << endl;
         if (passes) {
             for (auto& plot : plots()) {
                 if (plot->name().find("Pre-cut") != string::npos) {
@@ -167,17 +165,13 @@ namespace AnalysisTools {
                 ((PlotMacro1D<T>*) plot)->fill(obj);
             }
         }
+        cout << "<Cut<T>::select>   Done filling (post-cut) plots." << endl;
+        cout << "<Cut<T>::select> Exiting." << endl;
         return passes;
     }
     
     
     // Low-level management method(s).
-    template <class T>
-    void Cut<T>::setDir (TDirectory* dir) {
-        m_dir = dir;
-        return;
-    }
-    
     template <class T>
     void Cut<T>::setBasePlots () {
         
@@ -192,16 +186,7 @@ namespace AnalysisTools {
         
         return;
     }
-    
-
-    template <class T>
-    void Cut<T>::grab (IPlotMacro* plot) {
-        if (m_dir) {
-            plot->setDir( m_dir );
-        }
-        return;
-    }
-    
+      
     template <class T>
     void Cut<T>::write () {
         for (auto plot : plots()) {

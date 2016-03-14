@@ -33,6 +33,7 @@ namespace AnalysisTools {
 
 // AnalysisTools include(s).
 #include "AnalysisTools/ISelection.h"
+#include "AnalysisTools/Localised.h"
 //#include "AnalysisTools/Selection.h"
 
 #include "AnalysisTools/PlotMacro1D.h"
@@ -42,13 +43,13 @@ using namespace std;
 
 namespace AnalysisTools {
     
-    class Analysis {
+    class Analysis : public Localised {
         
     public:
         
         // Constructor(s).
         Analysis (const string &name) :
-            m_name(name)
+            Localised(name)
         {};
         
         // Destructor(s).
@@ -64,8 +65,6 @@ namespace AnalysisTools {
         
         
         // Get method(s).
-        string name () const;
-        
         void clearSelections ();
         void addSelection (ISelection* selection);
         
@@ -81,16 +80,11 @@ namespace AnalysisTools {
         
         void save ();
         
-        void grab (ISelection* selection);
-        
         vector< TNtuple* > ntuples();
         
         
     private:
 
-        string m_name;
-        
-        TDirectory* m_dir     = nullptr;
         TFile*      m_outfile = nullptr;
 
         SelectionsPtr m_selections;

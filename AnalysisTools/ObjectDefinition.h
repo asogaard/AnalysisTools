@@ -32,9 +32,7 @@ namespace AnalysisTools {
         // Constructor(s).
         ObjectDefinition (const string& name) :
             Selection<T,PhysicsObject>(name)
-        {
-            this->setName(name);
-        };
+        {};
         
 
         // Destructor(s).

@@ -49,7 +49,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        bool contains     (const int& run, const int& LB);
+        bool contains (const int& run, const int& LB) const;
         
         
     private:

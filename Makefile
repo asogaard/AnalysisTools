@@ -13,7 +13,6 @@ SRCDIR = ./src
 OBJDIR = ./build
 LIBDIR = ./lib
 EXEDIR = ./bin
-EXTDIR = ./$(PACKAGENAME)/External
 
 # Extensions
 SRCEXT = cxx
@@ -21,24 +20,20 @@ SRCEXT = cxx
 # Collections
 SRCS := $(shell find $(SRCDIR) -name '*.$(SRCEXT)')
 OBJS := $(patsubst $(SRCDIR)/%.$(SRCEXT),$(OBJDIR)/%.o,$(SRCS))
-EXTOBJS := $(shell find $(EXTDIR) -name '*.o')
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
 # Dependencies
 CXXFLAGS  = --std=c++11 -I$(INCDIR) $(ROOTCFLAGS) 
-# -I$(EXTDIR)
 LINKFLAGS = -O2 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
 
 # Libraries
 LIBS += $(ROOTLIBS)
 
 # Targets
-all: $(PACKAGENAME)
+all: $(PACKAGENAME) Test
 
 $(PACKAGENAME) : $(OBJS) 
 	$(CXX) -shared -o $(LIBDIR)/lib$@.so $(OBJS) $(LIBS)
-
-# ... $(OBJS) $(EXTOBJS) $(LIBS) ...
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.$(SRCEXT)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -47,7 +42,6 @@ Test: $(OBJS)
 	@echo "[Compiling: $@]"
 	$(CXX) src/$@.cxx -o bin/$@.exe $(CXXFLAGS) $(LINKFLAGS) -lAnalysisTools
  
-
 clean : 
 	@rm -f $(GARBAGE)
 

@@ -49,12 +49,12 @@ namespace AnalysisTools {
     
     
     // High-level management method(s).
-    bool GRL::contains (const int& run, const int& LB) {
+    bool GRL::contains (const int& run, const int& LB) const {
         bool isGood = false;
         assert(m_hasXML);
         if (run > -1) {
             if (m_goodRuns.count(run)) {
-                for (Range goodRun : m_goodRuns[run]) {
+                for (Range goodRun : m_goodRuns.at(run)) {
                     isGood |= goodRun.contains(LB);
                     if (isGood) { break; }
                 }

@@ -22,12 +22,13 @@
 
 // AnalysisTools include(s).
 #include "AnalysisTools/IPlotMacro.h"
+#include "AnalysisTools/ILocalised.h"
 
 using namespace std;
 
 namespace AnalysisTools {
     
-    class ICut {
+    class ICut : virtual public ILocalised{
         
         /**
          * Base interface class for all cut-type objects.
@@ -43,13 +44,10 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        virtual void setName (const string& name) = 0;
-        
+        // ...
         
         // Get method(s).
-        virtual string name () const = 0;
-        
-        //virtual vector< IPlotMacro* > plots () const = 0;
+        // ...
         
         
         // High-level management method(s).
@@ -62,15 +60,7 @@ namespace AnalysisTools {
     public:
         
         // Low-level management method(s).
-        virtual void setDir  (TDirectory* dir)  = 0;
-        virtual void grab    (IPlotMacro* plot) = 0;
         virtual void write   ()                 = 0;
-        
-        
-    protected:
-        
-        string      m_name = "";
-        TDirectory* m_dir  = nullptr;
         
     };
  

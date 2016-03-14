@@ -3,25 +3,10 @@
 namespace AnalysisTools {
     
     // Set method(s).
-    template <class T, class U>
-    void Selection<T,U>::setName (const string& name) {
-        assert( !m_locked );
-        m_name = name;
-        return;
-    }
+    // ...
     
     
     // Get method(s).
-    template <class T, class U>
-    bool Selection<T,U>::locked () {
-        return m_locked;
-    }
-    
-    template <class T, class U>
-    string Selection<T,U>::name    () {
-        return m_name;
-    }
-    
     template <class T, class U>
     unsigned               Selection<T,U>::nCategories      () {
         return m_categories.size();
@@ -46,7 +31,7 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T, class U>
     void Selection<T,U>::addCategory (const string& category) {
-        assert( !m_locked );
+        assert( !locked() );
         assert( canAddCategories() );
         m_categories.push_back(category);
         m_cuts[category] = vector< Cut<U>* >(); //; CutsPtr();
@@ -77,7 +62,7 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::addCut (Cut<U>* cut) {
-        assert( !m_locked );
+        assert( !locked() );
         if (nCategories() == 0) {
             addCategory("Nominal");
         }
@@ -90,10 +75,11 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::addCut (Cut<U>* cut, const string& category) {
-        assert( !m_locked );
+        assert( !locked() );
         assert( hasCategory(category) );
         m_cuts[category].push_back( new Cut<U>(*cut) );
-        grab( category, m_cuts[category].back() );
+        //grab( category, m_cuts[category].back() );
+        this->grab( m_cuts[category].back(), category );
         return;
     }
     
@@ -190,19 +176,13 @@ namespace AnalysisTools {
     
     // Low-level management method(s).
     template <class T, class U>
-    void Selection<T,U>::setDir (TDirectory* dir) {
-        m_dir = dir;
-        return;
-    }
-    
-    template <class T, class U>
     bool Selection<T,U>::hasCategory (const string& category) {
         return find(m_categories.begin(), m_categories.end(), category) != m_categories.end();
     }
     
     template <class T, class U>
     bool Selection<T,U>::canAddCategories () {
-        return !m_locked && !m_categoriesLocked;
+        return !this->m_locked && !m_categoriesLocked;
     }
     
     template <class T, class U>
@@ -210,41 +190,7 @@ namespace AnalysisTools {
         m_categoriesLocked = true;
         return;
     }
-    
-    template <class T, class U>
-    void Selection<T,U>::lock () {
-        m_locked = true;
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::grab (const string& category, ICut* cut) {
-
-        if (m_dir) {
-            assert (cut);
-            TDirectory* categoryDir = m_dir;
-            categoryDir->cd();
-
-            // Expect error.
-            bool hasDir = (categoryDir->GetDirectory(category.c_str()) != nullptr);
-            
-            if (!hasDir) {
-                categoryDir = categoryDir->mkdir(category.c_str());
-            } else {
-                categoryDir->cd(category.c_str());
-                categoryDir = gDirectory;
-            }
-            
-            
-            cut->setDir( categoryDir->mkdir(cut->name().c_str()) );
-            for (auto plot : cut->plots()) {
-                ((Cut<U>*) cut)->grab(plot);
-            }
-        }
-        return;
-    }
-    
-    
+      
     template <class T, class U>
     void Selection<T,U>::write () {
         for (auto cut : listCuts()) {

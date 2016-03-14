@@ -29,6 +29,7 @@ namespace  AnalysisTools {
 
 // AnalysisTools include(s).
 #include "AnalysisTools/IPlotMacro.h"
+#include "AnalysisTools/Localised.h"
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
@@ -38,7 +39,7 @@ using namespace std;
 namespace AnalysisTools {
 
     template <class T>
-    class PlotMacro1D : public IPlotMacro {
+    class PlotMacro1D : public IPlotMacro, public Localised {
         
         friend class Cut<T>;
         friend class Selection<T, AnalysisTools::PhysicsObject>;
@@ -51,12 +52,13 @@ namespace AnalysisTools {
     public:
 
         // Constructor(s).
-        PlotMacro1D () {
-        };
+        PlotMacro1D () :
+            Localised()
+        {};
         
-        PlotMacro1D (const string& name) {
-            setName(name);
-        };
+        PlotMacro1D (const string& name) :
+            Localised(name)
+        {};
         
         // Destructor(s).
         ~PlotMacro1D () {
@@ -70,7 +72,6 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setName      (const string& name);
         void setNtuple (const TNtuple& ntuple);
         
         //void setVariable  (const string& variable);
@@ -80,10 +81,7 @@ namespace AnalysisTools {
 
         
         // Get method(s).
-        string name () const;
         TNtuple* ntuple ();
-        TDirectory* dir ();
-        
         
         // High-level management method(s).
         void fill (const T& obj);
@@ -92,18 +90,10 @@ namespace AnalysisTools {
     protected:
         
         // Low-level management method(s).
-        void setDir (TDirectory* dir);
         void write ();
         
         
     private:
-        
-        string m_name     = "";
-        string m_basedir  = "";
-        //string m_variable = "";
-        //string m_unit     = "";
-        
-        TDirectory* m_dir = nullptr;
         
         TNtuple* m_ntuple = nullptr;
         

@@ -28,6 +28,7 @@ namespace  AnalysisTools {
 
 // AnalysisTools include(s).
 #include "AnalysisTools/ICut.h"
+#include "AnalysisTools/Localised.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
 #include "AnalysisTools/Range.h"
@@ -38,7 +39,7 @@ using namespace std;
 namespace AnalysisTools {
     
     template <class T>
-    class Cut : public ICut {
+    class Cut : public ICut, public Localised {
 
         friend class Selection<TLorentzVector, T>;
         friend class Selection<T, AnalysisTools::PhysicsObject>;
@@ -52,23 +53,31 @@ namespace AnalysisTools {
     public:
 
         // Constructor(s).
-        Cut () {
-            setName("Cut");
+        Cut () :
+            Localised("Cut")
+        {
+            cout << "<Cut::Cut> Entering (default)." << endl;
             setBasePlots();
+            cout << "<Cut::Cut> Exiting." << endl;
         };
         
-        Cut (const string& name) {
-            setName(name);
+        Cut (const string& name) :
+            Localised(name)
+        {
+            cout << "<Cut::Cut> Entering (name)." << endl;
+            cout << "<Cut::Cut>   Name: '" << name << "'" << endl;
             setBasePlots();
+            cout << "<Cut::Cut> Exiting." << endl;
         };
         
         Cut (const Cut<T>& other) :
-            m_name(other.m_name),
-            m_dir(other.m_dir),
+            Localised(other.m_name, other.m_dir),
             m_function(other.m_function),
             m_ranges(other.m_ranges)
         {
+            cout << "<Cut::Cut> Entering (copy)." << endl;
             setBasePlots();
+            cout << "<Cut::Cut> Exiting." << endl;
         };
 
         
@@ -104,12 +113,10 @@ namespace AnalysisTools {
         void clearPlots ();
         void addPlot (IPlotMacro* plot);
         
-        void setName        (const string& name);
+        //void setName        (const string& name);
         void prependName    (const string& prefix);
         
         // Get method(s).
-        string name    () const;
-        
         vector< IPlotMacro* > plots      () const;
         vector< TNtuple* >    ntuples ();
         
@@ -121,17 +128,11 @@ namespace AnalysisTools {
     protected:
         
         // Low-level management method(s).
-        void setDir (TDirectory* dir);
         void setBasePlots ();
-        void grab   (IPlotMacro* plot);
         void write  ();
 
         
     private:
-        
-        string m_name     = "";
-        
-        TDirectory* m_dir = nullptr;
         
         unsigned m_nBins    = 10;
         double   m_axisDown =  0.;
