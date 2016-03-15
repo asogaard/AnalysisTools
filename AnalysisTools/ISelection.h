@@ -14,20 +14,20 @@
 #include <memory> /* std::unique_ptr */
 
 // ROOT include(s).
-#include "TNtuple.h"
+#include "TH1.h"
 
 // Forward declaration(s).
 // ...
 
 // AnalysisTools include(s).
-#include "AnalysisTools/ICut.h"
+#include "AnalysisTools/IOperation.h"
 #include "AnalysisTools/ILocalised.h"
 
 using namespace std;
 
 namespace AnalysisTools {
     
-    class ISelection : virtual ILocalised {
+    class ISelection : virtual public ILocalised {
         
         /**
          * Base interface class for all selection-type objects: Pre-selection, object definition, event selection, and possibly others.
@@ -48,14 +48,18 @@ namespace AnalysisTools {
         
         
         // Get method(s).
-        virtual vector< string > categories () = 0;
+        virtual vector< string > categories       () = 0;
+        virtual bool             categoriesLocked () = 0;
+        
+        virtual OperationsPtr operations    (const string& category) = 0;
+        virtual OperationsPtr allOperations () = 0;
+        virtual TH1F*         cutflow       (const string& category) = 0;
+        
+        virtual bool hasRun () = 0;
         
         
         // High-level management method(s).
         virtual bool run () = 0;
-        
-        virtual vector< ICut* > listCuts   () = 0;
-        virtual vector< ICut* > cuts       (const string& category) = 0;
         
         
     protected:
@@ -63,7 +67,21 @@ namespace AnalysisTools {
         // Low-level management method(s).
         // ...
         
+        
+    protected:
+        
+        vector< string > m_categories;
+        bool             m_categoriesLocked = false;
+        
+        map< string, OperationsPtr > m_operations;
+        map< string, TH1F* >         m_cutflow;
+        
+        bool m_hasRun = false;
+
+        
     };
+    
+    using SelectionsPtr      = vector< ISelection* >;
  
 }
 

@@ -50,9 +50,10 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setName  (const string& name);
-        void addChild (ILocalised* other, const string& postfix = "");
-        void popChild (ILocalised* other, const string& postfix = "");
+        void setName     (const string& name);
+        void prependName (const string& prefix);
+        void addChild    (ILocalised* other, const string& postfix = "");
+        void popChild    (ILocalised* other, const string& postfix = "");
                 
         // Get method(s).
         string      name     () const;

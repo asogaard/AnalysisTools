@@ -82,52 +82,43 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::setFunction (function< double(T&) > f) {
+    void Cut<T>::setFunction (function< double(const T&) > f) {
         m_function = f;
         return;
     }
     
     template <class T> // @asogaard: Move to Localised? (clearChildren)
     void Cut<T>::clearPlots () {
-        m_plots.clear();
+        this->m_plots.clear();
         return;
     }
     
     template <class T>
     void Cut<T>::addPlot (CutPosition pos, IPlotMacro* plot) {
-        //plot->setTree(m_trees[pos]);
-        m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
+        this->m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
   
     
-    template <class T>
-    void Cut<T>::prependName (const string& prefix) {
-        this->m_name = prefix + this->m_name;
-        return;
-    }
-    /* @TODO: If we should have this function, move to Localised? */
-      
-    
     // Get method(s).
     template <class T>
     vector< IPlotMacro* > Cut<T>::plots (const CutPosition& pos) const {
-        return m_plots.at(pos);
+        return this->m_plots.at(pos);
     }
 
     template <class T>
     vector< IPlotMacro* > Cut<T>::plots () const {
-        vector< IPlotMacro* > plotsOut = m_plots.at(CutPosition::Pre);
-        plotsOut.insert( plotsOut.end(), m_plots.at(CutPosition::Post).begin(), m_plots.at(CutPosition::Post).end() );
+        vector< IPlotMacro* > plotsOut = this->m_plots.at(CutPosition::Pre);
+        plotsOut.insert( plotsOut.end(), this->m_plots.at(CutPosition::Post).begin(), this->m_plots.at(CutPosition::Post).end() );
         return plotsOut;
     }
     
     // High-level management method(s).
     template <class T>
-    bool Cut<T>::select (T& obj) { // (const T& obj)
+    bool Cut<T>::apply (const T& obj) {
 
         assert(m_function);
-        if (!m_initialised) { init(); }
+        if (!this->m_initialised) { init(); }
         
         // * Pre-cut distributions.
         for (auto& plot : plots(CutPosition::Pre)) {
@@ -154,9 +145,9 @@ namespace AnalysisTools {
             }
         }
         
-        m_trees[CutPosition::Pre]->Fill();
+        this->m_trees[CutPosition::Pre]->Fill();
         if (passes) {
-            m_trees[CutPosition::Post]->Fill();
+            this->m_trees[CutPosition::Post]->Fill();
         }
         return passes;
     }
@@ -170,8 +161,8 @@ namespace AnalysisTools {
         
         this->dir()->cd();
         
-        m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
-        m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
+        this->m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
+        this->m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
         
         if (m_variable == "") {
             m_variable = "CutVariable";
@@ -186,10 +177,10 @@ namespace AnalysisTools {
         addPlot(CutPosition::Pre,  precut);
         addPlot(CutPosition::Post, postcut);
         
-        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(m_trees[CutPosition::Pre]);  }
-        for (auto plot : plots(CutPosition::Post)) { plot->setTree(m_trees[CutPosition::Post]); }
+        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(this->m_trees[CutPosition::Pre]);  }
+        for (auto plot : plots(CutPosition::Post)) { plot->setTree(this->m_trees[CutPosition::Post]); }
         
-        m_initialised = true;
+        this->m_initialised = true;
         
         return;
     }

@@ -9,22 +9,45 @@ namespace AnalysisTools {
     // Get method(s).
     template <class T, class U>
     unsigned Selection<T,U>::nCategories () {
-        return m_categories.size();
+        return this->m_categories.size();
     }
     
     template <class T, class U>
     vector<string> Selection<T,U>::categories () {
-        return m_categories;
+        return this->m_categories;
     }
     
     template <class T, class U>
     bool Selection<T,U>::categoriesLocked () {
-        return m_categoriesLocked;
+        return this->m_categoriesLocked;
     }
     
     template <class T, class U>
-    map< string, vector< Cut<U>* > > Selection<T,U>::cuts () {
-        return m_cuts;
+    OperationsPtr Selection<T,U>::operations (const string& category) {
+        assert( hasCategory(category) );
+        return this->m_operations.at(category);
+    }
+    
+    template <class T, class U>
+    OperationsPtr Selection<T,U>::allOperations () {
+        OperationsPtr operationsList;
+        for (auto& cat_ops :  this->m_operations) {
+            for (auto& op : cat_ops.second) {
+                operationsList.push_back( op );
+            }
+        }
+        return operationsList;
+    }
+    
+    template <class T, class U>
+    TH1F* Selection<T,U>::cutflow (const string& category) {
+        assert( hasCategory(category) );
+        return this->m_cutflow.at(category);
+    }
+    
+    template <class T, class U>
+    bool Selection<T,U>::hasRun () {
+        return this->m_hasRun;
     }
     
     
@@ -33,8 +56,8 @@ namespace AnalysisTools {
     void Selection<T,U>::addCategory (const string& category) {
         assert( !locked() );
         assert( canAddCategories() );
-        m_categories.push_back(category);
-        m_cuts[category] = vector< Cut<U>* >();
+        this->m_categories.push_back(category);
+        this->m_operations[category] = OperationsPtr();
         return;
     }
     
@@ -55,8 +78,8 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::clearCategories () {
-        m_categories.clear();
-        m_cuts.clear();
+        this->m_categories.clear();
+        this->m_operations.clear();
         return;
     }
     
@@ -67,8 +90,8 @@ namespace AnalysisTools {
             addCategory("Nominal");
         }
         lockCategories();
-        for (const auto& cat_cuts : m_cuts) {
-            addCut(cut, cat_cuts.first);
+        for (const auto& category : this->m_categories) {
+            addCut(cut, category);
         }
         return;
     }
@@ -77,13 +100,13 @@ namespace AnalysisTools {
     void Selection<T,U>::addCut (const Cut<U>& cut, const string& category) {
         assert( !locked() );
         assert( hasCategory(category) );
-        m_cuts[category].push_back( new Cut<U>(cut) );
-        this->grab( m_cuts[category].back(), category );
+        this->m_operations[category].push_back( new Cut<U>(cut) );
+        this->grab( this->m_operations[category].back(), category );
         return;
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f) {
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f) {
         Cut<U> cut(name);
         cut.setFunction(f);
         addCut(cut);
@@ -91,7 +114,7 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const string& category) {
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const string& category) {
         Cut<U> cut(name);
         cut.setFunction(f);
         addCut(cut, category);
@@ -99,7 +122,7 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max) {
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max) {
         Cut<U> cut(name);
         cut.setFunction(f);
         cut.addRange(min,max);
@@ -108,19 +131,48 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max, const string& category) {
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category) {
         Cut<U> cut(name);
         cut.setFunction(f);
         cut.addRange(min,max);
         addCut(cut, category);
         return;
     }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const Operation<U>& operation) {
+        assert( !locked() );
+        if (nCategories() == 0) {
+            addCategory("Nominal");
+        }
+        lockCategories();
+        for (const auto& category : this->m_categories) {
+            addOperation(operation, category);
+        }
+        return;
+
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const Operation<U>& operation, const string& category) {
+        assert( !locked() );
+        assert( hasCategory(category) );
+        this->m_operations[category].push_back( new Operation<U>(operation) );
+        this->grab( this->m_operations[category].back(), category );
+        return;
+    }
+    
+    
+    
     
     template <class T, class U>
     void Selection<T,U>::addPlot (CutPosition pos, const PlotMacro1D<U>& plot) {
         /* Will only add this plot to the existing cuts. */
-        for (auto cut : listCuts()) {
-            ((Cut<U>*) cut)->addPlot(pos, new PlotMacro1D<U>(plot));
+        for (IOperation* iop : allOperations()) {
+            // @TODO: if (dynamic_cast< Cut<U>* > (iop) == nullptr) { continue; }
+            if (Cut<U>* cut = dynamic_cast< Cut<U>* > (iop)) {
+                cut->addPlot(pos, new PlotMacro1D<U>(plot));
+            }
         }
         
         return;
@@ -180,43 +232,21 @@ namespace AnalysisTools {
         return nullptr;
     }
     
-    template <class T, class U>
-    vector< ICut* > Selection<T,U>::listCuts () {
-        CutsPtr cutsList;
-        for (auto& cuts : m_cuts) {
-            for (auto& cut : cuts.second) {
-                cutsList.push_back( cut );
-            }
-        }
-        return cutsList;
-    }
-    
-    
-    template <class T, class U>
-    vector< ICut* > Selection<T,U>::cuts (const string& category) {
-        vector< ICut* > out;
-        for (Cut<U>* cut : m_cuts[category]) {
-            out.push_back( (ICut*) cut );
-        
-        }
-        return out;
-    }
-    
     
     // Low-level management method(s).
     template <class T, class U>
     bool Selection<T,U>::hasCategory (const string& category) {
-        return find(m_categories.begin(), m_categories.end(), category) != m_categories.end();
+        return find(this->m_categories.begin(), this->m_categories.end(), category) != this->m_categories.end();
     }
     
     template <class T, class U>
     bool Selection<T,U>::canAddCategories () {
-        return !this->m_locked && !m_categoriesLocked;
+        return !this->m_locked && !this->m_categoriesLocked;
     }
     
     template <class T, class U>
     void Selection<T,U>::lockCategories () {
-        m_categoriesLocked = true;
+        this->m_categoriesLocked = true;
         return;
     }
     
@@ -231,14 +261,15 @@ namespace AnalysisTools {
         this->dir()->cd(category.c_str());
         assert( hasCategory(category) );
         
-        unsigned int nCuts = m_cuts[category].size();
+        unsigned int nCuts = this->m_operations[category].size();
         m_cutflow[category] = new TH1F("Cutflow", "", nCuts + 1, -0.5, nCuts + 0.5);
         
         // * Set bin labels.
         m_cutflow[category]->GetXaxis()->SetBinLabel(1, "All");
         unsigned int iCut = 1;
-        for (auto cut : m_cuts[category]) {
-            m_cutflow[category]->GetXaxis()->SetBinLabel(++iCut, cut->name().c_str());
+        for (IOperation* iop : this->m_operations[category]) {
+            if (dynamic_cast< Cut<T>* >(iop) == nullptr) { continue; }
+            m_cutflow[category]->GetXaxis()->SetBinLabel(++iCut, iop->name().c_str());
         }
         return;
     }

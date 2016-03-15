@@ -21,11 +21,12 @@
 
 // AnalysisTools include(s).
 #include "AnalysisTools/ISelection.h"
-#include "AnalysisTools/ICut.h"
+#include "AnalysisTools/IOperation.h"
 #include "AnalysisTools/Localised.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
 #include "AnalysisTools/Cut.h"
+#include "AnalysisTools/Operation.h"
 
 using namespace std;
 
@@ -54,11 +55,11 @@ namespace AnalysisTools {
         // Destructor(s).
         ~Selection () {
             cout << "<Selection::~Selection>" << endl;
-            for (auto cutvec : m_cuts) {
-                for (auto cut : cutvec.second) {
-                    if (cut) {
-                        delete cut;
-                        cut = nullptr;
+            for (auto opvec : m_operations) {
+                for (auto op : opvec.second) {
+                    if (op) {
+                        delete op;
+                        op = nullptr;
                     }
                 }
             }
@@ -73,11 +74,16 @@ namespace AnalysisTools {
         
         
         // Get method(s).
-        unsigned               nCategories      ();
-        vector<string>         categories       ();
-        bool                   categoriesLocked ();
-        map< string, vector< Cut<U>* > > cuts             ();
+        unsigned int     nCategories      ();
+        vector< string > categories       ();
+        bool             categoriesLocked ();
         
+        OperationsPtr operations    (const string& category);
+        OperationsPtr allOperations ();
+        TH1F*         cutflow       (const string& category);
+        
+        bool hasRun ();
+
         
         // High-level management method(s).
         void addCategory     (const string& category);
@@ -87,10 +93,13 @@ namespace AnalysisTools {
         
         void addCut (const Cut<U>& cut);
         void addCut (const Cut<U>& cut, const string& category);
-        void addCut (const string& name, const function< double(U&) >& f);
-        void addCut (const string& name, const function< double(U&) >& f, const string& category);
-        void addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max);
-        void addCut (const string& name, const function< double(U&) >& f, const double& min, const double& max, const string& category);
+        void addCut (const string& name, const function< double(const U&) >& f);
+        void addCut (const string& name, const function< double(const U&) >& f, const string& category);
+        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max);
+        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category);
+        
+        void addOperation (const Operation<U>& operation);
+        void addOperation (const Operation<U>& operation, const string& category);
         
         void addPlot (CutPosition pos, const PlotMacro1D<U>& plot);
         
@@ -109,9 +118,6 @@ namespace AnalysisTools {
         const vector<W>* info (const string& name);
         
         virtual bool run () = 0; /* No implementation. */
-        
-        vector< ICut* > cuts       (const string& category);
-        vector< ICut* > listCuts   ();
         
         
     protected:
@@ -132,22 +138,11 @@ namespace AnalysisTools {
         map<string, const vector<float>* > m_infoFloat;
         map<string, const vector<int>* >   m_infoInt;
         map<string, const vector<bool>* >  m_infoBool;
-        
-        vector<string> m_categories;
-        bool           m_categoriesLocked = false;
-        
-        map< string, vector< Cut<U>* > > m_cuts;
-        
-        map< string, TH1F*> m_cutflow;
-        
-        bool m_hasRun = false;
-        
+                
     };
     
     template <class T, class U>
     using Selections = vector< Selection<T, U> >;
-
-    using SelectionsPtr      = vector< ISelection* >;
     
 }
 

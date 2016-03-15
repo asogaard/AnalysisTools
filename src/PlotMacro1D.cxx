@@ -4,11 +4,18 @@ namespace AnalysisTools {
 
     // Set method(s).
     template <class T>
-    void PlotMacro1D<T>::setFunction  (function< double(T&) > f) {
+    void PlotMacro1D<T>::setFunction  (function< double(const T&) > f) {
         m_function = f;
         return;
     }
-    
+    /*
+    template <class T>
+    void PlotMacro1D<T>::setFunction  (function< double(T&) > f) {
+        cout << "<PlotMacro1D<T>::setFunction> Setting non-const function." << endl;
+        m_function = f;
+        return;
+    }
+    */
     /*
     template <class T>
     void PlotMacro1D<T>::setVariable  (const string& variable) {
@@ -30,9 +37,15 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     template <class T>
-    void PlotMacro1D<T>::fill (T& obj) { // (const T& obj)
+    void PlotMacro1D<T>::fill (const T& obj) {
         assert( m_tree );
         m_value = m_function(obj);
+        return;
+    }
+    
+    template <class T>
+    void PlotMacro1D<T>::fill (T& obj) {
+        fill((const T&) obj);
         return;
     }
     

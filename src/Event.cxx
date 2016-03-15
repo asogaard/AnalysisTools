@@ -25,31 +25,28 @@ namespace AnalysisTools {
     }
     
     void Event::setParticle (const string& name, const PhysicsObject& particle) {
-        cout << "<Event::setParticle> Setting particle '" << name << "'." << endl;
         m_particles[name] = particle;
         return;
     }
     
     
     // Get method(s).
-    double Event::info (const string& name) {
+    double Event::info (const string& name) const {
         assert( m_info.count(name) > 0 );
-        return m_info[name];
+        return m_info.at(name);
     }
     
-    shared_ptr<PhysicsObjects> Event::collection (const string& name) {
+    shared_ptr<PhysicsObjects> Event::collection (const string& name) const {
         assert( m_collections.count(name) > 0 );
-        return m_collections[name];
+        return m_collections.at(name);
     }
     
-    PhysicsObject& Event::particle (const string& name) {
-        cout << "<Event::particle> Trying to access particle '" << name << "'." << endl;
+    const PhysicsObject& Event::particle (const string& name) const {
         assert( m_particles.count(name) > 0 );
-        cout << "<Event::particle> Got it!" << endl;
-        return m_particles[name];
+        return m_particles.at(name);
     }
     
-    GRL* Event::grl () {
+    GRL* Event::grl () const {
         assert( m_grl );
         return m_grl;
     }

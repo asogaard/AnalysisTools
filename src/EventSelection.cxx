@@ -40,11 +40,20 @@ namespace AnalysisTools {
             // * Run selection.
             unsigned int iCut = 0;
             this->m_cutflow[category]->Fill(iCut++);
-            for (auto* cut : this->m_cuts[category]) {
+            for (IOperation* iop : this->m_operations[category]) {
                 // [Make use of branching?]
-                bool passes = cut->select(this->m_events[category]);
+                bool passes = false;
+                if        (Operation<Event>* op  = dynamic_cast< Operation<Event>* >(iop)) {
+                    passes = op->apply(this->m_events[category]);
+                } else if (Cut<Event>*       cut = dynamic_cast< Cut<Event>* >(iop)) {
+                    passes = cut->apply(this->m_events[category]);
+                } else {
+                    cout << "<EventSelection::run> Operation could not be cast to any known type." << endl;
+                }
+
                 m_passes[category] &= passes;
                 if (!m_passes[category]) { break; }
+                // dynamic_cast< Cut<T> > != NULL
                 this->m_cutflow[category]->Fill(iCut++);
             }
             

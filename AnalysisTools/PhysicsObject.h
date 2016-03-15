@@ -49,7 +49,7 @@ namespace AnalysisTools {
 
         
         // Get method(s).
-        double info (const string& name);
+        double info (const string& name) const;
         
         
         // High-level management method(s).

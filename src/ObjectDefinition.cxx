@@ -41,16 +41,25 @@ namespace AnalysisTools {
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
             unsigned int iCut = 0;
             this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
-            for (auto* cut : this->m_cuts[category]) {
+            for (IOperation* iop : this->m_operations[category]) {
                 // [Make use of branching?]
                 
                 // Loop candidates.
                 for (unsigned i = this->m_candidates[category].size(); i --> 0; ) {
-                    bool passes = cut->select(this->m_candidates[category].at(i));
+                    bool passes = false;
+                    if        (Operation<PhysicsObject>* op  = dynamic_cast< Operation<PhysicsObject>* >(iop)) {
+                        passes = op->apply(this->m_candidates[category].at(i));
+                    } else if (Cut<PhysicsObject>*       cut = dynamic_cast< Cut<PhysicsObject>* >(iop)) {
+                        passes = cut->apply(this->m_candidates[category].at(i));
+                    } else {
+                        cout << "<ObjectDefinition::run> Operation could not be cast to any known type." << endl;
+                    }
+                    
                     if (!passes) {
                         this->m_candidates[category].erase(this->m_candidates[category].begin() + i);
                     }
                 }
+                // dynamic_cast< Cut<T> > != NULL
                 this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
             }
         }

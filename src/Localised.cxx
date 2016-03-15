@@ -9,6 +9,12 @@ namespace AnalysisTools {
         return;
     }
     
+    void Localised::prependName (const string& prefix) {
+        assert( !locked() );
+        m_name = prefix + m_name;
+        return;
+    }
+    
     void Localised::addChild (ILocalised* other, const string& postfix) {
         if (hasChild(other)) { return; }
         m_children.push_back(pair<ILocalised*, string>(other, postfix) );

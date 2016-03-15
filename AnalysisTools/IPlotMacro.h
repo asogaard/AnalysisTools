@@ -31,7 +31,7 @@ namespace AnalysisTools {
         
         /**
          * Base interface class for all PlotMacro-type objects.
-        **/
+         */
         
         friend class ICut;
         

@@ -14,9 +14,9 @@ namespace AnalysisTools {
     
     
     // Get method(s).
-    double PhysicsObject::info (const string& name) {
+    double PhysicsObject::info (const string& name) const {
         assert( m_info.count(name) > 0 );
-        return m_info[name];
+        return m_info.at(name);
     }
     
     

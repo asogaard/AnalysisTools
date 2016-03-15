@@ -45,10 +45,10 @@ namespace AnalysisTools {
         void               setParticle   (const string& name, const PhysicsObject& particle);
         
         // Get method(s).
-        double                     info       (const string& name);
-        shared_ptr<PhysicsObjects> collection (const string& name);
-        PhysicsObject&             particle   (const string& name);
-        GRL*                       grl        ();
+        double                     info       (const string& name) const;
+        shared_ptr<PhysicsObjects> collection (const string& name) const;
+        const PhysicsObject&       particle   (const string& name) const;
+        GRL*                       grl        ()                   const;
         
         
         // High-level management method(s).

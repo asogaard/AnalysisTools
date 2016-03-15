@@ -1,8 +1,8 @@
-#ifndef AnalysisTools_Cut_h
-#define AnalysisTools_Cut_h
+#ifndef AnalysisTools_Operation_h
+#define AnalysisTools_Operation_h
 
 /**
- * @file Cut.h
+ * @file Operation.h
  * @author Andreas Sogaard
  **/
 
@@ -40,7 +40,7 @@ using namespace std;
 namespace AnalysisTools {
     
     template <class T>
-    class Cut : public IOperation, public Localised {
+    class Operation : public IOperation, public Localised {
 
         friend class Selection<TLorentzVector, T>;
         friend class Selection<T, AnalysisTools::PhysicsObject>;
@@ -54,15 +54,15 @@ namespace AnalysisTools {
     public:
 
         // Constructor(s).
-        Cut () :
-            Localised("Cut")
+        Operation () :
+            Localised("Operation")
         {};
         
-        Cut (const string& name) :
+        Operation (const string& name) :
             Localised(name)
         {};
         
-        Cut (const Cut<T>& other) :
+        Operation (const Operation<T>& other) :
             Localised(other.m_name, other.m_dir),
             m_function(other.m_function),
             m_ranges(other.m_ranges)
@@ -70,7 +70,7 @@ namespace AnalysisTools {
 
         
         // Destructor(s).
-        ~Cut () {
+        ~Operation () {
             for (auto pos_tree : m_trees) {
                 TTree* tree = pos_tree.second;
                 if (tree) {
@@ -84,27 +84,10 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void clearRanges ();
-        
-        void setRange (const Range& range);
-        void setRange (const pair<double, double>& limits);
-        void setRange (const double& down, const double& up);
-        
-        void setRanges (const Ranges& ranges);
-        void setRanges (const vector< pair<double, double> >& vec_limits);
-        
-        void addRange (const Range& range);
-        void addRange (const pair<double, double>& limits);
-        void addRange (const double& down, const double& up);
-        
-        void addRanges (const Ranges& ranges);
-        void addRanges (const vector< pair<double, double> >& vec_limits);
-        
-        void setFunction (function< double(const T&) > f);
+        void setFunction (function< double(T&) > f);
         
         void clearPlots ();
-        void addPlot (CutPosition pos, IPlotMacro* plot);
-        
+        void addPlot    (CutPosition pos, IPlotMacro* plot);
         
         // Get method(s).
         vector< IPlotMacro* > plots (const CutPosition& pos) const;
@@ -112,7 +95,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        bool apply (const T& obj); // (const T& obj)
+        bool apply (T& obj); // (const T& obj)
 
         
     protected:
@@ -124,16 +107,16 @@ namespace AnalysisTools {
         
     private:
         
-        function< double(const T&) > m_function;
+        function< double(T&) > m_function;
         Ranges m_ranges;
         
         string m_variable = "";
         string m_unit     = "";
-
+        
     };
  
     template <class T>
-    using Cuts = vector< Cut<T> >;
+    using Operations = vector< Operation<T> >;
     
 }
 

@@ -11,9 +11,6 @@
 #include <fstream> /* ifstream */
 #include <limits> /* std::numeric_limits<double>::infinity */
 
-// AnalysisTools include(s).
-#include "AnalysisTools/PhysicsObject.h"
-
 using namespace std;
 
 namespace AnalysisTools {
