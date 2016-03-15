@@ -41,7 +41,16 @@ namespace AnalysisTools {
     public:
         
         IOperation() {};
-        virtual ~IOperation () {};
+        ~IOperation () {
+            for (auto p : m_trees) {
+                TTree* tree = p.second;
+                if (tree) {
+                    delete tree;
+                    tree = nullptr;
+                }
+            }
+        };
+        
         
     public:
         
@@ -67,9 +76,15 @@ namespace AnalysisTools {
     protected:
         
         /// Data members.
-        map<CutPosition, vector< IPlotMacro* > > m_plots =  { {CutPosition::Pre, vector< IPlotMacro* >()}, {CutPosition::Post, vector< IPlotMacro* >()} };
+        map<CutPosition, vector< IPlotMacro* > > m_plots =  {
+            {CutPosition::Pre,  vector< IPlotMacro* >()},
+            {CutPosition::Post, vector< IPlotMacro* >()}
+        };
         
-        map<CutPosition, TTree*> m_trees = { {CutPosition::Pre, nullptr}, {CutPosition::Post, nullptr} };
+        map<CutPosition, TTree*> m_trees = {
+            {CutPosition::Pre,  nullptr},
+            {CutPosition::Post, nullptr}
+        };
         
         bool m_initialised = false;
         

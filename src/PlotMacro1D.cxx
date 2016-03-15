@@ -4,32 +4,11 @@ namespace AnalysisTools {
 
     // Set method(s).
     template <class T>
-    void PlotMacro1D<T>::setFunction  (function< double(const T&) > f) {
+    void PlotMacro1D<T>::setFunction  (const function< double(const T&) >& f) {
         m_function = f;
         return;
     }
-    /*
-    template <class T>
-    void PlotMacro1D<T>::setFunction  (function< double(T&) > f) {
-        cout << "<PlotMacro1D<T>::setFunction> Setting non-const function." << endl;
-        m_function = f;
-        return;
-    }
-    */
-    /*
-    template <class T>
-    void PlotMacro1D<T>::setVariable  (const string& variable) {
-        m_variable = variable;
-        return;
-    }
-
-    template <class T>
-    void PlotMacro1D<T>::setUnit  (const string& unit) {
-        m_unit = unit;
-        return;
-    }
-     */
-    
+     
     
     // Get method(s).
     // ...

@@ -96,11 +96,7 @@ namespace AnalysisTools {
     
     void Analysis::closeOutput () {
         if (m_outfile) {
-            m_outfile->Close();
-            /*
-            delete m_outfile;
-            m_outfile = nullptr;
-             */
+           
         }
         return;
     }

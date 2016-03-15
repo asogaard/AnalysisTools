@@ -54,23 +54,41 @@ namespace AnalysisTools {
         
         // Destructor(s).
         ~Selection () {
-            cout << "<Selection::~Selection>" << endl;
-            for (auto opvec : m_operations) {
-                for (auto op : opvec.second) {
+            for (auto category : m_categories) {
+                for (auto op : m_operations[category]) {
                     if (op) {
                         delete op;
                         op = nullptr;
                     }
                 }
+                if (m_cutflow[category]) {
+                    delete m_cutflow[category];
+                }
             }
-            cout << "<Selection::~Selection> Done." << endl;
         };
         
         
     public:
         
         // Set method(s).
-        // ...
+        void addCategory     (const string& category);
+        void addCategories   (const vector<string>& categories);
+        void setCategories   (const vector<string>& categories);
+        void clearCategories ();
+        
+        void addCut (const Cut<U>& cut);
+        void addCut (const Cut<U>& cut, const string& category, const bool& common = false);
+        void addCut (const string& name, const function< double(const U&) >& f);
+        void addCut (const string& name, const function< double(const U&) >& f, const string& category);
+        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max);
+        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category);
+        
+        void addOperation (const Operation<U>& operation);
+        void addOperation (const Operation<U>& operation, const string& category, const bool& common = false);
+        void addOperation (const string& name, const function< double(U&) >& f);
+        void addOperation (const string& name, const function< double(U&) >& f, const string& category);
+
+        void addPlot (const CutPosition& pos, const PlotMacro1D<U>& plot);
         
         
         // Get method(s).
@@ -86,37 +104,6 @@ namespace AnalysisTools {
 
         
         // High-level management method(s).
-        void addCategory     (const string& category);
-        void addCategories   (const vector<string>& categories);
-        void setCategories   (const vector<string>& categories);
-        void clearCategories ();
-        
-        void addCut (const Cut<U>& cut);
-        void addCut (const Cut<U>& cut, const string& category);
-        void addCut (const string& name, const function< double(const U&) >& f);
-        void addCut (const string& name, const function< double(const U&) >& f, const string& category);
-        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max);
-        void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category);
-        
-        void addOperation (const Operation<U>& operation);
-        void addOperation (const Operation<U>& operation, const string& category);
-        
-        void addPlot (CutPosition pos, const PlotMacro1D<U>& plot);
-        
-        void setInput (const vector<T>* candidates);
-        void setInput (const vector<T>  candidates);
-        /* @TODO: Only applicable to ObjectDefinition? */
-        
-        //template<class U>
-        void addInfo (const string& name, const vector<float> * info);
-        void addInfo (const string& name, const vector<int>   * info);
-        void addInfo (const string& name, const vector<bool>  * info);
-        /* @TODO: Do proper templating? */
-        /* @TODO: Versions without vectors for EventSelection? */
-        
-        template <class W>
-        const vector<W>* info (const string& name);
-        
         virtual bool run () = 0; /* No implementation. */
         
         
@@ -128,17 +115,13 @@ namespace AnalysisTools {
         void lockCategories   ();
         bool hasCutflow       (const string& category);
         void setupCutflow     (const string& category);
-        
+       
         
     protected:
+
+        int  m_branch = -1;
+        bool m_hasRun = false;
         
-        const vector<T>* m_input = nullptr; // Not separated by category names.
-        /* @TODO: Only applicable to ObjectDefinition? */
-        
-        map<string, const vector<float>* > m_infoFloat;
-        map<string, const vector<int>* >   m_infoInt;
-        map<string, const vector<bool>* >  m_infoBool;
-                
     };
     
     template <class T, class U>

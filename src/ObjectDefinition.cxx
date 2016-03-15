@@ -3,8 +3,70 @@
 namespace AnalysisTools {
     
     // Set method(s).
-    // ...
+    template <class T>
+    void ObjectDefinition<T>::setInput (const vector<T>* input) {
+        m_input = input;
+        return;
+    }
+    
+    template <class T>
+    void ObjectDefinition<T>::addInfo (const string& name, const vector<double>* info) {
+        assert( m_infoDouble.count(name) == 0);
+        assert( m_infoFloat .count(name) == 0);
+        assert( m_infoInt   .count(name) == 0);
+        assert( m_infoBool  .count(name) == 0);
+        m_infoDouble[name] = info;
+        return;
+    }
+    
+    template <class T>
+    void ObjectDefinition<T>::addInfo (const string& name, const vector<float>* info) {
+        assert( m_infoDouble.count(name) == 0);
+        assert( m_infoFloat.count(name) == 0);
+        assert( m_infoInt  .count(name) == 0);
+        assert( m_infoBool .count(name) == 0);
+        m_infoFloat[name] = info;
+        return;
+    }
+    
+    template <class T>
+    void ObjectDefinition<T>::addInfo (const string& name, const vector<int>* info) {
+        assert( m_infoDouble.count(name) == 0);
+        assert( m_infoFloat.count(name) == 0);
+        assert( m_infoInt  .count(name) == 0);
+        assert( m_infoBool .count(name) == 0);
+        m_infoInt[name] = info;
+        return;
+    }
+    
+    template <class T>
+    void ObjectDefinition<T>::addInfo (const string& name, const vector<bool>* info) {
+        assert( m_infoDouble.count(name) == 0);
+        assert( m_infoFloat.count(name) == 0);
+        assert( m_infoInt  .count(name) == 0);
+        assert( m_infoBool .count(name) == 0);
+        m_infoBool[name] = info;
+        return;
+    }
+    
+    
+    // Get method(s).
+    template <class T>
+    template <class W>
+    const vector<W>* ObjectDefinition<T>::info (const string& name) {
+        if (m_infoDouble.count(name) > 0) {
+            return m_infoDouble(name);
+        }
+        if (m_infoInt.count(name) > 0) {
+            return m_infoInt(name);
+        }
+        if (m_infoBool.count(name) > 0) {
+            return m_infoBool(name);
+        }
+        return nullptr;
+    }
 
+    
     
     // High-level management method(s).
     template <class T>
@@ -59,24 +121,25 @@ namespace AnalysisTools {
                         this->m_candidates[category].erase(this->m_candidates[category].begin() + i);
                     }
                 }
-                // dynamic_cast< Cut<T> > != NULL
+
+                if (dynamic_cast< Cut<PhysicsObject>* >(iop) == nullptr) { continue; }
                 this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
             }
         }
         this->m_hasRun = true;
         return true; /* Always true for ObjectDefinition (i.e. cannot break the analysis pipeline). */
     }
-    
+  
     template <class T>
-    shared_ptr<PhysicsObjects> ObjectDefinition<T>::result () {
+    PhysicsObjects* ObjectDefinition<T>::result () {
         assert( this->nCategories() == 1);
-        return shared_ptr<PhysicsObjects>(&this->m_candidates[this->m_categories.front()]);
+        return &this->m_candidates[this->m_categories.front()];
     }
     
     template <class T>
-        shared_ptr<PhysicsObjects> ObjectDefinition<T>::result (const string& category) {
+    PhysicsObjects* ObjectDefinition<T>::result (const string& category) {
         assert( this->hasCategory(category) );
-        return shared_ptr<PhysicsObjects>(&this->m_candidates[category]);
+        return &this->m_candidates[category];
     }
     
     

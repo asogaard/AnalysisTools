@@ -2,13 +2,9 @@
 
 namespace AnalysisTools {
     
-    // Constructor(s).
-    // ...
-    
-    
     // Set method(s).
     template <class T>
-    void Operation<T>::setFunction (function< double(T&) > f) {
+    void Operation<T>::setFunction (const function< double(T&) >& f) {
         m_function = f;
         return;
     }
@@ -20,7 +16,7 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Operation<T>::addPlot (CutPosition pos, IPlotMacro* plot) {
+    void Operation<T>::addPlot (const CutPosition& pos, IPlotMacro* plot) {
         m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
@@ -39,9 +35,10 @@ namespace AnalysisTools {
         return plotsOut;
     }
     
+    
     // High-level management method(s).
     template <class T>
-    bool Operation<T>::apply (T& obj) { // (const T& obj)
+    bool Operation<T>::apply (T& obj) {
 
         assert(m_function);
         if (!m_initialised) { init(); }
@@ -60,7 +57,6 @@ namespace AnalysisTools {
                 if (passes) { break; }
             }
         } else {
-            //Debug("No ranges provided. Interpreting output of cut '" << m_name << "' to be boolean.");
             passes = (bool) val;
         }
         
@@ -87,8 +83,8 @@ namespace AnalysisTools {
         
         this->dir()->cd();
         
-        m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
-        m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
+        this->m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
+        this->m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
         
         for (auto plot : plots(CutPosition::Pre))  { plot->setTree(m_trees[CutPosition::Pre]);  }
         for (auto plot : plots(CutPosition::Post)) { plot->setTree(m_trees[CutPosition::Post]); }

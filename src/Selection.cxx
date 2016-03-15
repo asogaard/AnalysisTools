@@ -3,7 +3,145 @@
 namespace AnalysisTools {
     
     // Set method(s).
-    // ...
+    template <class T, class U>
+    void Selection<T,U>::addCategory (const string& category) {
+        assert( !locked() );
+        assert( canAddCategories() );
+        this->m_categories.push_back(category);
+        this->m_operations[category] = OperationsPtr();
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCategories (const vector<string>& categories) {
+        for (const string& category : categories) {
+            addCategory(category);
+        }
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::setCategories (const vector<string>& categories) {
+        clearCategories();
+        addCategories(categories);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::clearCategories () {
+        this->m_categories.clear();
+        this->m_operations.clear();
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const Cut<U>& cut) {
+        assert( !locked() );
+        if (nCategories() == 0) {
+            addCategory("Nominal");
+        }
+        lockCategories();
+        for (const auto& category : this->m_categories) {
+            addCut(cut, category, true);
+        }
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const Cut<U>& cut, const string& category, const bool& common) {
+        assert( !locked() );
+        assert( hasCategory(category) );
+        if (!common && m_branch < 0) { m_branch = (int) m_operations[category].size(); }
+        this->m_operations[category].push_back( new Cut<U>(cut) );
+        this->grab( this->m_operations[category].back(), category );
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        addCut(cut);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const string& category) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        addCut(cut, category);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        cut.addRange(min,max);
+        addCut(cut);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category) {
+        Cut<U> cut(name);
+        cut.setFunction(f);
+        cut.addRange(min,max);
+        addCut(cut, category);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const Operation<U>& operation) {
+        assert( !locked() );
+        if (nCategories() == 0) {
+            addCategory("Nominal");
+        }
+        lockCategories();
+        for (const auto& category : this->m_categories) {
+            addOperation(operation, category, true);
+        }
+        return;
+        
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const Operation<U>& operation, const string& category, const bool& common) {
+        assert( !locked() );
+        assert( hasCategory(category) );
+        if (!common && m_branch < 0) { m_branch = (int) m_operations[category].size(); }
+        this->m_operations[category].push_back( new Operation<U>(operation) );
+        this->grab( this->m_operations[category].back(), category );
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const string& name, const function< double(U&) >& f) {
+        Operation<U> operation(name);
+        operation.setFunction(f);
+        addOperation(operation);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addOperation (const string& name, const function< double(U&) >& f, const string& category) {
+        Operation<U> operation(name);
+        operation.setFunction(f);
+        addOperation(operation, category);
+        return;
+    }
+    
+    template <class T, class U>
+    void Selection<T,U>::addPlot (const CutPosition& pos, const PlotMacro1D<U>& plot) {
+        /* Will only add this plot to the existing cuts. */
+        for (IOperation* iop : allOperations()) {
+            if (Cut<U>* cut = dynamic_cast< Cut<U>* > (iop)) {
+                cut->addPlot(pos, new PlotMacro1D<U>(plot));
+            }
+        }
+        
+        return;
+    }
     
     
     // Get method(s).
@@ -52,185 +190,7 @@ namespace AnalysisTools {
     
     
     // High-level management method(s).
-    template <class T, class U>
-    void Selection<T,U>::addCategory (const string& category) {
-        assert( !locked() );
-        assert( canAddCategories() );
-        this->m_categories.push_back(category);
-        this->m_operations[category] = OperationsPtr();
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCategories (const vector<string>& categories) {
-        for (const string& category : categories) {
-            addCategory(category);
-        }
-        return;
-    }
-
-    template <class T, class U>
-    void Selection<T,U>::setCategories (const vector<string>& categories) {
-        clearCategories();
-        addCategories(categories);
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::clearCategories () {
-        this->m_categories.clear();
-        this->m_operations.clear();
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const Cut<U>& cut) {
-        assert( !locked() );
-        if (nCategories() == 0) {
-            addCategory("Nominal");
-        }
-        lockCategories();
-        for (const auto& category : this->m_categories) {
-            addCut(cut, category);
-        }
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const Cut<U>& cut, const string& category) {
-        assert( !locked() );
-        assert( hasCategory(category) );
-        this->m_operations[category].push_back( new Cut<U>(cut) );
-        this->grab( this->m_operations[category].back(), category );
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f) {
-        Cut<U> cut(name);
-        cut.setFunction(f);
-        addCut(cut);
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const string& category) {
-        Cut<U> cut(name);
-        cut.setFunction(f);
-        addCut(cut, category);
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max) {
-        Cut<U> cut(name);
-        cut.setFunction(f);
-        cut.addRange(min,max);
-        addCut(cut);
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max, const string& category) {
-        Cut<U> cut(name);
-        cut.setFunction(f);
-        cut.addRange(min,max);
-        addCut(cut, category);
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addOperation (const Operation<U>& operation) {
-        assert( !locked() );
-        if (nCategories() == 0) {
-            addCategory("Nominal");
-        }
-        lockCategories();
-        for (const auto& category : this->m_categories) {
-            addOperation(operation, category);
-        }
-        return;
-
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addOperation (const Operation<U>& operation, const string& category) {
-        assert( !locked() );
-        assert( hasCategory(category) );
-        this->m_operations[category].push_back( new Operation<U>(operation) );
-        this->grab( this->m_operations[category].back(), category );
-        return;
-    }
-    
-    
-    
-    
-    template <class T, class U>
-    void Selection<T,U>::addPlot (CutPosition pos, const PlotMacro1D<U>& plot) {
-        /* Will only add this plot to the existing cuts. */
-        for (IOperation* iop : allOperations()) {
-            // @TODO: if (dynamic_cast< Cut<U>* > (iop) == nullptr) { continue; }
-            if (Cut<U>* cut = dynamic_cast< Cut<U>* > (iop)) {
-                cut->addPlot(pos, new PlotMacro1D<U>(plot));
-            }
-        }
-        
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::setInput (const vector<T>* input) {
-        m_input = input;
-        return;
-    }
-
-    template <class T, class U>
-    void Selection<T,U>::setInput (const vector<T>  input) {
-        m_input = &input;
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addInfo (const string& name, const vector<float>* info) {
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoFloat[name] = info;
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addInfo (const string& name, const vector<int>* info) {
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoInt[name] = info;
-        return;
-    }
-    
-    template <class T, class U>
-    void Selection<T,U>::addInfo (const string& name, const vector<bool>* info) {
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoBool[name] = info;
-        return;
-    }
-    
-    template <class T, class U>
-    template <class W>
-    const vector<W>* Selection<T,U>::info (const string& name) {
-        if (m_infoFloat.count(name) > 0) {
-            return m_infoFloat(name);
-        }
-        if (m_infoInt.count(name) > 0) {
-            return m_infoInt(name);
-        }
-        if (m_infoBool.count(name) > 0) {
-            return m_infoBool(name);
-        }
-        return nullptr;
-    }
+    // ...
     
     
     // Low-level management method(s).
@@ -261,7 +221,12 @@ namespace AnalysisTools {
         this->dir()->cd(category.c_str());
         assert( hasCategory(category) );
         
-        unsigned int nCuts = this->m_operations[category].size();
+        unsigned int nCuts = 0;
+        for (IOperation* iop : this->m_operations[category]) {
+            if (dynamic_cast< Cut<U>* >(iop) == nullptr) { continue; }
+            nCuts++;
+        }
+
         m_cutflow[category] = new TH1F("Cutflow", "", nCuts + 1, -0.5, nCuts + 0.5);
         
         // * Set bin labels.

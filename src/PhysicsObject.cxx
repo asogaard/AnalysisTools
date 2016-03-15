@@ -28,12 +28,16 @@ namespace AnalysisTools {
     // -------------------------------------------------------------------
     
     // -- Perform overlap removal.
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2, function< bool(PhysicsObject,PhysicsObject) > constraint) {
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R1,
+                        const double& R2,
+                        const function< bool(PhysicsObject, PhysicsObject) >& constraint) {
         /* Removing elements from 'first' if they overlap with either element in 'second' within 'R', possibly under an additional 'constaint' */
         for (unsigned int iFirst = first->size(); iFirst --> 0; ) {
-            PhysicsObject p1 = first->at(iFirst);
+            PhysicsObject& p1 = first->at(iFirst);
             for (unsigned int iSecond = 0; iSecond < second->size(); iSecond++) {
-                PhysicsObject p2 = second->at(iSecond);
+                PhysicsObject& p2 = second->at(iSecond);
                 double dR = p1.DeltaR(p2);
                 if (R1 < dR && dR < R2 && constraint(p1,p2)) {
                     first->erase(first->begin() + iFirst);
@@ -44,18 +48,26 @@ namespace AnalysisTools {
         return true;
     }
     
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2) {
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R1,
+                        const double& R2) {
         OverlapRemoval(first, second, R1, R2, [](PhysicsObject p1, PhysicsObject p2) -> bool { return true; });
         return true;
     }
     
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R) {
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R) {
         OverlapRemoval(first, second, 0., R, [](PhysicsObject p1, PhysicsObject p2) -> bool { return true; });
         return true;
     }
     
     
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R, function< bool(PhysicsObject,PhysicsObject) > constraint) {
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R,
+                        const function< bool(PhysicsObject,PhysicsObject) >& constraint) {
         OverlapRemoval(first, second, 0., R, constraint);
         return true;
     }

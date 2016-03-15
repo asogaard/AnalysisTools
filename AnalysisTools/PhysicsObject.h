@@ -64,14 +64,30 @@ namespace AnalysisTools {
 
     using PhysicsObjects = vector<PhysicsObject>;
     
-    // PhysicsObject-specific utility functions.
+    
+     // PhysicsObject-specific utility functions.
     // -------------------------------------------------------------------
     
     // -- Perform overlap removal.
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2, function< bool(PhysicsObject,PhysicsObject) > constraint);
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R1, const double& R2);
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R);
-    bool OverlapRemoval(shared_ptr< vector<PhysicsObject> > first, shared_ptr< vector<PhysicsObject> > second, const double& R, function< bool(PhysicsObject,PhysicsObject) > constraint);
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R1,
+                        const double& R2,
+                        const function< bool(PhysicsObject,PhysicsObject) >& constraint);
+    
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R1,
+                        const double& R2);
+    
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R);
+
+    bool OverlapRemoval(vector<PhysicsObject>* first,
+                        vector<PhysicsObject>* second,
+                        const double& R,
+                        const function< bool(PhysicsObject,PhysicsObject) >& constraint);
 
 }
 

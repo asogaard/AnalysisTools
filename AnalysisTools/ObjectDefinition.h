@@ -37,27 +37,33 @@ namespace AnalysisTools {
         
 
         // Destructor(s).
-        ~ObjectDefinition () {
-            cout << "<ObjectDefinition::~ObjectDefinition>" << endl;
-        };
+        ~ObjectDefinition () {};
 
         
     public:
         
         // Set method(s).
-        // ...
+        void setInput (const vector<T>* candidates);
+        
+        //template<class W>
+        void addInfo (const string& name, const vector<double> * info);
+        void addInfo (const string& name, const vector<float> * info);
+        void addInfo (const string& name, const vector<int>   * info);
+        void addInfo (const string& name, const vector<bool>  * info);
+        /* @TODO: Do proper templating? */
+        
         
         // Get method(s).
-        // ...
-        
+        template <class W>
+        const vector<W>* info (const string& name);
+
         
         // High-level management method(s).
-        
         bool run ();
         
-        shared_ptr<PhysicsObjects> result ();
-        shared_ptr<PhysicsObjects> result (const string& category);
-        
+        PhysicsObjects* result ();
+        PhysicsObjects* result (const string& category);
+     
         
     protected:
         
@@ -66,12 +72,18 @@ namespace AnalysisTools {
         
         
     private:
-        
 
         map<string, PhysicsObjects> m_candidates;
         
         bool m_hasRun = false;
-        int  m_branch = -1;
+        
+        const vector<T>* m_input = nullptr; /* Universal; not category-specific. */
+        
+        map<string, const vector<double>* > m_infoDouble;
+        map<string, const vector<float>* >  m_infoFloat;
+        map<string, const vector<int>* >    m_infoInt;
+        map<string, const vector<bool>* >   m_infoBool;
+        
         
     };
 

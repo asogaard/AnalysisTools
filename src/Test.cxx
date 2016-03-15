@@ -327,9 +327,14 @@ int main (int argc, char* argv[]) {
      * This should not change dynamically!
      */
     
-    shared_ptr<PhysicsObjects> SelectedElectrons = ElectronObjdef.result("Nominal");
+    /*
+         shared_ptr<PhysicsObjects> SelectedElectrons = ElectronObjdef.result("Nominal");
     shared_ptr<PhysicsObjects> SelectedMuons     = MuonObjdef    .result();
-    shared_ptr<PhysicsObjects> SelectedJets      = JetObjdef     .result();
+     shared_ptr<PhysicsObjects> SelectedJets      = JetObjdef     .result();
+     */
+    PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
+    PhysicsObjects* SelectedMuons     = MuonObjdef    .result();
+    PhysicsObjects* SelectedJets      = JetObjdef     .result();
     
     
     

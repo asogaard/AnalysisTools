@@ -40,13 +40,13 @@ namespace AnalysisTools {
         
         // Set method(s).
         void addInfo       (const string& name, const double&              val);
-        void addCollection (const string& name, shared_ptr<PhysicsObjects> collection);
+        void addCollection (const string& name, PhysicsObjects* collection);
         void addGRL        (GRL* grl);
         void               setParticle   (const string& name, const PhysicsObject& particle);
         
         // Get method(s).
         double                     info       (const string& name) const;
-        shared_ptr<PhysicsObjects> collection (const string& name) const;
+        PhysicsObjects*            collection (const string& name) const;
         const PhysicsObject&       particle   (const string& name) const;
         GRL*                       grl        ()                   const;
         
@@ -58,7 +58,7 @@ namespace AnalysisTools {
     private:
         
         map<string, double> m_info;
-        map<string, shared_ptr<PhysicsObjects> > m_collections;
+        map<string, PhysicsObjects* > m_collections;
         map<string, PhysicsObject> m_particles;
         GRL* m_grl = nullptr;
         

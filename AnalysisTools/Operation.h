@@ -70,24 +70,16 @@ namespace AnalysisTools {
 
         
         // Destructor(s).
-        ~Operation () {
-            for (auto pos_tree : m_trees) {
-                TTree* tree = pos_tree.second;
-                if (tree) {
-                    delete tree;
-                    tree = nullptr;
-                }
-            }
-        };
+        ~Operation () {};
         
         
     public:
         
         // Set method(s).
-        void setFunction (function< double(T&) > f);
+        void setFunction (const function< double(T&) >& f);
         
         void clearPlots ();
-        void addPlot    (CutPosition pos, IPlotMacro* plot);
+        void addPlot    (const CutPosition& pos, IPlotMacro* plot);
         
         // Get method(s).
         vector< IPlotMacro* > plots (const CutPosition& pos) const;
@@ -95,14 +87,13 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        bool apply (T& obj); // (const T& obj)
+        bool apply (T& obj);
 
         
     protected:
         
         // Low-level management method(s).
         void init  ();
-        void write ();
 
         
     private:

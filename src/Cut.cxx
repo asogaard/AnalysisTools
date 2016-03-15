@@ -82,7 +82,7 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::setFunction (function< double(const T&) > f) {
+    void Cut<T>::setFunction (const function< double(const T&) >& f) {
         m_function = f;
         return;
     }
@@ -94,7 +94,7 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::addPlot (CutPosition pos, IPlotMacro* plot) {
+    void Cut<T>::addPlot (const CutPosition& pos, IPlotMacro* plot) {
         this->m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
@@ -134,7 +134,6 @@ namespace AnalysisTools {
                 if (passes) { break; }
             }
         } else {
-            //Debug("No ranges provided. Interpreting output of cut '" << m_name << "' to be boolean.");
             passes = (bool) val;
         }
         
@@ -168,8 +167,8 @@ namespace AnalysisTools {
             m_variable = "CutVariable";
         }
         
-        PlotMacro1D<T>* precut  = new PlotMacro1D<T> (m_variable);
-        PlotMacro1D<T>* postcut = new PlotMacro1D<T> (m_variable);
+        PlotMacro1D<T>* precut  = new PlotMacro1D<T>(m_variable);
+        PlotMacro1D<T>* postcut = new PlotMacro1D<T>(m_variable);
         
         precut ->setFunction(m_function);
         postcut->setFunction(m_function);

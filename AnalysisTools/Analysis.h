@@ -54,7 +54,6 @@ namespace AnalysisTools {
         
         // Destructor(s).
         ~Analysis () {
-            cout << "<Analysis::~Analysis>" << endl;
             closeOutput();
         };
         

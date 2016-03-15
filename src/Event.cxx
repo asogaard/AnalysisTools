@@ -12,7 +12,7 @@ namespace AnalysisTools {
         return;
     }
     
-    void Event::addCollection (const string& name, shared_ptr<PhysicsObjects> collection) {
+    void Event::addCollection (const string& name, PhysicsObjects* collection) {
         assert( m_collections.count(name) == 0 );
         m_collections[name] = collection;
         return;
@@ -36,7 +36,7 @@ namespace AnalysisTools {
         return m_info.at(name);
     }
     
-    shared_ptr<PhysicsObjects> Event::collection (const string& name) const {
+    PhysicsObjects* Event::collection (const string& name) const {
         assert( m_collections.count(name) > 0 );
         return m_collections.at(name);
     }
