@@ -66,6 +66,12 @@ namespace AnalysisTools {
     }
     
     template <class T>
+    void Cut<T>::addRange (const double& value) {
+        m_ranges.push_back(Range(value - eps, value + eps));
+        return;
+    }
+    
+    template <class T>
     void Cut<T>::addRanges (const Ranges& ranges) {
         for (const Range& range : ranges) {
             addRange(range);

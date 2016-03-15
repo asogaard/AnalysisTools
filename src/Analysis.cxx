@@ -3,8 +3,19 @@
 namespace AnalysisTools {
     
     // Set method(s).
-    // ...
+    void Analysis::addSelection (ISelection* selection) {
+        m_selections.push_back( selection );
+        this->grab(selection);
+        return;
+    }
     
+    void Analysis::addTree (const string& name) {
+        assert( hasOutput() );
+        m_outfile->cd();
+        m_outtree = new TTree(name.c_str(), "Physics output tree");
+        return;
+    }
+
     
     // Get method(s).
     void Analysis::clearSelections () {
@@ -12,12 +23,17 @@ namespace AnalysisTools {
         return;
     }
     
-    void Analysis::addSelection (ISelection* selection) {
-        m_selections.push_back( selection );
-        this->grab(selection);
+    TTree* Analysis::tree () {
+        assert( m_outtree );
+        return m_outtree;
+    }
+
+    void Analysis::writeTree () {
+        assert( m_outtree );
+        m_outtree->Fill();
         return;
     }
-    
+
     
     // High-level management method(s).
     bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
@@ -96,7 +112,8 @@ namespace AnalysisTools {
     
     void Analysis::closeOutput () {
         if (m_outfile) {
-           
+            m_outfile->Close();
+            m_outfile = nullptr;
         }
         return;
     }
@@ -110,12 +127,5 @@ namespace AnalysisTools {
         m_outfile->Write();
         return;
     }
-
-    void Analysis::save (const string& path) {
-        assert( hasOutput() );
-        m_outfile->Write(path.c_str());
-        return;
-    }
-
     
 }

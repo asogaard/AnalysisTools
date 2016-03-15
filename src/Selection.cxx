@@ -233,7 +233,7 @@ namespace AnalysisTools {
         m_cutflow[category]->GetXaxis()->SetBinLabel(1, "All");
         unsigned int iCut = 1;
         for (IOperation* iop : this->m_operations[category]) {
-            if (dynamic_cast< Cut<T>* >(iop) == nullptr) { continue; }
+            if (dynamic_cast< Cut<U>* >(iop) == nullptr) { continue; }
             m_cutflow[category]->GetXaxis()->SetBinLabel(++iCut, iop->name().c_str());
         }
         return;

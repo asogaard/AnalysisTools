@@ -88,6 +88,7 @@ namespace AnalysisTools {
         void addRange (const Range& range);
         void addRange (const pair<double, double>& limits);
         void addRange (const double& down, const double& up);
+        void addRange (const double& value);
         
         void addRanges (const Ranges& ranges);
         void addRanges (const vector< pair<double, double> >& vec_limits);

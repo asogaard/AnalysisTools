@@ -61,13 +61,14 @@ namespace AnalysisTools {
     public:
  
         // Set method(s).
-        // ...
+        void addSelection    (ISelection* selection);
+        void addTree         (const string& name = "outputTree");
         
         
         // Get method(s).
-        void clearSelections ();
-        void addSelection    (ISelection* selection);
-        
+        void   clearSelections ();
+        TTree* tree ();
+        void   writeTree ();
         
         // High-level management method(s).
         void openOutput  (const string& filename);
@@ -79,12 +80,12 @@ namespace AnalysisTools {
         bool run ();
         
         void save ();
-        void save (const string& path);
         
         
     private:
 
-        TFile*      m_outfile = nullptr;
+        TFile* m_outfile = nullptr;
+        TTree* m_outtree = nullptr;
 
         SelectionsPtr m_selections;
         

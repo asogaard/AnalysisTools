@@ -30,7 +30,7 @@ using namespace AnalysisTools;
 int main (int argc, char* argv[]) {
     
     cout << "======================================================================" << endl;
-    cout << " Running AnalysisTools test." << endl;
+    cout << " Running object definition." << endl;
     cout << "----------------------------------------------------------------------" << endl;
     
     if (argc < 2) {
@@ -144,17 +144,44 @@ int main (int argc, char* argv[]) {
     
     
     
+     // Get file name.
+    // -------------------------------------------------------------------
+    inputTree->GetEvent(0);
+    
+    bool     isMC = (mcChannelNumber > 0);
+    unsigned DSID = (isMC ? mcChannelNumber : runNumber);
+    
+    string filedir  = "objdef_output/";
+    string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
+    
+    
+    
      // Set up AnalysisTools
     // -------------------------------------------------------------------
     
     Analysis analysis ("ResolvedWR");
     
-    analysis.openOutput("output.root");
-
-    /* *
-     * Only the input should be templated. All cuts should not, all using the
-     * PhysicsObject class internally.
-     */
+    analysis.openOutput(filedir + filename);
+    analysis.addTree();
+    
+    
+    
+     // Set up output branches.
+    // -------------------------------------------------------------------
+    
+    vector<TLorentzVector> signalJets, signalElectrons, signalMuons;
+    vector<int> signalElectrons_charge, signalMuons_charge;
+    float SumET;
+    
+    analysis.tree()->Branch("signalJets",      &signalJets,      32000, 0); /* Suppresses "TTree::Bronch" warnings */
+    analysis.tree()->Branch("signalElectrons", &signalElectrons, 32000, 0);
+    analysis.tree()->Branch("signalMuons",     &signalMuons,     32000, 0);
+    
+    analysis.tree()->Branch("signalElectrons_charge", &signalElectrons_charge);
+    analysis.tree()->Branch("signalMuons_charge",     &signalMuons_charge);
+    
+    analysis.tree()->Branch("MET",    &MET);
+    analysis.tree()->Branch("SumET", &SumET);
     
     
     
@@ -162,15 +189,6 @@ int main (int argc, char* argv[]) {
     // -------------------------------------------------------------------
     
     EventSelection preSelection ("PreSelection");
-    
-    /*
-     eventSelection.addInfo("eventCleaning", passedEventCleaning);
-     eventSelection.addInfo("jetCleaning",   passedJetCleaning);
-     eventSelection.addInfo("LB",            lumiBlock);
-     eventSelection.addInfo("run",           runNumber);
-     eventSelection.addInfo("DSID",          mc_channel_number);
-     */
-
     
     // * GRL
     Cut<Event> event_grl ("GRL");
@@ -192,7 +210,7 @@ int main (int argc, char* argv[]) {
      // Object definitions
     // -------------------------------------------------------------------
 
-     // Electrons
+     // Muons
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
     ObjectDefinition<TLorentzVector> ElectronObjdef ("Electrons");
@@ -204,13 +222,11 @@ int main (int argc, char* argv[]) {
     ElectronObjdef.addInfo("z0sintheta",         el_z0sintheta);
     ElectronObjdef.addInfo("d0BLsignificance",   el_d0BLsignificance);
 
-    //ElectronObjdef.setCategories( {"Loose", "Tight"} ); // Just nominal
-
     // * pT
     Cut<PhysicsObject> el_pT ("pT");
     el_pT.setFunction( [](const PhysicsObject& p) { return p.Pt() / 1000.; } );
     el_pT.setRange(20., inf);
-    ElectronObjdef.addCut(el_pT); // , "Loose");
+    ElectronObjdef.addCut(el_pT);
 
     // * eta
     Cut<PhysicsObject> el_eta ("Eta");
@@ -265,13 +281,11 @@ int main (int argc, char* argv[]) {
     MuonObjdef.addInfo("z0sintheta",         mu_z0sintheta);
     MuonObjdef.addInfo("d0BLsignificance",   mu_d0BLsignificance);
     
-    //MuonObjdef.setCategories( {"Loose", "Tight"} ); // Just nominal
-    
     // * pT
     Cut<PhysicsObject> mu_pT ("pT");
     mu_pT.setFunction( [](const PhysicsObject& p) { return p.Pt() / 1000.; } );
     mu_pT.setRange(20., inf);
-    MuonObjdef.addCut(mu_pT); // , "Loose");
+    MuonObjdef.addCut(mu_pT);
     
     // * eta
     Cut<PhysicsObject> mu_eta ("Eta");
@@ -320,22 +334,13 @@ int main (int argc, char* argv[]) {
     JetObjdef.addCut(jet_eta);
     
     
+    
     // Stuff for binding selections together.
     // -------------------------------------------------------------------
     
-    /* *
-     * This should not change dynamically!
-     */
-    
-    /*
-         shared_ptr<PhysicsObjects> SelectedElectrons = ElectronObjdef.result("Nominal");
-    shared_ptr<PhysicsObjects> SelectedMuons     = MuonObjdef    .result();
-     shared_ptr<PhysicsObjects> SelectedJets      = JetObjdef     .result();
-     */
     PhysicsObjects* SelectedElectrons = ElectronObjdef.result("Nominal");
-    PhysicsObjects* SelectedMuons     = MuonObjdef    .result();
+    PhysicsObjects* SelectedMuons     = MuonObjdef    .result("Nominal");
     PhysicsObjects* SelectedJets      = JetObjdef     .result();
-    
     
     
     
@@ -343,8 +348,6 @@ int main (int argc, char* argv[]) {
     // -------------------------------------------------------------------
     
     EventSelection eventSelection ("EventSelection");
-    vector<string> regions = { "SR_ee", "SR_mm", "CRZ_jj_ee", "CRZ_jj_mm", "CRZ_ll_ee", "CRZ_ll_mm" };
-    eventSelection.setCategories( regions );
 
     eventSelection.addCollection("Electrons", SelectedElectrons);
     eventSelection.addCollection("Muons",     SelectedMuons);
@@ -372,85 +375,13 @@ int main (int argc, char* argv[]) {
     event_Njets.addRange(2, inf);
     eventSelection.addCut(event_Njets);
     
-    // * Leptons
-    Cut<Event> event_ee ("ee");
-    event_ee.setFunction( [](const Event& e) { return (e.collection("Electrons")->size() == 2) && (e.collection("Muons")->size() == 0); });
-    //event_ee.addRange(2, 2);
-    eventSelection.addCut(event_ee, "SR_ee");
-    eventSelection.addCut(event_ee, "CRZ_jj_ee");
-    eventSelection.addCut(event_ee, "CRZ_ll_ee");
-    
-    Cut<Event> event_mm ("mm");
-    event_mm.setFunction( [](const Event& e) { return (e.collection("Electrons")->size() == 0) && (e.collection("Muons")->size() == 2); });
-    //event_mm.addRange(2, 2);
-    eventSelection.addCut(event_mm, "SR_mm");
-    eventSelection.addCut(event_mm, "CRZ_jj_mm");
-    eventSelection.addCut(event_mm, "CRZ_ll_mm");
+    // * Lepton count
+    Cut<Event> event_Nleptons ("Nleptons");
+    event_Nleptons.setFunction( [](const Event& e) { return e.collection("Electrons")->size() + e.collection("Muons")->size(); });
+    event_Nleptons.addRange(2);
+    eventSelection.addCut(event_Nleptons);
     
     
-    // * Recombination (hadronic, leptonic).
-    /* * *
-     * Implement as separate 'Operation' class or similar?
-     * The Cut class should take CONSTANT arguments, whereas the Operation class should take NON-CONSTANT references and have no plotting associated (by default, unlike the two pre-/post-cut plots.
-     */
-    Operation<Event> recomb_jj ("Recomb_jj");
-    recomb_jj.setFunction([](Event& e) { e.setParticle("jj", e.collection("Jets")->at(0) + e.collection("Jets")->at(1)); return true; });
-    eventSelection.addOperation(recomb_jj);
-    
-    
-    Operation<Event> recomb_ll ("Recomb_ll");
-    recomb_ll.setFunction([](Event& e) {
-        if (e.collection("Electrons")->size() > 0) {
-            e.setParticle("ll", e.collection("Electrons")->at(0) + e.collection("Electrons")->at(1));
-        } else {
-            e.setParticle("ll", e.collection("Muons")->at(0)     + e.collection("Muons")->at(1));
-        }
-        return true;
-    });
-    eventSelection.addOperation(recomb_ll);
-
-    
-    // * Z veto (hadronic).
-    Cut<Event> event_Zhad_veto ("Zhad_veto");
-    event_Zhad_veto.setFunction( [](const Event& e) { return e.particle("jj").M() / 1000.; });
-    event_Zhad_veto.addRange(110., inf);
-    eventSelection.addCut(event_Zhad_veto, "SR_ee");
-    eventSelection.addCut(event_Zhad_veto, "SR_mm");
-    eventSelection.addCut(event_Zhad_veto, "CRZ_ll_ee");
-    eventSelection.addCut(event_Zhad_veto, "CRZ_ll_mm");
-
-    Cut<Event> event_Zhad_sel ("Zhad_selection");
-    event_Zhad_sel.setFunction( [](const Event& e) { return e.particle("jj").M() / 1000.; });
-    event_Zhad_sel.addRange(0, 110.);
-    eventSelection.addCut(event_Zhad_sel, "CRZ_jj_ee");
-    eventSelection.addCut(event_Zhad_sel, "CRZ_jj_mm");
-
-    // * Z veto (leptonic).
-    Cut<Event> event_Zlep_veto ("Zlep_veto");
-    event_Zlep_veto.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
-    event_Zlep_veto.addRange(110., inf);
-    eventSelection.addCut(event_Zlep_veto, "SR_ee");
-    eventSelection.addCut(event_Zlep_veto, "SR_mm");
-    eventSelection.addCut(event_Zlep_veto, "CRZ_jj_ee");
-    eventSelection.addCut(event_Zlep_veto, "CRZ_jj_mm");
-    
-    Cut<Event> event_Zlep_sel ("Zlep_selection");
-    event_Zlep_sel.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
-    event_Zlep_sel.addRange(0, 110.);
-    eventSelection.addCut(event_Zlep_sel, "CRZ_ll_ee");
-    eventSelection.addCut(event_Zlep_sel, "CRZ_ll_mm");
-    
-    // * SumET
-    
-    // * Check distributions.
-    PlotMacro1D<Event> event_check_Njet("CHECK_event_Njet", [](const Event& e) { return e.collection("Jets")->size(); });
-    eventSelection.addPlot(CutPosition::Pre,  event_check_Njet);
-    eventSelection.addPlot(CutPosition::Post, event_check_Njet);
-
-    PlotMacro1D<Event> event_check_Nel("CHECK_event_Nel", [](const Event& e) { return e.collection("Electrons")->size(); });
-    eventSelection.addPlot(CutPosition::Pre,  event_check_Nel);
-    eventSelection.addPlot(CutPosition::Post, event_check_Nel);
-
     
      // Adding analyses.
     // -------------------------------------------------------------------
@@ -468,8 +399,6 @@ int main (int argc, char* argv[]) {
     
     for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
         
-        if (iEvent == nEvents) { break; }
-        
         inputTree->GetEvent(iEvent);
         
         // Run AnalysisTools.
@@ -478,9 +407,53 @@ int main (int argc, char* argv[]) {
         // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
         if (!status) { continue; }
         
-        //SelectedElectrons = ElectronObjdef.result("Nominal");
+         // Fill output branches
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         
+        // -- Event-wide
+        SumET = 0;
+        for (const PhysicsObject& p : *SelectedElectrons) { SumET += p.Pt(); }
+        for (const PhysicsObject& p : *SelectedMuons)     { SumET += p.Pt(); }
+        for (const PhysicsObject& p : *SelectedJets)      { SumET += p.Pt(); }
+
+
+        // -- Jets
+        signalJets.clear();
         
+        for (const PhysicsObject& p : *SelectedJets) {
+            signalJets.push_back( (TLorentzVector) p );
+        }
+        
+        // -- Electrons
+        signalElectrons       .clear();
+        signalElectrons_charge.clear();
+        
+        for (const PhysicsObject& p : *SelectedElectrons) {
+            signalElectrons.push_back( (TLorentzVector) p );
+            int idx = getMatchIndex(signalElectrons.back(), electrons);
+            if (idx < 0) {
+                cout << "Warning: Recieved negative match index (" << idx << " out of " << electrons->size() << ") for electrons." << endl;
+                continue;
+            }
+            signalElectrons_charge.push_back( el_charge->at(idx) );
+        }
+        
+        // -- Muons
+        signalMuons.clear();
+        signalElectrons_charge.clear();
+        
+        for (const PhysicsObject& p : *SelectedMuons) {
+            signalMuons.push_back( (TLorentzVector) p );
+            int idx = getMatchIndex(signalMuons.back(), muons);
+            if (idx < 0) {
+                cout << "Warning: Recieved negative match index (" << idx << " out of " << muons->size() << ") for muons." << endl;
+                continue;
+            }
+            signalMuons_charge.push_back( mu_charge->at(idx) );
+        }
+        
+        // Write to output tree.
+        analysis.writeTree();
         
     }
     
