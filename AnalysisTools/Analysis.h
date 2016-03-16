@@ -13,6 +13,7 @@
 #include <memory> /* std::unique_ptr */
 #include <ctime> /* std::clock_t */
 #include <iomanip> /* std::setprecision */
+#include <cstdio> /* printf */
 
 
 // xAOD include(s)

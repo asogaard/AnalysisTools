@@ -77,9 +77,7 @@ namespace AnalysisTools {
                 else std::cout << " ";
             }
             std::clock_t stop = std::clock();
-            std::cout << "] " << maximum;
-            std::cout << " | " << std::setprecision(3) << (stop - m_start) / (double)(CLOCKS_PER_SEC) << " s";
-            std::cout << " | " << std::setprecision(3) << (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum) << " ms/evt" << endl;
+            printf("] %7d | %5.1f s | %5.3f ms/evt\n", maximum, (stop - m_start) / (double)(CLOCKS_PER_SEC), (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum));
         }
         
         // * Running.
