@@ -26,7 +26,7 @@ PROGS := $(patsubst $(PROGDIR)/%.$(SRCEXT),$(EXEDIR)/%.exe,$(PROGSRCS))
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
 # Dependencies
-CXXFLAGS  = --std=c++11 -O3 -I$(INCDIR) $(ROOTCFLAGS)
+CXXFLAGS  = --std=c++11 -O3 -fPIC -I$(INCDIR) $(ROOTCFLAGS)
 LINKFLAGS = -O3 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
 
 # Libraries

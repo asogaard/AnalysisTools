@@ -73,7 +73,7 @@ namespace AnalysisTools {
         void setFunction (const function< double(T&) >& f);
         
         void clearPlots ();
-        void addPlot    (const CutPosition& pos, IPlotMacro plot);
+        void addPlot    (const CutPosition& pos, const IPlotMacro& plot);
         
         // Get method(s).
         vector< IPlotMacro* > plots (const CutPosition& pos) const;
