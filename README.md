@@ -13,12 +13,14 @@ A very simple analysis can be implemented as follows:
 vector<TLorentzVector>* electrons = ...;
 vector<TLorentzVector>* muons     = ...;
 
+vector<bool>* el_id_medium = ...;
+vector<bool>* mu_id_medium = ...;
+
 
  // Setting up AnalysisTools.
 // -------------------------------------------------------------------
 
 Analysis analysis ("MyAnalysis");
-
 analysis.openOutput("output.root");
 
 
@@ -27,10 +29,8 @@ analysis.openOutput("output.root");
 
 // -- Electrons
 ObjectDefinition<TLorentzVector> ElectronObjdef ("Electrons");
-
 ElectronObjdef.setInput(electrons);
-
-ElectronObjdef.addInfo("id_medium",          el_id_medium);
+ElectronObjdef.addInfo("id_medium", el_id_medium);
 
 // * pT
 Cut<PhysicsObject> el_pT ("pT");
@@ -45,10 +45,8 @@ ElectronObjdef.addCut(el_ID);
 
 // -- Muons
 ObjectDefinition<TLorentzVector> MuonObjdef ("Muons");
-
 MuonObjdef.setInput(muons);
-
-MuonObjdef.addInfo("id_medium",          mu_id_medium);
+MuonObjdef.addInfo("id_medium", mu_id_medium);
 
 // * pT
 Cut<PhysicsObject> mu_pT ("pT");
