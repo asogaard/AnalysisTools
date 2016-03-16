@@ -4,6 +4,8 @@ A small package, providing various classes for easily implementing a modular ana
 
 Provides classes for selectable entities (`PhysicsObject`, `Event`), selection operations (`Operation`, `Cut`), types of selection (`Selection`, `EventSelection`, `ObjectDefinition`), analyses (`Analysis`), and various other helper classes (`Range`, `PlotMacro`). The only external dependency is [ROOT](https://root.cern.ch/).
 
+## Example
+
 A very simple analysis can be implemented as follows:
 
 ```
