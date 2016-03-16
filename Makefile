@@ -13,6 +13,7 @@ SRCDIR = ./src
 OBJDIR = ./build
 LIBDIR = ./lib
 EXEDIR = ./bin
+PROGDIR = ./Root
 
 # Extensions
 SRCEXT = cxx
@@ -20,27 +21,28 @@ SRCEXT = cxx
 # Collections
 SRCS := $(shell find $(SRCDIR) -name '*.$(SRCEXT)')
 OBJS := $(patsubst $(SRCDIR)/%.$(SRCEXT),$(OBJDIR)/%.o,$(SRCS))
+PROGSRCS := $(shell find $(PROGDIR) -name '*.$(SRCEXT)')
+PROGS := $(patsubst $(PROGDIR)/%.$(SRCEXT),$(EXEDIR)/%.exe,$(PROGSRCS))
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
 # Dependencies
 CXXFLAGS  = --std=c++11 -O3 -I$(INCDIR) $(ROOTCFLAGS)
-LINKFLAGS = -O2 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
+LINKFLAGS = -O3 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) 
 
 # Libraries
 LIBS += $(ROOTLIBS)
 
 # Targets
-all: $(PACKAGENAME) Test
+all: $(PACKAGENAME) $(PROGS)
 
 $(PACKAGENAME) : $(OBJS) 
-	$(CXX) -shared -o $(LIBDIR)/lib$@.so $(OBJS) $(LIBS)
+	$(CXX) -shared -O3 -o $(LIBDIR)/lib$@.so $(LINKFLAGS) $(OBJS) $(LIBS)
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.$(SRCEXT)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-Test: $(OBJS)
-	@echo "[Compiling: $@]"
-	$(CXX) src/$@.cxx -o bin/$@.exe $(CXXFLAGS) $(LINKFLAGS) -lAnalysisTools
+$(EXEDIR)/%.exe : $(PROGDIR)/%.$(SRCEXT)
+	$(CXX) $< -o $@ $(CXXFLAGS) $(LINKFLAGS) -l$(PACKAGENAME)
  
 clean : 
 	@rm -f $(GARBAGE)

@@ -408,7 +408,7 @@ int main (int argc, char* argv[]) {
         
         
         
-        // Adding analyses.
+        // Adding selections.
         // -------------------------------------------------------------------
         
         analysis.addSelection(&preSelection);
