@@ -75,7 +75,8 @@ namespace AnalysisTools {
         /* *
          * Check that input- and info containers have same length.
          */
-        for (const auto& category : this->m_categories) {  
+
+        for (const auto& category : this->m_categories) {
             m_candidates[category].clear();
         }
         
@@ -83,6 +84,9 @@ namespace AnalysisTools {
         for (unsigned i = 0; i < this->m_input->size(); i++) {
             for (const auto& category : this->m_categories) {
                 PhysicsObject p ((T) this->m_input->at(i));
+                for (const auto& name_val : this->m_infoDouble) {
+                    p.addInfo(name_val.first, (double) name_val.second->at(i));
+                }
                 for (const auto& name_val : this->m_infoFloat) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
@@ -92,7 +96,6 @@ namespace AnalysisTools {
                 for (const auto& name_val : this->m_infoBool) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-
                 m_candidates[category].push_back(p);
             }
         }
@@ -132,6 +135,11 @@ namespace AnalysisTools {
   
     template <class T>
     PhysicsObjects* ObjectDefinition<T>::result () {
+        /* Make more general. */
+        if (this->nCategories() == 0) {
+            this->addCategory("Nominal");
+        }
+        this->lockCategories();
         assert( this->nCategories() == 1);
         return &this->m_candidates[this->m_categories.front()];
     }

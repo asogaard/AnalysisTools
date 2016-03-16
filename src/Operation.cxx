@@ -16,8 +16,8 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Operation<T>::addPlot (const CutPosition& pos, IPlotMacro* plot) {
-        m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
+    void Operation<T>::addPlot (const CutPosition& pos, IPlotMacro plot) {
+        m_plots.at(pos).push_back(&plot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
   

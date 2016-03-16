@@ -62,12 +62,6 @@ namespace AnalysisTools {
             Localised(name)
         {};
         
-        Operation (const Operation<T>& other) :
-            Localised(other.m_name, other.m_dir),
-            m_function(other.m_function),
-            m_ranges(other.m_ranges)
-        {};
-
         
         // Destructor(s).
         ~Operation () {};
@@ -79,7 +73,7 @@ namespace AnalysisTools {
         void setFunction (const function< double(T&) >& f);
         
         void clearPlots ();
-        void addPlot    (const CutPosition& pos, IPlotMacro* plot);
+        void addPlot    (const CutPosition& pos, IPlotMacro plot);
         
         // Get method(s).
         vector< IPlotMacro* > plots (const CutPosition& pos) const;

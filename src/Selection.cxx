@@ -136,7 +136,7 @@ namespace AnalysisTools {
         /* Will only add this plot to the existing cuts. */
         for (IOperation* iop : allOperations()) {
             if (Cut<U>* cut = dynamic_cast< Cut<U>* > (iop)) {
-                cut->addPlot(pos, new PlotMacro1D<U>(plot));
+                cut->addPlot(pos, PlotMacro1D<U>(plot));
             }
         }
         

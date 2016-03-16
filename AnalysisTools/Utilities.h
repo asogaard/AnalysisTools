@@ -37,6 +37,14 @@ namespace AnalysisTools {
         if (idx == vec->size()) { idx = -1; }
         return idx;
     }
+    
+    // Check whether a string ends with another string.
+    bool endsWith (string const &full, string const &ending) {
+        if (full.length() >= ending.length()) {
+            return (0 == full.compare (full.length() - ending.length(), ending.length(), ending));
+        }
+        return false;
+    }
 }
 
 #endif

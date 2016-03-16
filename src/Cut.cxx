@@ -100,8 +100,11 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::addPlot (const CutPosition& pos, IPlotMacro* plot) {
-        this->m_plots.at(pos).push_back(plot); // @asogaard: Remove, and switch to 'm_children instead?
+    void Cut<T>::addPlot (const CutPosition& pos, const IPlotMacro& plot) {
+        /* Is it safe/smart to type cast to PlotMacro1D<T>? */
+        /* Let IPlotMacro + PlotMacro1D<T> -> PlotMacro<T>? */
+        PlotMacro1D<T>* storePlot = new PlotMacro1D<T>( dynamic_cast< const PlotMacro1D<T>& >(plot) );
+        this->m_plots.at(pos).push_back(storePlot); // @asogaard: Remove, and switch to 'm_children instead?
         return;
     }
   
@@ -173,11 +176,11 @@ namespace AnalysisTools {
             m_variable = "CutVariable";
         }
         
-        PlotMacro1D<T>* precut  = new PlotMacro1D<T>(m_variable);
-        PlotMacro1D<T>* postcut = new PlotMacro1D<T>(m_variable);
+        PlotMacro1D<T> precut (m_variable);
+        PlotMacro1D<T> postcut(m_variable);
         
-        precut ->setFunction(m_function);
-        postcut->setFunction(m_function);
+        precut .setFunction(m_function);
+        postcut.setFunction(m_function);
         
         addPlot(CutPosition::Pre,  precut);
         addPlot(CutPosition::Post, postcut);

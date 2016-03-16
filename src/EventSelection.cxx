@@ -56,7 +56,7 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool EventSelection::run () {
-        
+      
         unsigned int iCat = 0;
         for (const auto& category : this->m_categories) {
             
@@ -67,6 +67,9 @@ namespace AnalysisTools {
             m_passes[category] = true;
             
             for (const auto& name_val : this->m_infoDouble) {
+                m_events[category].addInfo(name_val.first, (double) name_val.second);
+            }
+            for (const auto& name_val : this->m_infoFloat) {
                 m_events[category].addInfo(name_val.first, (double) name_val.second);
             }
             for (const auto& name_val : this->m_infoInt) {
