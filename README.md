@@ -105,3 +105,11 @@ analysis.save();
 ```
 
 Here we select a subset of leptons, from an input collection, and require that the event has exactly two leptons. The `AnalysisTools::Analysis` object then writes the approriate distribution and cutflow to the `ROOT` file specificied at the top. Optionally, one can use the `void AnalysisTools::Analysis::addTree(const string&)`, `TTree* AnalysisTools::Analysis::tree()`, and `void AnalysisTools::Analysis::writeTree()` to write e.g. the selected leptons to the output file as well.
+
+## Comments
+
+For running, remember to the the `LD_LIBRARY_PATH` to include the package library directory, i.e.:
+
+```
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/path/AnalysisTools/lib
+```
