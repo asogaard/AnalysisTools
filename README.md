@@ -17,7 +17,7 @@ vector<bool>* el_id_medium = ...;
 vector<bool>* mu_id_medium = ...;
 
 
- // Setting up AnalysisTools.
+ // Main analysis.
 // -------------------------------------------------------------------
 
 Analysis analysis ("MyAnalysis");
@@ -92,7 +92,7 @@ analysis.addSelection(&eventSelection);
 
 for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
 
-    /* Fill input collections, eg. with TTree::GetEvent(int). */
+    /* Fill input collections, e.g. with TTree::GetEvent(int). */
 
     analysis.run();
 
@@ -102,4 +102,4 @@ analysis.save();
 
 ```
 
-Here we select a subset of leptons, from an input collection, and require that the event has exactly two leptons. The AnalysisTools::Analysis object then writes the approriate distribution and cutflow to the `ROOT` file specificied at the top.
+Here we select a subset of leptons, from an input collection, and require that the event has exactly two leptons. The `AnalysisTools::Analysis` object then writes the approriate distribution and cutflow to the `ROOT` file specificied at the top. Optionally, one can use the `void AnalysisTools::Analysis::addTree(const string&)`, `TTree* AnalysisTools::Analysis::tree()`, and `void AnalysisTools::Analysis::writeTree()` to write e.g. the selected leptons to the output file as well.
