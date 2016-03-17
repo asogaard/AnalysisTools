@@ -23,5 +23,3 @@ which are used in AnalysisTools.\\033[0m"
 fi
 
 # Perform check for clang?
-
-make clean
