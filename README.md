@@ -4,6 +4,20 @@ A small package, providing various classes for easily implementing a modular ana
 
 Provides classes for selectable entities (`PhysicsObject`, `Event`), selection operations (`Operation`, `Cut`), types of selection (`Selection`, `EventSelection`, `ObjectDefinition`), analyses (`Analysis`), and various other helper classes (`Range`, `PlotMacro`). The only external dependency is [ROOT](https://root.cern.ch/).
 
+## Usage
+
+In order to use the AnalysisTools package, do as follows.
+
+```
+$ cd /my/path/
+$ git clone https://github.com/asogaard/AnalysisTools.git
+$ cd AnalysisTools
+$ source setup.sh
+$ make
+```
+
+The package comes bundled with a few use examples, located in the `Root` directory.
+
 ## Example
 
 A very simple analysis can be implemented as follows:
