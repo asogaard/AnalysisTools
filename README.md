@@ -127,3 +127,5 @@ For running, remember to the the `LD_LIBRARY_PATH` to include the package librar
 ```
 $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/path/AnalysisTools/lib
 ```
+
+Similarly, you should make sure that you compiler supports C++11 (GCC version >= 4.7.0). However, both of these things should be checked/taken care of by the `setup.sh` script.
