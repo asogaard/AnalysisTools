@@ -177,8 +177,8 @@ int main (int argc, char* argv[]) {
         
         bool     isMC = (mcChannelNumber > 0);
         unsigned DSID = (isMC ? mcChannelNumber : runNumber);
-        
-        string filedir  = "objdef_output/";
+
+        string filedir  = "objdefOutput";
         string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
         
         
@@ -188,7 +188,7 @@ int main (int argc, char* argv[]) {
         
         Analysis analysis ("ResolvedWR");
         
-        analysis.openOutput(filedir + filename);
+        analysis.openOutput(filedir + "/" + filename);
         analysis.addTree();
         
         

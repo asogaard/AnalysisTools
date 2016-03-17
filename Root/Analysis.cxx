@@ -138,7 +138,7 @@ int main (int argc, char* argv[]) {
         // -------------------------------------------------------------------
         inputTree->GetEvent(0);
         
-        string filedir  = "analysis_output/";
+        string filedir  = "analysisOutput";
         string filename = (string) "analysis_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
         
         
@@ -148,7 +148,7 @@ int main (int argc, char* argv[]) {
         
         Analysis analysis ("ResolvedWR");
         
-        analysis.openOutput(filedir + filename);
+        analysis.openOutput(filedir + "/" + filename);
         
         
         

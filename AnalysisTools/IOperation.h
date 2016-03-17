@@ -49,6 +49,7 @@ namespace AnalysisTools {
                     tree = nullptr;
                 }
             }
+            /*
             for (auto p : m_plots) {
                 for (IPlotMacro* plot : p.second) {
                     if (plot) {
@@ -58,6 +59,7 @@ namespace AnalysisTools {
                 }
                 p.second.clear();
             }
+             */
         };
         
         
