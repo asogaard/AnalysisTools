@@ -40,44 +40,49 @@ namespace AnalysisTools {
         // * Progress bar.
 
         int barWidth = 68;
-        float progress = ((float) current / (float) (maximum - 1));
+        float prevProgress = ((float) (current - 1) / (float) (maximum - 1));
+        float progress     = ((float) current / (float) (maximum - 1));
+        
+        bool update = (progress == 1) || (progress == 0) || (int(progress*100.) != int(prevProgress*100.)) || (int(barWidth*progress) != int(barWidth*prevProgress));
         
         if (progress == 0) {
             m_start = std::clock();
         }
         
-        if (DSID > 0) {
-            cout << DSID << " | ";
-            barWidth -= 9;
-        }
-        if (progress < 1) {
-            std::cout << "[";
-            if (progress < 0.33) {
-                cout << "\033[0;31m";
-            } else if (progress < 0.66) {
-                cout << "\033[0;33m";
-            } else  {
-                cout << "\033[0;32m";
+        if (update) {
+            if (DSID > 0) {
+                cout << DSID << " | ";
+                barWidth -= 9;
             }
-            int pos = barWidth * progress;
-            for (int i = 0; i < barWidth; ++i) {
-                if (i < pos) std::cout << "=";
-                else if (i == pos) std::cout << ">";
-                else std::cout << " ";
-            }
+            if (progress < 1) {
+                std::cout << "[";
+                if (progress < 0.33) {
+                    cout << "\033[0;31m";
+                } else if (progress < 0.66) {
+                    cout << "\033[0;33m";
+                } else  {
+                    cout << "\033[0;32m";
+                }
+                int pos = barWidth * progress;
+                for (int i = 0; i < barWidth; ++i) {
+                    if (i < pos) std::cout << "=";
+                    else if (i == pos) std::cout << ">";
+                    else std::cout << " ";
+                }
                 std::cout << "\033[0m";
-            std::cout << "] " << int(progress * 100.0) << " %\r";
-            std::cout.flush();
-        } else {
-            std::cout << "[";
-            int pos = barWidth * progress;
-            for (int i = 0; i < barWidth; ++i) {
-                if (i < pos) std::cout << "=";
-                else if (i == pos) std::cout << ">";
-                else std::cout << " ";
+                std::cout << "] " << int(progress * 100.0) << " %\r";
+                std::cout.flush();
+            } else {
+                std::cout << "[";
+                int pos = barWidth * progress;
+                for (int i = 0; i < barWidth; ++i) {
+                    if (i < pos) std::cout << "=";
+                    else if (i == pos) std::cout << ">";
+                    else std::cout << " ";
+                }
+                std::clock_t stop = std::clock();
+                printf("] %7d | %6.1f s | %5.3f ms/evt\n", maximum, (stop - m_start) / (double)(CLOCKS_PER_SEC), (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum));
             }
-            std::clock_t stop = std::clock();
-            printf("] %7d | %5.1f s | %5.3f ms/evt\n", maximum, (stop - m_start) / (double)(CLOCKS_PER_SEC), (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum));
         }
         
         // * Running.
