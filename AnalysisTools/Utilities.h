@@ -13,6 +13,7 @@
 #include <limits> /* std::numeric_limits<double>::infinity */
 #include <algorithm> /* std::find */
 #include <iterator> /* std::distance */
+#include <sys/stat.h> /* struct stat */
 
 using namespace std;
 
@@ -26,6 +27,16 @@ namespace AnalysisTools {
         ifstream f(filename.c_str());
         bool exists = f.good();
         f.close();
+        return exists;
+    }
+    
+    // Check whether directory exists.
+    inline bool dirExists (const string& dir) {
+        struct stat statbuf;
+        bool exists = false;
+        if (stat(dir.c_str(), &statbuf) != -1) {
+            if (S_ISDIR(statbuf.st_mode)) { exists = true; }
+        }
         return exists;
     }
     

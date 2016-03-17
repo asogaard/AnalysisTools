@@ -40,8 +40,14 @@ namespace AnalysisTools {
         // * Progress bar.
 
         int barWidth = 68;
-        float prevProgress = ((float) (current - 1) / (float) (maximum - 1));
-        float progress     = ((float) current / (float) (maximum - 1));
+        
+        float progress = 0., prevProgress = 0.;
+        if (maximum == 1) {
+            progress = 1;
+        } else {
+            prevProgress = ((float) (current - 1) / (float) (maximum - 1));
+            progress     = ((float) current / (float) (maximum - 1));
+        }
         
         bool update = (progress == 1) || (progress == 0) || (int(progress*100.) != int(prevProgress*100.)) || (int(barWidth*progress) != int(barWidth*prevProgress));
         
@@ -106,6 +112,21 @@ namespace AnalysisTools {
         /* Perform checks. */
         /* Allow for adding to another file? */
         /* Separate histogram and physics output? */
+        
+        if (strcmp(filename.substr(0,1).c_str(), "/") == 0) {
+            cout << "WARNING: File '" << filename << "' not accepted. Only accepting realtive paths." << endl;
+            return;
+        }
+        
+        if (filename.find("/") != string::npos) {
+            string dir = filename.substr(0,filename.find_last_of("/")); // ...
+            if (!dirExists(dir)) {
+                cout << "WARNING: Directory '" << dir << "' does not exist. Creating it." << endl;
+                system(("mkdir -p " + dir).c_str());
+            }
+        }
+        
+        
         m_outfile = new TFile(filename.c_str(), "RECREATE");
         
         this->m_dir = m_outfile->mkdir(this->m_name.c_str());

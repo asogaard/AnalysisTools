@@ -92,6 +92,10 @@ int main (int argc, char* argv[]) {
         
         // Get number of events.
         const unsigned int nEvents = inputTree->GetEntries();
+        if (nEvents == 0) {
+            cout << " -- " << endl;
+            continue;
+        }
         
         
         // Set up addresses for reading.

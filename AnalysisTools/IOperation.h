@@ -56,6 +56,7 @@ namespace AnalysisTools {
                         plot = nullptr;
                     }
                 }
+                p.second.clear();
             }
         };
         
