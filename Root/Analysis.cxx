@@ -29,9 +29,9 @@ using namespace AnalysisTools;
 
 int main (int argc, char* argv[]) {
     
-    cout << "======================================================================" << endl;
+    cout << "=====================================================================" << endl;
     cout << " Running analysis." << endl;
-    cout << "----------------------------------------------------------------------" << endl;
+    cout << "---------------------------------------------------------------------" << endl;
     
     if (argc < 2) {
         cout << "Please provide at least one input file." << endl;
@@ -94,7 +94,7 @@ int main (int argc, char* argv[]) {
         // Get number of events.
         const unsigned int nEvents = inputTree->GetEntries();
         if (nEvents == 0) {
-            cout << " -- " << endl;
+            cout << " -- (File '" << input << "' is empty.)" << endl;
             continue;
         }
         
@@ -342,9 +342,9 @@ int main (int argc, char* argv[]) {
         
     }
     
-    cout << "----------------------------------------------------------------------" << endl;
+    cout << "---------------------------------------------------------------------" << endl;
     cout << " Done." << endl;
-    cout << "======================================================================" << endl;
+    cout << "=====================================================================" << endl;
     
     return 1;
 }

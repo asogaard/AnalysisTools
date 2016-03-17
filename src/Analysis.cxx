@@ -39,7 +39,7 @@ namespace AnalysisTools {
     bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
         // * Progress bar.
 
-        int barWidth = 68;
+        int barWidth = 67;
         
         float progress = 0., prevProgress = 0.;
         if (maximum == 1) {
