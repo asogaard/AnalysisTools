@@ -13,6 +13,7 @@
 #include <map>
 #include <assert.h>
 #include <memory> /* std::unique_ptr */
+#include <regex>
 
 // ROOT include(s).
 #include "TDirectory.h"
@@ -77,7 +78,7 @@ namespace AnalysisTools {
         void clearCategories ();
         
         void addCut (const Cut<U>& cut);
-        void addCut (const Cut<U>& cut, const string& category, const bool& common = false);
+        void addCut (const Cut<U>& cut,  const string& pattern, const bool& common = false);
         void addCut (const string& name, const function< double(const U&) >& f);
         void addCut (const string& name, const function< double(const U&) >& f, const string& category);
         void addCut (const string& name, const function< double(const U&) >& f, const double& min, const double& max);
