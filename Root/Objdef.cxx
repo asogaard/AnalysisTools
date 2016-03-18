@@ -221,7 +221,7 @@ int main (int argc, char* argv[]) {
         
         // * GRL
         Cut<Event> event_grl ("GRL");
-        event_grl.setFunction( [&grl, &mcChannelNumber, &lumiBlock, &runNumber](const Event& e) { return mcChannelNumber > 0 || grl.contains(lumiBlock, runNumber); } );
+        event_grl.setFunction( [&grl, &mcChannelNumber, &lumiBlock, &runNumber](const Event& e) { return mcChannelNumber > 0 || grl.contains(runNumber, lumiBlock); } );
         preSelection.addCut(event_grl);
         
         // * Event cleaning

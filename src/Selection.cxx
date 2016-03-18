@@ -48,21 +48,27 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
-    void Selection<T,U>::addCut (const Cut<U>& cut, const string& patterns, const bool& common) {
+    void Selection<T,U>::addCut (const Cut<U>& cut, const string& pattern, const bool& common) {
         assert( !locked() );
         
         std::regex pieces_regex(pattern);
         std::smatch pieces_match;
+        bool hasMatch = false;
         for (const auto& category : this->m_categories) {
             if (std::regex_match(category, pieces_match, pieces_regex)) {
-        
+                
                 assert( hasCategory(category) );
                 if (!common && m_branch < 0) { m_branch = (int) m_operations[category].size(); }
                 this->m_operations[category].push_back( new Cut<U>(cut) );
                 this->grab( this->m_operations[category].back(), category );
-                
+                hasMatch = true;
             }
         }
+        
+        if (!hasMatch) {
+            cout << "<Selection<T,U>::addCut> Warning: No category was found to match pattern '" << pattern << "'.";
+        }
+        
         return;
     }
     
