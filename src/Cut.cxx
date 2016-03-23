@@ -103,8 +103,20 @@ namespace AnalysisTools {
     void Cut<T>::addPlot (const CutPosition& pos, const IPlotMacro& plot) {
         /* Is it safe/smart to type cast to PlotMacro1D<T>? */
         /* Let IPlotMacro + PlotMacro1D<T> -> PlotMacro<T>? */
-        PlotMacro1D<T>* storePlot = new PlotMacro1D<T>( dynamic_cast< const PlotMacro1D<T>& >(plot) );
-        this->m_plots.at(pos).push_back(storePlot); // @asogaard: Remove, and switch to 'm_children instead?
+        try {
+            const PlotMacro1D<T>& p  = dynamic_cast< const PlotMacro1D<T>& > (plot);
+            PlotMacro1D<T>* storePlot = new PlotMacro1D<T>( p );
+            this->m_plots.at(pos).push_back(storePlot);
+        }
+        catch (const std::bad_cast& e) {
+            try {
+                const PlotMacro1D<float>& p  = dynamic_cast< const PlotMacro1D<float>& >(plot);
+                PlotMacro1D<float>* storePlot = new PlotMacro1D<float>( p );
+                this->m_plots.at(pos).push_back(storePlot);
+            } catch (const std::bad_cast& ee) {
+                cout << "<Cut<T>::addPlot> Doesn't recognise template argument of plot '" << plot.name() << "'." << endl;
+            }
+        }
         return;
     }
   
@@ -124,14 +136,18 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     template <class T>
-    bool Cut<T>::apply (const T& obj) {
-
+    bool Cut<T>::apply (const T& obj, const float& w) {
+        
         assert(m_function);
         if (!this->m_initialised) { init(); }
         
         // * Pre-cut distributions.
-        for (auto& plot : plots(CutPosition::Pre)) {
-            ((PlotMacro1D<T>*) plot)->fill(obj);
+        for (IPlotMacro* plot : plots(CutPosition::Pre)) {
+            if (plot->name() == "weight") {
+                ((PlotMacro1D<float>*) plot)->fill(w);
+            } else {
+                ((PlotMacro1D<T>*) plot)->fill(obj);
+            }
         }
         
         // * Selection.
@@ -148,8 +164,12 @@ namespace AnalysisTools {
         
         // * Post-cut distributions.
         if (passes) {
-            for (auto& plot : plots(CutPosition::Post)) {
-                ((PlotMacro1D<T>*) plot)->fill(obj);
+            for (IPlotMacro* plot : plots(CutPosition::Post)) {
+                if (plot->name() == "weight") {
+                    ((PlotMacro1D<float>*) plot)->fill(w);
+                } else {
+                    ((PlotMacro1D<T>*) plot)->fill(obj);
+                }
             }
         }
         
@@ -164,7 +184,6 @@ namespace AnalysisTools {
     // Low-level management method(s).
     template <class T>
     void Cut<T>::init () {
-        
         assert ( this->dir() );
         
         this->dir()->cd();
@@ -176,20 +195,25 @@ namespace AnalysisTools {
             m_variable = "CutVariable";
         }
         
-        PlotMacro1D<T> precut (m_variable);
-        PlotMacro1D<T> postcut(m_variable);
+        PlotMacro1D<T>     precut (m_variable);
+        PlotMacro1D<T>     postcut(m_variable);
+        PlotMacro1D<float> weight ("weight");
         
         precut .setFunction(m_function);
         postcut.setFunction(m_function);
+        weight .setFunction([](const float& w) { return w; });
         
+        addPlot(CutPosition::Pre,  weight);
         addPlot(CutPosition::Pre,  precut);
+        addPlot(CutPosition::Post, weight);
         addPlot(CutPosition::Post, postcut);
         
-        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(this->m_trees[CutPosition::Pre]);  }
-        for (auto plot : plots(CutPosition::Post)) { plot->setTree(this->m_trees[CutPosition::Post]); }
+        
+        for (IPlotMacro* plot : plots(CutPosition::Pre))  { plot->setTree(this->m_trees[CutPosition::Pre]);  }
+        for (IPlotMacro* plot : plots(CutPosition::Post)) { plot->setTree(this->m_trees[CutPosition::Post]); }
         
         this->m_initialised = true;
-        
+
         return;
     }
     

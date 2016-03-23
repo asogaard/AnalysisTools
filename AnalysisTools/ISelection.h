@@ -44,7 +44,7 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        // ...
+        virtual void setWeight (const float* weight) = 0;
         
         
         // Get method(s).

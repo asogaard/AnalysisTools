@@ -81,7 +81,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        bool apply (T& obj);
+        bool apply (T& obj, const float& w = 1.);
 
         
     protected:

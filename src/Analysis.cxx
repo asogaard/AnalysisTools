@@ -15,6 +15,11 @@ namespace AnalysisTools {
         m_outtree = new TTree(name.c_str(), "Physics output tree");
         return;
     }
+    
+    void Analysis::setWeight (const float* weight) {
+        m_weight = weight;
+        return;
+    }
 
     
     // Get method(s).
@@ -27,6 +32,12 @@ namespace AnalysisTools {
         assert( m_outtree );
         return m_outtree;
     }
+    
+    TFile* Analysis::file () {
+        assert( m_outfile );
+        return m_outfile;
+    }
+
 
     void Analysis::writeTree () {
         assert( m_outtree );
@@ -102,6 +113,7 @@ namespace AnalysisTools {
     bool Analysis::run () {
         bool status = true;
         for (ISelection* selection : m_selections) {
+            selection->setWeight(m_weight);
             status &= selection->run();
             if (!status) { break; }
         }

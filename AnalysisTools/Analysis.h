@@ -64,11 +64,13 @@ namespace AnalysisTools {
         // Set method(s).
         void addSelection    (ISelection* selection);
         void addTree         (const string& name = "outputTree");
+        void setWeight       (const float* w);
         
         
         // Get method(s).
         void   clearSelections ();
         TTree* tree ();
+        TFile* file ();
         void   writeTree ();
         
         // High-level management method(s).
@@ -88,6 +90,8 @@ namespace AnalysisTools {
         TFile* m_outfile = nullptr;
         TTree* m_outtree = nullptr;
 
+        const float* m_weight = nullptr;
+        
         SelectionsPtr m_selections;
         
         std::clock_t m_start;

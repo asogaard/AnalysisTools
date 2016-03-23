@@ -72,6 +72,8 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
+        void setWeight (const float* weight);
+        
         void addCategory     (const string& category);
         void addCategories   (const vector<string>& categories);
         void setCategories   (const vector<string>& categories);
@@ -122,6 +124,8 @@ namespace AnalysisTools {
 
         int  m_branch = -1;
         bool m_hasRun = false;
+
+        const float* m_weight = nullptr;
         
     };
     

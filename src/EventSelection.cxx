@@ -83,6 +83,11 @@ namespace AnalysisTools {
                 m_events[category].addCollection(name_val.first, name_val.second);
             }
             
+            float weight = 1.;
+            if (this->m_weight) {
+                weight = *this->m_weight;
+            }
+            
             // * Run selection.
             unsigned int iCut = 0;
             this->m_cutflow[category]->Fill(iCut++);
@@ -93,9 +98,9 @@ namespace AnalysisTools {
                 // [Make use of branching?]
                 bool passes = false;
                 if        (Operation<Event>* op  = dynamic_cast< Operation<Event>* >(iop)) {
-                    passes = op->apply(this->m_events[category]);
+                    passes = op ->apply(this->m_events[category], weight);
                 } else if (Cut<Event>*       cut = dynamic_cast< Cut<Event>* >(iop)) {
-                    passes = cut->apply(this->m_events[category]);
+                    passes = cut->apply(this->m_events[category], weight);
                 } else {
                     cout << "<EventSelection::run> Operation could not be cast to any known type." << endl;
                 }

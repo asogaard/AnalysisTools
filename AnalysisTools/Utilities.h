@@ -13,6 +13,7 @@
 #include <limits> /* std::numeric_limits<double>::infinity */
 #include <algorithm> /* std::find */
 #include <iterator> /* std::distance */
+#include <sstream> /* std::sstream */
 #include <sys/stat.h> /* struct stat */
 
 using namespace std;
@@ -56,6 +57,24 @@ namespace AnalysisTools {
         }
         return false;
     }
+    
+    // Split a string by delimeter.
+    inline vector<string>& split (const string& s, char delim, vector<string>& elems) {
+        stringstream ss(s);
+        string item;
+        while (getline(ss, item, delim)) {
+            if (item == "") { continue; }
+            elems.push_back(item);
+        }
+        return elems;
+    }
+    
+    inline vector<string> split (const string& s, char delim) {
+        vector<string> elems;
+        split(s, delim, elems);
+        return elems;
+    }
+    
 }
 
 #endif

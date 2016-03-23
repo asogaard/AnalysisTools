@@ -30,9 +30,11 @@ namespace AnalysisTools {
         Range () {};
         Range (const pair<double, double>& limits);
         Range (const double& down, const double& up);
+        /*
         Range (const AnalysisTools::Range& other) :
             m_limits(other.m_limits)
         {};
+         */
         
         // Destructor(s).
         ~Range () {};

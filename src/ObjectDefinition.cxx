@@ -100,6 +100,11 @@ namespace AnalysisTools {
             }
         }
         
+        float weight = 1.;
+        if (this->m_weight) {
+            weight = *this->m_weight;
+        }
+        
         // * Run selection.
         for (const auto& category : this->m_categories) {
             if (!m_candidates[category].size()) { continue; }
@@ -113,9 +118,9 @@ namespace AnalysisTools {
                 for (unsigned i = this->m_candidates[category].size(); i --> 0; ) {
                     bool passes = false;
                     if        (Operation<PhysicsObject>* op  = dynamic_cast< Operation<PhysicsObject>* >(iop)) {
-                        passes = op->apply(this->m_candidates[category].at(i));
+                        passes = op->apply(this->m_candidates[category].at(i), weight);
                     } else if (Cut<PhysicsObject>*       cut = dynamic_cast< Cut<PhysicsObject>* >(iop)) {
-                        passes = cut->apply(this->m_candidates[category].at(i));
+                        passes = cut->apply(this->m_candidates[category].at(i), weight);
                     } else {
                         cout << "<ObjectDefinition::run> Operation could not be cast to any known type." << endl;
                     }

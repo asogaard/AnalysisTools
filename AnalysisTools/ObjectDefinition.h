@@ -43,7 +43,7 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setInput (const vector<T>* candidates);
+        void setInput  (const vector<T>* candidates);
         
         //template<class W>
         void addInfo (const string& name, const vector<double> * info);
