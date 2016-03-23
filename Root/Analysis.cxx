@@ -306,7 +306,6 @@ int main (int argc, char* argv[]) {
         Cut<Event> event_Zlep_veto ("Zlep_veto");
         event_Zlep_veto.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_veto.addRange(110., inf);
-        event_Zlep_veto.addPlot(CutPosition::Pre,  event_Mlljj);
         event_Zlep_veto.addPlot(CutPosition::Post, event_Mlljj);
         eventSelection.addCut(event_Zlep_veto, "SR_.*");
         eventSelection.addCut(event_Zlep_veto, "CRH_.*");
@@ -314,6 +313,7 @@ int main (int argc, char* argv[]) {
         Cut<Event> event_Zlep_sel ("Zlep_selection");
         event_Zlep_sel.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_sel.addRange(0, 110.);
+        event_Zlep_sel.addPlot(CutPosition::Post, event_Mlljj);
         eventSelection.addCut(event_Zlep_sel, "CRL_.*");
         
         // * SumET
