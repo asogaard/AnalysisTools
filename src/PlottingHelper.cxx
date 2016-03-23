@@ -195,10 +195,6 @@ namespace AnalysisTools {
         cout << "<PlottingHelper::draw> Drawing background." << endl;
         m_sum->DrawCopy("AXIS");
         background->Draw("HIST same");
-        if (m_ratio) {
-            //background->GetXaxis()->SetLabelOffset(99999.9);
-        }
-        
         m_sum->DrawCopy("E2 same");
         
         // -- Signal
@@ -213,9 +209,7 @@ namespace AnalysisTools {
         if (m_data) {
             m_data->DrawCopy("PE same");
         }
-        
-        
-        // Drawing (ratio pad).
+        m_sum->DrawCopy("AXIS same");
 
         
         // Ratio distributions.
