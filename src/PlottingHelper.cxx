@@ -183,10 +183,10 @@ namespace AnalysisTools {
         
         if (m_log) {
             /* ... */
-            m_sum->SetMaximum(exp(1.5 * log(plotmax)));
+            m_sum->SetMaximum(exp(1.7 * log(plotmax)));
             m_sum->SetMinimum(0.5);
         } else {
-            m_sum->SetMaximum(1.5 * plotmax);
+            m_sum->SetMaximum(1.7 * plotmax);
 
         }
 
@@ -314,7 +314,7 @@ namespace AnalysisTools {
         
         std::stringstream lumi_stream;
         lumi_stream << std::setprecision(2) << m_lumi;
-        text = "#lower[-0.25]{#scale[0.5]{#int}} L = " + lumi_stream.str() + " fb^{-1}";
+        text = "#lower[-0.2]{#scale[0.5]{#int}}L dt = " + lumi_stream.str() + " fb^{-1}";
         latex.DrawLatexNDC(xDraw, yDraw, text.c_str());
         yDraw -= yStep;
         
