@@ -165,11 +165,23 @@ namespace AnalysisTools {
 
         // Adding background distributions.
         cout << "<PlottingHelper::draw> Adding background distributions." << endl;
-        THStack* background = new THStack("StackedBackgrounds", "");
+        
+        // -- Sorting by integral.
+        m_backgroundsSorted.clear();
         for (const auto& p : m_backgrounds) {
+            m_backgroundsSorted.push_back( pair<string, TH1F*>(p.first, p.second) );
+        }
+        std::sort(m_backgroundsSorted.begin(), m_backgroundsSorted.end(),
+                  [](const pair<string, TH1F*> & p1, const pair<string, TH1F*> & p2) -> bool
+                  {
+                      return p1.second->Integral() < p2.second->Integral();
+                  });
+        
+        THStack* background = new THStack("StackedBackgrounds", "");
+        for (const auto& p : m_backgroundsSorted) {
             background->Add(p.second);
         }
-
+        
         
         // Drawing (main pad).
         cout << "<PlottingHelper::draw> Going to first pad." << endl;
@@ -342,8 +354,8 @@ namespace AnalysisTools {
         }
 
         // -- Background(s).
-        map<string, TH1F*>::iterator it = m_backgrounds.end();
-        for (; it-- != m_backgrounds.begin();) {
+        vector< pair<string, TH1F*> >::iterator it = m_backgroundsSorted.end();
+        for (; it-- != m_backgroundsSorted.begin();) {
             legend->AddEntry(it->second, it->first.c_str(), "F");
         }
 

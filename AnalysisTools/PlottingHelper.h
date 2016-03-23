@@ -169,6 +169,7 @@ namespace AnalysisTools {
         TH1F* m_data = nullptr;
         map<string, TH1F*> m_backgrounds;
         map<string, TH1F*> m_signals;
+        vector< pair<string, TH1F*> > m_backgroundsSorted;
         
         map< PlotType, map<string, vector<TH1F*> > > m_hists = {
             { PlotType::Background, map<string, vector<TH1F*> >() },
