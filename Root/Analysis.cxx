@@ -110,6 +110,7 @@ int main (int argc, char* argv[]) {
         float    MET  = 0;
         bool     isMC = 0;
         unsigned DSID = 0;
+        float    weight = 0;
         
         
         // Set up branches for reading.
@@ -117,7 +118,7 @@ int main (int argc, char* argv[]) {
         TBranch *el_chargeBranch, *mu_chargeBranch;
         
         TBranch *METBranch;
-        TBranch *isMCBranch, *DSIDBranch;
+        TBranch *isMCBranch, *DSIDBranch, *weightBranch;
         
         
         // Connect branches to addresses.
@@ -128,10 +129,10 @@ int main (int argc, char* argv[]) {
         inputTree->SetBranchAddress( "signalElectrons_charge", &el_charge, &el_chargeBranch );
         inputTree->SetBranchAddress( "signalMuons_charge",     &mu_charge, &mu_chargeBranch );
         
-        inputTree->SetBranchAddress( "MET",  &MET,  &METBranch );
-        inputTree->SetBranchAddress( "isMC", &isMC, &isMCBranch );
-        inputTree->SetBranchAddress( "DSID", &DSID, &DSIDBranch );
-        
+        inputTree->SetBranchAddress( "MET",    &MET,    &METBranch );
+        inputTree->SetBranchAddress( "isMC",   &isMC,   &isMCBranch );
+        inputTree->SetBranchAddress( "DSID",   &DSID,   &DSIDBranch );
+        inputTree->SetBranchAddress( "weight", &weight, &weightBranch );
         
         
         // Get file name.
@@ -142,13 +143,29 @@ int main (int argc, char* argv[]) {
         string filename = (string) "analysis_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
         
         
-        
         // Set up AnalysisTools
         // -------------------------------------------------------------------
         
         Analysis analysis ("ResolvedWR");
         
         analysis.openOutput(filedir + "/" + filename);
+        analysis.addTree();
+        analysis.setWeight(&weight);
+        
+        
+        // Set up output branches.
+        // -------------------------------------------------------------------
+        analysis.tree()->Branch("isMC",   &isMC);
+        analysis.tree()->Branch("DSID",   &DSID);
+        analysis.tree()->Branch("weight", &weight);
+        
+        
+        // Copy histograms.
+        // -------------------------------------------------------------------
+        
+        TH1F* h_rawWeight = (TH1F*) inputFile.Get("h_rawWeight");
+        analysis.file()->cd();
+        h_rawWeight->Write();
         
         
         
@@ -335,6 +352,7 @@ int main (int argc, char* argv[]) {
             // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
             if (!status) { continue; }
             
+            analysis.writeTree();
             
         }
         

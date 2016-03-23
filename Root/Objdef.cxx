@@ -120,6 +120,7 @@ int main (int argc, char* argv[]) {
         unsigned int lumiBlock = 0;
         unsigned int runNumber = 0;
         unsigned int mcChannelNumber = 0;
+        vector< float >* mcEventWeight = nullptr;
         bool passedEventCleaning = 0;
         bool passedJetCleaning   = 0;
         
@@ -133,7 +134,7 @@ int main (int argc, char* argv[]) {
         TBranch *mu_z0sinthetaBranch, *mu_d0BLsignificanceBranch;
         
         TBranch *METBranch, *lumiBlockBranch;
-        TBranch *runNumberBranch, *mcChannelNumberBranch;
+        TBranch *runNumberBranch, *mcChannelNumberBranch, *mcEventWeightBranch;
         TBranch *passedEventCleaningBranch, *passedJetCleaningBranch;
         
         
@@ -159,9 +160,9 @@ int main (int argc, char* argv[]) {
         inputTree->SetBranchAddress( "lumiBlock",           &lumiBlock,           &lumiBlockBranch );
         inputTree->SetBranchAddress( "RunNumber",           &runNumber,           &runNumberBranch );
         inputTree->SetBranchAddress( "mc_channel_number",   &mcChannelNumber,     &mcChannelNumberBranch );
+        inputTree->SetBranchAddress( "mc_event_weight",     &mcEventWeight,       &mcEventWeightBranch );
         inputTree->SetBranchAddress( "passedEventCleaning", &passedEventCleaning, &passedEventCleaningBranch );
         inputTree->SetBranchAddress( "passedJetCleaning",   &passedJetCleaning,   &passedJetCleaningBranch );
-        
         
         
         // Get GRL.
@@ -183,6 +184,17 @@ int main (int argc, char* argv[]) {
         
         
         
+         // Get MC event weight.
+        // -------------------------------------------------------------------
+        float weightDefault = 1.;
+        float* weight = nullptr;
+        if (isMC) {
+            weight = &mcEventWeight->front();
+        } else {
+            weight = &weightDefault;
+        }
+
+        
         // Set up AnalysisTools
         // -------------------------------------------------------------------
         
@@ -190,6 +202,7 @@ int main (int argc, char* argv[]) {
         
         analysis.openOutput(filedir + "/" + filename);
         analysis.addTree();
+        analysis.setWeight(weight);
         
         
         
@@ -207,11 +220,20 @@ int main (int argc, char* argv[]) {
         analysis.tree()->Branch("signalElectrons_charge", &signalElectrons_charge);
         analysis.tree()->Branch("signalMuons_charge",     &signalMuons_charge);
         
-        analysis.tree()->Branch("MET",   &MET);
-        analysis.tree()->Branch("SumET", &SumET);
-        analysis.tree()->Branch("isMC",  &isMC);
-        analysis.tree()->Branch("DSID",  &DSID);
+        analysis.tree()->Branch("MET",    &MET);
+        analysis.tree()->Branch("SumET",  &SumET);
+        analysis.tree()->Branch("isMC",   &isMC);
+        analysis.tree()->Branch("DSID",   &DSID);
+        analysis.tree()->Branch("weight",  weight);
         
+        
+        
+        // Copy histograms.
+        // -------------------------------------------------------------------
+        
+        TH1F* h_rawWeight = (TH1F*) inputFile.Get("h_rawWeight");
+        analysis.file()->cd();
+        h_rawWeight->Write();
         
         
         // Pre-selection
