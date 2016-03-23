@@ -448,6 +448,9 @@ namespace AnalysisTools {
                 continue;
             }
             
+            double sumOfWeights = 1.;
+            sumOfWeights = ((TH1F*) file->Get("h_rawWeight"))->Integral();
+            
             
              // Get histogram.
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -473,12 +476,9 @@ namespace AnalysisTools {
                 hist->GetXaxis()->Set(m_nbinsx, m_xmin, m_xmax);
                 hist->Sumw2(); // ?
                 
-                double var;
+                double var, weight = 1.;
                 tree->SetBranchAddress(m_branch.c_str(), &var);
-                
-                /* @TODO: Assert existence of a 'weight' branch - and use it! */
-                /* mc_weight * xSec * fEff * kFac / sumOfWeights */
-                double weight = 1.;
+                tree->SetBranchAddress("weight",         &weight);
                 
                 unsigned nEntries = tree->GetEntries();
                 for (unsigned iEntry = 0; iEntry < nEntries; iEntry++) {
@@ -557,7 +557,7 @@ namespace AnalysisTools {
              // Perform scaling.
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             if (isMC) {
-                hist->Scale(info.xsec);
+                hist->Scale(info.xsec / sumOfWeights);
                 if (m_lumi > 0) {
                     hist->Scale(m_lumi); // @TODO: Correct event weights.
                 }
@@ -638,7 +638,8 @@ namespace AnalysisTools {
             if (fields.at(2) == "b" || fields.at(2) == "s") {
                 if (fields.at(2) == "b") { info.type = PlotType::Background; }
                 else                     { info.type = PlotType::Signal; }
-                info.xsec = stod(fields.at(1));
+                /* Assuming that generator filter efficiencies and k-factors are included in the cross-section! */
+                info.xsec = stod(fields.at(1)) * 1.0e+06; // nb-1 [e-09] -> fb-1 [e-15]
                 info.evts = (unsigned) stod(fields.at(4));
             } else if (fields.at(2) == "d"){
                 info.type = PlotType::Data;
