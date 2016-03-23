@@ -179,15 +179,15 @@ namespace AnalysisTools {
         gPad->Update();
         
         /* Get plot maximum. */
-        const double plotmax = max(m_data->GetMaximum(), m_sum->GetMaximum());
+        const double plotmax   = max(m_data->GetMaximum(), m_sum->GetMaximum());
+        const double plotmin   = 0.5; // log-plots only
+        const double maxoffset = 1.7;
         
         if (m_log) {
-            /* ... */
-            m_sum->SetMaximum(exp(1.7 * log(plotmax)));
-            m_sum->SetMinimum(0.5);
+            m_sum->SetMaximum(exp(maxoffset * (log(plotmax) - log(plotmin)) + log(plotmin)));
+            m_sum->SetMinimum(plotmin);
         } else {
-            m_sum->SetMaximum(1.7 * plotmax);
-
+            m_sum->SetMaximum(maxoffset * plotmax);
         }
 
         
@@ -291,8 +291,8 @@ namespace AnalysisTools {
         
         string text;
         
-        double xDraw = 0.20;
-        double yDraw = 0.865; // 0.875;
+        double xDraw = 0.21;
+        double yDraw = 0.855;
         double yStep = m_fontSizeM * 1.25;
         
         text = "ATLAS #font[42]{Internal}";
@@ -568,6 +568,7 @@ namespace AnalysisTools {
                         m_sum->Add(hist);
                     } else {
                         m_sum = (TH1F*) hist->Clone("autohist_Sum");
+                        m_sum->Sumw2();
                     }
                 }
             } else {
@@ -575,6 +576,7 @@ namespace AnalysisTools {
                     m_data->Add(hist);
                 } else {
                     m_data = (TH1F*) hist->Clone("autohist_Data");
+                    m_data->Sumw2();
                 }
             }
             
