@@ -212,7 +212,10 @@ int main (int argc, char* argv[]) {
         
         EventSelection eventSelection ("EventSelection");
         
-        eventSelection.addCategories({"SR_SS_ee", "SR_SS_mm", "SR_OS_ee", "SR_OS_mm"});
+        eventSelection.addCategories({
+            "SR_SS_ee", "SR_SS_mm", "SR_OS_ee", "SR_OS_mm",
+            "CRL_SS_ee", "CRL_SS_mm", "CRL_OS_ee", "CRL_OS_mm",
+            "CRH_SS_ee", "CRH_SS_mm", "CRH_OS_ee", "CRH_OS_mm"});
         
         eventSelection.addCollection("Electrons", SelectedElectrons);
         eventSelection.addCollection("Muons",     SelectedMuons);
@@ -222,14 +225,12 @@ int main (int argc, char* argv[]) {
         Cut<Event> event_ee ("ee");
         event_ee.setFunction( [](const Event& e) { return e.collection("Electrons")->size(); });
         event_ee.addRange(2);
-        eventSelection.addCut(event_ee, "SR_SS_ee");
-        eventSelection.addCut(event_ee, "SR_OS_ee");
+        eventSelection.addCut(event_ee, ".*_ee");
         
         Cut<Event> event_mm ("mm");
         event_mm.setFunction( [](const Event& e) { return e.collection("Muons")->size(); });
         event_mm.addRange(2);
-        eventSelection.addCut(event_mm, "SR_SS_mm");
-        eventSelection.addCut(event_mm, "SR_OS_mm");
+        eventSelection.addCut(event_mm, ".*_mm");
         
         // * Charge
         Cut<Event> event_SS_ee ("SS_ee");
@@ -237,28 +238,28 @@ int main (int argc, char* argv[]) {
             return e.collection("Electrons")->at(0).info("charge") * e.collection("Electrons")->at(1).info("charge");
         });
         event_SS_ee.addRange(0, inf);
-        eventSelection.addCut(event_SS_ee, "SR_SS_ee");
+        eventSelection.addCut(event_SS_ee, ".*_SS_ee");
         
         Cut<Event> event_SS_mm ("SS_mm");
         event_SS_mm.setFunction( [](const Event& e) {
             return e.collection("Muons")->at(0).info("charge") * e.collection("Muons")->at(1).info("charge");
         });
         event_SS_mm.addRange(0, inf);
-        eventSelection.addCut(event_SS_mm, "SR_SS_mm");
+        eventSelection.addCut(event_SS_mm, ".*_SS_mm");
         
         Cut<Event> event_OS_ee ("OS_ee");
         event_OS_ee.setFunction( [](const Event& e) {
             return e.collection("Electrons")->at(0).info("charge") * e.collection("Electrons")->at(1).info("charge");
         });
         event_OS_ee.addRange(-inf, 0);
-        eventSelection.addCut(event_OS_ee, "SR_OS_ee");
+        eventSelection.addCut(event_OS_ee, ".*_OS_ee");
         
         Cut<Event> event_OS_mm ("OS_mm");
         event_OS_mm.setFunction( [](const Event& e) {
             return e.collection("Muons")->at(0).info("charge") * e.collection("Muons")->at(1).info("charge");
         });
         event_OS_mm.addRange(-inf, 0);
-        eventSelection.addCut(event_OS_mm, "SR_OS_mm");
+        eventSelection.addCut(event_OS_mm, ".*_OS_mm");
         
         
         // * Recombination (hadronic, leptonic).
@@ -282,25 +283,24 @@ int main (int argc, char* argv[]) {
         eventSelection.addOperation(recomb_ll);
         
         
-        // * Check distributions.
+        // * Final discriminant distributions.
         PlotMacro1D<Event> event_Mlljj("Mlljj", [](const Event& e) {
             return (e.particle("ll") + e.particle("jj")).M() / 1000.;
         });
-        //MuonObjdef.addPlot(CutPosition::Post, mu_check_pT);
-        
         
         
         // * Z veto (hadronic).
         Cut<Event> event_Zhad_veto ("Zhad_veto");
         event_Zhad_veto.setFunction( [](const Event& e) { return e.particle("jj").M() / 1000.; });
         event_Zhad_veto.addRange(110., inf);
-        eventSelection.addCut(event_Zhad_veto); // "SR*"
+        eventSelection.addCut(event_Zhad_veto, "SR_.*");
+        eventSelection.addCut(event_Zhad_veto, "CRL_.*");
         
         
         Cut<Event> event_Zhad_sel ("Zhad_selection");
         event_Zhad_sel.setFunction( [](const Event& e) { return e.particle("jj").M() / 1000.; });
         event_Zhad_sel.addRange(0, 110.);
-        //eventSelection.addCut(event_Zhad_sel, "CR*");
+        eventSelection.addCut(event_Zhad_sel, "CRH_.*");
         
         // * Z veto (leptonic).
         Cut<Event> event_Zlep_veto ("Zlep_veto");
@@ -308,12 +308,13 @@ int main (int argc, char* argv[]) {
         event_Zlep_veto.addRange(110., inf);
         event_Zlep_veto.addPlot(CutPosition::Pre,  event_Mlljj);
         event_Zlep_veto.addPlot(CutPosition::Post, event_Mlljj);
-        eventSelection.addCut(event_Zlep_veto); // "SR*"
+        eventSelection.addCut(event_Zlep_veto, "SR_.*");
+        eventSelection.addCut(event_Zlep_veto, "CRH_.*");
         
         Cut<Event> event_Zlep_sel ("Zlep_selection");
         event_Zlep_sel.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_sel.addRange(0, 110.);
-        //eventSelection.addCut(event_Zlep_sel, "CR*");
+        eventSelection.addCut(event_Zlep_sel, "CRL_.*");
         
         // * SumET
         
