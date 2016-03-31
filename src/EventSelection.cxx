@@ -90,7 +90,7 @@ namespace AnalysisTools {
             
             // * Run selection.
             unsigned int iCut = 0;
-            this->m_cutflow[category]->Fill(iCut++);
+            this->m_cutflow[category]->Fill(iCut++, weight);
             for (IOperation* iop : this->m_operations[category]) {
                 //bool branch = (this->m_branch >= 0) && (iCut > this->m_branch); // iCut in [1, N]
                 //if (!branch) { continue; }
@@ -108,7 +108,7 @@ namespace AnalysisTools {
                 m_passes[category] &= passes;
                 if (!m_passes[category]) { break; }
                 if (dynamic_cast< Cut<Event>* >(iop) == nullptr) { continue; }
-                this->m_cutflow[category]->Fill(iCut++);
+                this->m_cutflow[category]->Fill(iCut++, weight);
             }
             
         }

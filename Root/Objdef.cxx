@@ -261,7 +261,7 @@ int main (int argc, char* argv[]) {
         // Object definitions
         // -------------------------------------------------------------------
         
-        // Muons
+        // Electrons.
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         
         ObjectDefinition<TLorentzVector> ElectronObjdef ("Electrons");
@@ -385,6 +385,13 @@ int main (int argc, char* argv[]) {
         JetObjdef.addCut(jet_eta);
         
         
+        // Pseudo-objdefs (for creating collections).
+        // -------------------------------------------------------------------
+        ObjectDefinition<TLorentzVector> AllElectronObjdef ("AllElectrons");
+        AllElectronObjdef.setInput(electrons);
+        AllElectronObjdef.addCut(Cut<PhysicsObject>("nop", [](const PhysicsObject& p) { return true; }));
+        
+        
         
         // Stuff for binding selections together.
         // -------------------------------------------------------------------
@@ -393,12 +400,16 @@ int main (int argc, char* argv[]) {
         PhysicsObjects* SelectedMuons     = MuonObjdef    .result("Nominal");
         PhysicsObjects* SelectedJets      = JetObjdef     .result();
         
+        PhysicsObjects* AllElectrons = AllElectronObjdef.result();
+        
         
         
         // Event selection
         // -------------------------------------------------------------------
         
         EventSelection eventSelection ("EventSelection");
+
+        eventSelection.addCollection("AllElectrons", AllElectrons);
         
         eventSelection.addCollection("Electrons", SelectedElectrons);
         eventSelection.addCollection("Muons",     SelectedMuons);
@@ -407,7 +418,8 @@ int main (int argc, char* argv[]) {
         // * Jet-electron OR
         Cut<Event> event_OR_je ("JetElectronOverlapRemoval");
         event_OR_je.setFunction( [](const Event& e) {
-            AnalysisTools::OverlapRemoval(e.collection("Jets"), e.collection("Electrons"), 0.2, [](PhysicsObject j, PhysicsObject e) { return e.Pt() > 2. * j.Pt(); });
+            /* Remove from 'Jets' if overlapping with 'AllElectrons'. */
+            AnalysisTools::OverlapRemoval(e.collection("Jets"), e.collection("AllElectrons"), 0.2, [](PhysicsObject j, PhysicsObject e) { return 2. * e.Pt() > j.Pt(); });
             return true;
         });
         eventSelection.addCut(event_OR_je);
@@ -415,6 +427,7 @@ int main (int argc, char* argv[]) {
         // * Electron-jet OR
         Cut<Event> event_OR_ej ("ElectronJetOverlapRemoval");
         event_OR_ej.setFunction( [](const Event& e) {
+            /* Remove from 'Electrons' if overlapping with 'Jets'. */
             AnalysisTools::OverlapRemoval(e.collection("Electrons"), e.collection("Jets"), 0.2, 0.4);
             return true;
         });
@@ -438,9 +451,13 @@ int main (int argc, char* argv[]) {
         // -------------------------------------------------------------------
         
         analysis.addSelection(&preSelection);
+
         analysis.addSelection(&ElectronObjdef);
         analysis.addSelection(&MuonObjdef);
         analysis.addSelection(&JetObjdef);
+        
+        analysis.addSelection(&AllElectronObjdef);
+        
         analysis.addSelection(&eventSelection);
         
         

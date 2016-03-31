@@ -110,7 +110,7 @@ namespace AnalysisTools {
             if (!m_candidates[category].size()) { continue; }
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
             unsigned int iCut = 0;
-            this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
+            this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size() * weight);
             for (IOperation* iop : this->m_operations[category]) {
                 // [Make use of branching?]
                 
@@ -131,7 +131,7 @@ namespace AnalysisTools {
                 }
 
                 if (dynamic_cast< Cut<PhysicsObject>* >(iop) == nullptr) { continue; }
-                this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size());
+                this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size() * weight);
             }
         }
         this->m_hasRun = true;

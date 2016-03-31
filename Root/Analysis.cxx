@@ -283,10 +283,31 @@ int main (int argc, char* argv[]) {
         eventSelection.addOperation(recomb_ll);
         
         
-        // * Final discriminant distributions.
+        // * SumET
+        Cut<Event> event_sumET ("sumET");
+        event_sumET.setFunction( [](const Event& e) { return (e.particle("jj") + e.particle("ll")).Pt() / 1000.; });
+        event_sumET.addRange(400., inf);
+        eventSelection.addCut(event_sumET);
+        
+        
+        // -- Final districiminant distribution.
         PlotMacro1D<Event> event_Mlljj("Mlljj", [](const Event& e) {
             return (e.particle("ll") + e.particle("jj")).M() / 1000.;
         });
+
+        PlotMacro1D<Event> event_MET("MET", [&MET](const Event& e) {
+            return MET / 1000.;
+        });
+
+        PlotMacro1D<Event> event_sumET("sumET", [](const Event& e) {
+            return (e.particle("jj") + e.particle("ll")).Pt() / 1000.;
+        });
+
+        PlotMacro1D<Event> event_METsign("METsign", [&MET](const Event& e) {
+            double sumET = (e.particle("jj") + e.particle("ll")).Pt();
+            return MET/sumET;
+        });
+
         
         
         // * Z veto (hadronic).
@@ -296,17 +317,20 @@ int main (int argc, char* argv[]) {
         eventSelection.addCut(event_Zhad_veto, "SR_.*");
         eventSelection.addCut(event_Zhad_veto, "CRL_.*");
         
-        
         Cut<Event> event_Zhad_sel ("Zhad_selection");
         event_Zhad_sel.setFunction( [](const Event& e) { return e.particle("jj").M() / 1000.; });
         event_Zhad_sel.addRange(0, 110.);
         eventSelection.addCut(event_Zhad_sel, "CRH_.*");
+        
         
         // * Z veto (leptonic).
         Cut<Event> event_Zlep_veto ("Zlep_veto");
         event_Zlep_veto.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_veto.addRange(110., inf);
         event_Zlep_veto.addPlot(CutPosition::Post, event_Mlljj);
+        event_Zlep_veto.addPlot(CutPosition::Post, event_MET);
+        event_Zlep_veto.addPlot(CutPosition::Post, event_sumET);
+        event_Zlep_veto.addPlot(CutPosition::Post, event_METsign);
         eventSelection.addCut(event_Zlep_veto, "SR_.*");
         eventSelection.addCut(event_Zlep_veto, "CRH_.*");
         
@@ -314,9 +338,11 @@ int main (int argc, char* argv[]) {
         event_Zlep_sel.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_sel.addRange(0, 110.);
         event_Zlep_sel.addPlot(CutPosition::Post, event_Mlljj);
+        event_Zlep_sel.addPlot(CutPosition::Post, event_MET);
+        event_Zlep_sel.addPlot(CutPosition::Post, event_sumET);
+        event_Zlep_sel.addPlot(CutPosition::Post, event_METsign);
         eventSelection.addCut(event_Zlep_sel, "CRL_.*");
         
-        // * SumET
         
         // * Check distributions.
         PlotMacro1D<Event> event_check_Njet("CHECK_event_Njet", [](const Event& e) { return e.collection("Jets")->size(); });
