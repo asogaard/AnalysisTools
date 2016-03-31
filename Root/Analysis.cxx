@@ -263,47 +263,100 @@ int main (int argc, char* argv[]) {
         
         
         // * Recombination (hadronic, leptonic).
+        // -- l1
+        Operation<Event> recomb_l1 ("Recomb_l1");
+        recomb_l1.setFunction([](Event& e) {
+            unsigned maxindex;
+            if (e.collection("Electrons")->size() > 0) {
+                maxindex = (e.collection("Electrons")->at(0).Pt() > e.collection("Electrons")->at(1).Pt(\
+                            ) ? 0 : 1);
+                e.setParticle("l1", e.collection("Electrons")->at(maxindex));
+            } else {
+                maxindex = (e.collection("Muons")->at(0).Pt() > e.collection("Muons")->at(1).Pt() ? 0 : \
+                            1);
+                e.setParticle("l1", e.collection("Muons")->at(maxindex));
+            }
+            return true;
+        });
+        eventSelection.addOperation(recomb_l1);
+        
+        // -- l2
+        Operation<Event> recomb_l2 ("Recomb_l2");
+        recomb_l2.setFunction([](Event& e) {
+            unsigned minindex;
+            if (e.collection("Electrons")->size() > 0) {
+                minindex = (e.collection("Electrons")->at(0).Pt() > e.collection("Electrons")->at(1).Pt(\
+                            ) ? 1 : 0);
+                e.setParticle("l2", e.collection("Electrons")->at(minindex));
+            } else {
+                minindex = (e.collection("Muons")->at(0).Pt() > e.collection("Muons")->at(1).Pt() ? 1 : \
+                            0);
+                e.setParticle("l2", e.collection("Muons")->at(minindex));
+            }
+            return true;
+        });
+        eventSelection.addOperation(recomb_l2);
+        
+        // -- j1
+        Operation<Event> recomb_j1 ("Recomb_j1");
+        recomb_j1.setFunction([](Event& e) {
+            unsigned maxindex = (e.collection("Jets")->at(0).Pt() > e.collection("Jets")->at(1).Pt() ?\
+                                 0 : 1);
+            e.setParticle("j1", e.collection("Jets")->at(maxindex));
+            return true;
+        });
+        eventSelection.addOperation(recomb_j1);
+        
+        // -- j2
+        Operation<Event> recomb_j2 ("Recomb_j2");
+        recomb_j2.setFunction([](Event& e) {
+            unsigned minindex = (e.collection("Jets")->at(0).Pt() > e.collection("Jets")->at(1).Pt() ?\
+                                 1 : 0);
+            e.setParticle("j2", e.collection("Jets")->at(minindex));
+            return true;
+        });
+        eventSelection.addOperation(recomb_j2);
+        
+        // -- ll
+        Operation<Event> recomb_ll ("Recomb_ll");
+        recomb_ll.setFunction([](Event& e) {
+            e.setParticle("ll", e.particle("l1") + e.particle("l2"));
+            return true;
+        });
+        eventSelection.addOperation(recomb_ll);
+        
+        // -- jj
         Operation<Event> recomb_jj ("Recomb_jj");
         recomb_jj.setFunction([](Event& e) {
-            e.setParticle("jj", e.collection("Jets")->at(0) + e.collection("Jets")->at(1));
+            e.setParticle("jj", e.particle("j1") + e.particle("j2"));
             return true;
         });
         eventSelection.addOperation(recomb_jj);
         
         
-        Operation<Event> recomb_ll ("Recomb_ll");
-        recomb_ll.setFunction([](Event& e) {
-            if (e.collection("Electrons")->size() > 0) {
-                e.setParticle("ll", e.collection("Electrons")->at(0) + e.collection("Electrons")->at(1));
-            } else {
-                e.setParticle("ll", e.collection("Muons")->at(0)     + e.collection("Muons")->at(1));
-            }
-            return true;
-        });
-        eventSelection.addOperation(recomb_ll);
-        
-        
         // * SumET
         Cut<Event> event_sumET ("sumET");
-        event_sumET.setFunction( [](const Event& e) { return (e.particle("jj") + e.particle("ll")).Pt() / 1000.; });
+        event_sumET.setFunction( [](const Event& e) {
+            return (e.particle("l1").Et() + e.particle("l2").Et() + e.particle("j1").Et() + e.particle("j2").Et()) / 1000.;
+        });
         event_sumET.addRange(400., inf);
         eventSelection.addCut(event_sumET);
         
         
         // -- Final districiminant distribution.
-        PlotMacro1D<Event> event_Mlljj("Mlljj", [](const Event& e) {
+        PlotMacro1D<Event> plot_Mlljj("Mlljj", [](const Event& e) {
             return (e.particle("ll") + e.particle("jj")).M() / 1000.;
         });
 
-        PlotMacro1D<Event> event_MET("MET", [&MET](const Event& e) {
+        PlotMacro1D<Event> plot_MET("MET", [&MET](const Event& e) {
             return MET / 1000.;
         });
 
-        PlotMacro1D<Event> event_sumET("sumET", [](const Event& e) {
+        PlotMacro1D<Event> plot_sumET("sumET", [](const Event& e) {
             return (e.particle("jj") + e.particle("ll")).Pt() / 1000.;
         });
 
-        PlotMacro1D<Event> event_METsign("METsign", [&MET](const Event& e) {
+        PlotMacro1D<Event> plot_METsign("METsign", [&MET](const Event& e) {
             double sumET = (e.particle("jj") + e.particle("ll")).Pt();
             return MET/sumET;
         });
@@ -327,31 +380,31 @@ int main (int argc, char* argv[]) {
         Cut<Event> event_Zlep_veto ("Zlep_veto");
         event_Zlep_veto.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_veto.addRange(110., inf);
-        event_Zlep_veto.addPlot(CutPosition::Post, event_Mlljj);
-        event_Zlep_veto.addPlot(CutPosition::Post, event_MET);
-        event_Zlep_veto.addPlot(CutPosition::Post, event_sumET);
-        event_Zlep_veto.addPlot(CutPosition::Post, event_METsign);
+        event_Zlep_veto.addPlot(CutPosition::Post, plot_Mlljj);
+        event_Zlep_veto.addPlot(CutPosition::Post, plot_MET);
+        event_Zlep_veto.addPlot(CutPosition::Post, plot_sumET);
+        event_Zlep_veto.addPlot(CutPosition::Post, plot_METsign);
         eventSelection.addCut(event_Zlep_veto, "SR_.*");
         eventSelection.addCut(event_Zlep_veto, "CRH_.*");
         
         Cut<Event> event_Zlep_sel ("Zlep_selection");
         event_Zlep_sel.setFunction( [](const Event& e) { return e.particle("ll").M() / 1000.; });
         event_Zlep_sel.addRange(0, 110.);
-        event_Zlep_sel.addPlot(CutPosition::Post, event_Mlljj);
-        event_Zlep_sel.addPlot(CutPosition::Post, event_MET);
-        event_Zlep_sel.addPlot(CutPosition::Post, event_sumET);
-        event_Zlep_sel.addPlot(CutPosition::Post, event_METsign);
+        event_Zlep_sel.addPlot(CutPosition::Post, plot_Mlljj);
+        event_Zlep_sel.addPlot(CutPosition::Post, plot_MET);
+        event_Zlep_sel.addPlot(CutPosition::Post, plot_sumET);
+        event_Zlep_sel.addPlot(CutPosition::Post, plot_METsign);
         eventSelection.addCut(event_Zlep_sel, "CRL_.*");
         
         
         // * Check distributions.
-        PlotMacro1D<Event> event_check_Njet("CHECK_event_Njet", [](const Event& e) { return e.collection("Jets")->size(); });
-        eventSelection.addPlot(CutPosition::Pre,  event_check_Njet);
-        eventSelection.addPlot(CutPosition::Post, event_check_Njet);
+        PlotMacro1D<Event> plot_check_Njet("CHECK_event_Njet", [](const Event& e) { return e.collection("Jets")->size(); });
+        eventSelection.addPlot(CutPosition::Pre,  plot_check_Njet);
+        eventSelection.addPlot(CutPosition::Post, plot_check_Njet);
         
-        PlotMacro1D<Event> event_check_Nel("CHECK_event_Nel", [](const Event& e) { return e.collection("Electrons")->size(); });
-        eventSelection.addPlot(CutPosition::Pre,  event_check_Nel);
-        eventSelection.addPlot(CutPosition::Post, event_check_Nel);
+        PlotMacro1D<Event> plot_check_Nel("CHECK_event_Nel", [](const Event& e) { return e.collection("Electrons")->size(); });
+        eventSelection.addPlot(CutPosition::Pre,  plot_check_Nel);
+        eventSelection.addPlot(CutPosition::Post, plot_check_Nel);
         
         
         
