@@ -41,14 +41,17 @@ LIBS += $(ROOTLIBS)
 all: $(PACKAGENAME) $(PROGS)
 
 $(PACKAGENAME) : $(OBJS) 
+	@mkdir -p $(LIBDIR)
 	$(CXX) -shared -O3 -o $(LIBDIR)/lib$@.so $(LINKFLAGS) $(OBJS) $(LIBS)
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.$(SRCEXT)
+	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(EXEDIR)/%.exe : $(PROGDIR)/%.$(SRCEXT)
+	@mkdir -p $(EXEDIR)
 	$(CXX) $< -o $@ $(CXXFLAGS) $(LINKFLAGS) -l$(PACKAGENAME)
- 
+
 clean : 
 	@rm -f $(GARBAGE)
 
