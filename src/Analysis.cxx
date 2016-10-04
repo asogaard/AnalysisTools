@@ -48,8 +48,8 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
-        // * Progress bar.
 
+        // * Progress bar.
         int barWidth = 67;
         
         float progress = 0., prevProgress = 0.;

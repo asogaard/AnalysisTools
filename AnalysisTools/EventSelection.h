@@ -70,7 +70,7 @@ namespace AnalysisTools {
         
         map< string, Event >           m_events;
         map< string, PhysicsObjects* > m_collections;
-        map< string, bool >           m_passes;
+        map< string, bool >            m_passes;
 
         map< string, double > m_infoDouble;
         map< string, float >  m_infoFloat;

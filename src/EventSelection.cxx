@@ -56,10 +56,10 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool EventSelection::run () {
-      
+
         unsigned int iCat = 0;
         for (const auto& category : this->m_categories) {
-            
+
             // * Setup
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
             
@@ -115,7 +115,7 @@ namespace AnalysisTools {
         
         this->m_hasRun = true;
         
-        return (std::count_if(m_passes.begin(), m_passes.end(), [](const pair<string, bool>& p) { return p.second; }) > 0);
+        return m_passes.size() == 0 || (std::count_if(m_passes.begin(), m_passes.end(), [](const pair<string, bool>& p) { return p.second; }) > 0);
     }
     
     bool EventSelection::result () {
