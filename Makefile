@@ -38,7 +38,7 @@ LINKFLAGS = -O3 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) $(ROOTGLIBS)
 LIBS += $(ROOTLIBS)
 
 # Targets
-all: $(PACKAGENAME) $(PROGS)
+all : $(PACKAGENAME) $(PROGS)
 
 $(PACKAGENAME) : $(OBJS) 
 	@mkdir -p $(LIBDIR)
@@ -54,4 +54,3 @@ $(EXEDIR)/%.exe : $(PROGDIR)/%.$(SRCEXT)
 
 clean : 
 	@rm -f $(GARBAGE)
-
