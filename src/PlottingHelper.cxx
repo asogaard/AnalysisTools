@@ -21,6 +21,11 @@ namespace AnalysisTools {
 
     void PlottingHelper::setOutfile  (TFile* outfile) {
         m_outfile = outfile;
+	string outfilename (m_outfile->GetName());
+	unsigned pos = outfilename.rfind("/");
+	if (pos != string::npos) {
+	  m_outdir = outfilename.substr(0, pos + 1);
+	}
         return;
     }
 
@@ -118,6 +123,11 @@ namespace AnalysisTools {
         m_rebin = rebin;
         return;
     }
+    
+    void PlottingHelper::setNormalised (const bool& normalised) {
+        m_normalised = normalised;
+        return;
+    }
 
     
     // Get method(s).
@@ -130,8 +140,7 @@ namespace AnalysisTools {
         closePads();
         assert( m_outfile );
         
-        // General style settings/variables.
-        
+        // General style settings/variables.      
         gStyle->SetOptStat(0);
         gStyle->SetLegendBorderSize(0);
         gStyle->SetLegendFillColor(0);
@@ -166,6 +175,28 @@ namespace AnalysisTools {
         // Adding background distributions.
         cout << "<PlottingHelper::draw> Adding background distributions." << endl;
         
+	// Normalising.
+	if (m_normalised) {
+	    float integral;
+
+	    // -- Data
+	    integral = m_data->Integral();
+	    if (integral > 0) { m_data->Scale(1/integral); }
+
+	    // -- Background
+	    integral = m_sum->Integral();
+	    if (integral > 0) {
+	        m_sum->Scale(1/integral);
+		for (const auto& p : m_backgrounds) { p.second->Scale(1/integral); }
+	    }
+
+	    // -- Signal
+	    for (const auto& p : m_signals) {
+	        integral = p.second->Integral();
+		if (integral > 0) { p.second->Scale(1/integral); }
+	    }
+	}
+        
         // -- Sorting by integral.
         m_backgroundsSorted.clear();
         for (const auto& p : m_backgrounds) {
@@ -181,8 +212,7 @@ namespace AnalysisTools {
         for (const auto& p : m_backgroundsSorted) {
             background->Add(p.second);
         }
-        
-        
+
         // Drawing (main pad).
         cout << "<PlottingHelper::draw> Going to first pad." << endl;
         m_pads.first->cd();
@@ -192,8 +222,8 @@ namespace AnalysisTools {
         
         /* Get plot maximum. */
         const double plotmax   = max(m_data->GetMaximum(), m_sum->GetMaximum());
-        const double plotmin   = 0.5; // log-plots only
-        const double maxoffset = 1.7;
+        const double plotmin   = (m_normalised ? 1e-05 : 0.5); // log-plots only
+        const double maxoffset = 2.3; /* @TODO: Make dependent on the number of text lines. */
         
         if (m_log) {
             m_sum->SetMaximum(exp(maxoffset * (log(plotmax) - log(plotmin)) + log(plotmin)));
@@ -227,9 +257,11 @@ namespace AnalysisTools {
         // Ratio distributions.
         if (m_data) {
             m_ratiohists["Ratio"] = (TH1F*) m_data->Clone("DataMC_Ratio");
+	    m_ratiohists["Ratio"]->SetDirectory(0);
             m_ratiohists["Ratio"]->Divide(m_sum);
             
             m_ratiohists["StatsError"] = (TH1F*) m_ratiohists["Ratio"]->Clone("DataMC_StatsError");
+	    m_ratiohists["StatsError"]->SetDirectory(0);
             for (unsigned i = 0; i < m_ratiohists["StatsError"]->GetXaxis()->GetNbins(); i++) {
                 m_ratiohists["StatsError"]->SetBinContent(i + 1, 1);
                 double c = m_sum->GetBinContent(i + 1);
@@ -366,9 +398,8 @@ namespace AnalysisTools {
         
         // -- Stats. uncert.
         if (m_sum) {
-            legend->AddEntry(m_sum, "MC stat. uncert.", "F");
+            legend->AddEntry(m_sum, "Stat. uncert.", "F");
         }
-
         
         legend->Draw("same");
         
@@ -391,7 +422,11 @@ namespace AnalysisTools {
         
         cout << "<PlottingHelper::draw> Writing canvas." << endl;
         m_canvas->Write();
-        m_canvas->SaveAs("TESTplot.pdf");
+	if (m_branch != "") {
+	  m_canvas->SaveAs((m_outdir + m_branch + ".pdf").c_str());
+	} else {
+	  m_canvas->SaveAs((m_outdir + "TESTplot.pdf").c_str());
+	}
         
         cout << "<PlottingHelper::draw> Exiting." << endl;
         return;
@@ -455,7 +490,7 @@ namespace AnalysisTools {
             }
             
             double sumOfWeights = 1.;
-            sumOfWeights = ((TH1F*) file->Get("h_rawWeight"))->Integral();
+            //sumOfWeights = ((TH1F*) file->Get("h_rawWeight"))->Integral();
             
             
              // Get histogram.
@@ -538,8 +573,8 @@ namespace AnalysisTools {
             }
             SampleInfo info = m_info.at(DSID);
             
-            isMC     = (info.type != PlotType::Data);
-            isSignal = (info.type == PlotType::Signal); //(filename.find("MC") != string::npos);
+            isMC     = (info.type != PlotType::Data);    //(filename.find("MC") != string::npos);
+            isSignal = (info.type == PlotType::Signal);
 
             
             
@@ -552,7 +587,7 @@ namespace AnalysisTools {
                 hist->GetXaxis()->SetLabelOffset(9999.9);
             }
             if (m_axistitles.at(1) != "") {
-                hist->GetYaxis()->SetTitle(m_axistitles.at(1).c_str());
+  	        hist->GetYaxis()->SetTitle((m_axistitles.at(1) + (m_normalised ? " (Normalised)" : "")).c_str());
             }
             /* @TODO: z-axis */
             
@@ -563,16 +598,19 @@ namespace AnalysisTools {
              // Perform scaling.
             // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             if (isMC) {
-                hist->Scale(info.xsec / sumOfWeights);
+	        //hist->Scale(info.xsec / sumOfWeights);
+	        hist->Scale(info.xsec / float(info.evts));
                 if (m_lumi > 0) {
                     hist->Scale(m_lumi); // @TODO: Correct event weights.
                 }
                 if (isSignal) {
                     assert( m_signals.count(info.name) == 0 );
                     m_signals[info.name] = (TH1F*) hist->Clone(("autohist_Signal_" + info.name).c_str()); //.insert( pair<unsigned, TH1F*>(DSID, hist) );
+		    m_signals[info.name]->SetDirectory(0);
                 } else {
                     if (m_backgrounds.count(info.name) == 0) {
                         m_backgrounds[info.name] = (TH1F*) hist->Clone(("autohist_Background_" + info.name).c_str()); //.insert( pair<unsigned, TH1F*>(DSID, hist) );
+			m_backgrounds[info.name]->SetDirectory(0);
                     } else {
                         m_backgrounds[info.name]->Add(hist);
                     }
@@ -580,6 +618,7 @@ namespace AnalysisTools {
                         m_sum->Add(hist);
                     } else {
                         m_sum = (TH1F*) hist->Clone("autohist_Sum");
+			m_sum->SetDirectory(0);
                         m_sum->Sumw2();
                     }
                 }
@@ -588,6 +627,7 @@ namespace AnalysisTools {
                     m_data->Add(hist);
                 } else {
                     m_data = (TH1F*) hist->Clone("autohist_Data");
+		    m_data->SetDirectory(0);
                     m_data->Sumw2();
                 }
             }
@@ -597,6 +637,12 @@ namespace AnalysisTools {
             file->Close();
            
         }
+
+	if (!m_data) { 
+	  m_data = (TH1F*) m_sum->Clone("autohist_Data");
+	  m_data->SetDirectory(0);
+	  m_data->Scale(0.);
+	}
         
         styleHist(m_sum,  true,  "StatsError");
         styleHist(m_data, false, "Data");
@@ -634,27 +680,73 @@ namespace AnalysisTools {
         while ( file.good() ) {
             
             std::getline ( file, line );
-            if (line == "") { continue; }
-            vector<string> fields = split(line, ' ');
+	    line = trim(line);
+            if (line             == "")  { continue; }
+	    if (line.substr(0,1) == "#") { continue; }
+            vector<string> fields = split(line, ',');
             
-            unsigned DSID = (unsigned) stoi(fields.at(0));
+	    unsigned DSID;
+	    double   xsec;
+	    unsigned evts;
+	    double   eff;
+	    string   name;
+	    
+	    // -- Dataset ID.
+            DSID = (unsigned) stoi(fields.at(0));
             assert (m_info.count(DSID) == 0);
             
+	    // -- Cross section.
+	    xsec = stod(fields.at(1));
+
+	    // -- Number of events.
+	    evts = (unsigned) stoi(fields.at(2));
+
+	    if (evts == 0) {
+	        std::cout << "<PlottingHelper::loadXsec> Warning: DSID '" << DSID << "' has 0 events. Skipping." << std::endl;
+		continue; 
+	    }
+
+	    // -- Generator filter efficiency.
+	    eff = stod(fields.at(3));
+
+	    // -- Physics name.
+	    name = (string) fields.at(4);
+	    name = trim(name);
+
+	    bool signal = false;
+	    std::regex re_singlePhoton1("Sherpa_CT10_SinglePhotonPt([0-9]+).*");
+	    std::regex re_singlePhoton2("Sherpa_CT10_SinglePhotonPt([0-9]+)_([0-9]+).*");
+            std::regex re_signal(".*dmA_jja_Ph([0-9]+)_mRp0([0-9]+).*");
+	    std::smatch re_match_name;
+	    if        (std::regex_match(name, re_match_name, re_singlePhoton2)) {
+	      name = "Incl. #gamma p_{T} #in [" + string(re_match_name[1]) + ", " + string(re_match_name[2]) + "] GeV";
+	    } else if (std::regex_match(name, re_match_name, re_singlePhoton1)) {
+	      name = "Incl. #gamma p_{T} > " + string(re_match_name[1]) + " GeV";
+	    } else if (std::regex_match(name, re_match_name, re_signal)) {
+	      name = "Z' (" + string(re_match_name[2]) + " GeV)";
+	      signal = true;
+	    }
+
+	    // -- Store in SampleInfo.
             SampleInfo info;
             info.DSID = DSID;
-            info.name = fields.at(3);
-            if (fields.at(2) == "b" || fields.at(2) == "s") {
-                if (fields.at(2) == "b") { info.type = PlotType::Background; }
-                else                     { info.type = PlotType::Signal; }
-                /* Assuming that generator filter efficiencies and k-factors are included in the cross-section! */
-                info.xsec = stod(fields.at(1)) * 1.0e+06; // nb-1 [e-09] -> fb-1 [e-15]
-                info.evts = (unsigned) stod(fields.at(4));
-            } else if (fields.at(2) == "d"){
+            info.name = name;
+            info.evts = evts;
+
+	    /* Ex.: MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp055_mD10_gSp3_gD1 */
+	    //std::regex re_signal(".*dmA_jja_.*");
+            //std::smatch re_match_signal;
+            //bool signal = (bool) std::regex_match(name, re_match_signal, re_signal);
+	    
+	    info.type = (signal ? PlotType::Signal : PlotType::Background);
+	    info.xsec = xsec * eff;
+
+	    /*
+            if (data){
                 info.type = PlotType::Data;
                 info.lumi = stod(fields.at(1));
-            } else {
-                cout << "<PlottingHelper::loadXsec> Unrecognised field: '" << fields.at(2) << "'." << endl;
-            }
+	    }
+	    */
             m_info[DSID] = info;
 
         }
@@ -671,6 +763,8 @@ namespace AnalysisTools {
         
         cout << "<PlottingHelper::styleHist> Calling with: '" << name << "' (" << (isMC ? "MC" : "data") << ")." << endl;
         
+	if (!hist) { return; }
+
         // Base styling.
         hist->SetTitle("");
         
@@ -705,7 +799,7 @@ namespace AnalysisTools {
         if (isMC) {
             
             // Determine whether is signal.
-            std::regex re("WR([0-9]+)_NR([0-9]+)");
+            std::regex re("Z' \\(([0-9])+ GeV\\)");
             std::smatch re_match;
             bool isSignal = (bool) std::regex_match(name, re_match, re);
             
@@ -715,7 +809,7 @@ namespace AnalysisTools {
                 hist->SetFillColor(0);
                 
                 hist->SetLineStyle(1);
-                hist->SetLineColor(kRed + m_signals.size());
+                hist->SetLineColor(kRed + m_signals.size() * 2);
                 
             } else {
                 
@@ -724,7 +818,13 @@ namespace AnalysisTools {
             }
             
             hist->SetFillColor(kRed); // TEMP
-            
+
+	    /* Incl. gamma */
+            std::regex re_inclGamma("Incl. #gamma.*");
+            std::smatch re_match_inclGamma;
+	    if      (std::regex_match(name, re_match_inclGamma, re_inclGamma)) { 
+	      hist->SetFillColor (kAzure + m_backgrounds.size() + 1); 
+	    }
             
             /* V (-> ll/lv) + X */
             if      (name == "Wenu")  { hist->SetFillColor(kAzure);      }

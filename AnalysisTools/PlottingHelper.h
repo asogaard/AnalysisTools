@@ -107,7 +107,8 @@ namespace AnalysisTools {
         void drawRatioPad (const bool& ratio);
         
         void rebin (const unsigned& nrebin);
-        
+
+	void setNormalised (const bool& normalised);
         
         // Get method(s).
         // ...
@@ -135,8 +136,9 @@ namespace AnalysisTools {
         vector<string> m_filenames;
         
         TFile* m_outfile = nullptr;
+        string m_outdir  = "./";
         
-        string m_xsecfile     = "share/crossSections.csv";
+        string m_xsecfile     = "share/weightsMC.csv"; // "crossSections.csv";
         string m_settingsfile = "share/plotSettings.csv";
         
         double m_lumi = -1;
@@ -156,7 +158,9 @@ namespace AnalysisTools {
         
         unsigned m_rebin = 1; /* For use only when reading from histogram. */
         
-        bool m_log = true; /* Create accessors */
+        bool m_log = true; /* @TODO: Create accessors */
+
+	bool m_normalised = false;
         
         // Completely internal.
         TCanvas*           m_canvas = nullptr;
@@ -181,9 +185,9 @@ namespace AnalysisTools {
         map< unsigned, SampleInfo > m_info;
         
         // Style stuff.
-        const double m_fontSizeS = 0.040;
-        const double m_fontSizeM = 0.040;
-        const double m_fontSizeL = 0.050;
+        const double m_fontSizeS = 0.035; // 0.040
+        const double m_fontSizeM = 0.038; // 0.040
+        const double m_fontSizeL = 0.042; // 0.050
 
         
     };
