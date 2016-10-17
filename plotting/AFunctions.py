@@ -1,4 +1,4 @@
-from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas
+from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas, gPad
 from array import array
 import math
 import sys
