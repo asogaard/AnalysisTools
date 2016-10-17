@@ -188,7 +188,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
                 continue
 
             if 'weight' not in values:
-                values['weight'] = []
+                values['weight'] = array('d', [])
                 pass
 
             pass 
@@ -233,7 +233,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
 
         if xsec:
             weight = xsec[DSID]
-            values['weight'] += [weight for _ in range(N)]
+            values['weight'] += array('d', [weight for _ in range(N)])
             pass
         
         pass
