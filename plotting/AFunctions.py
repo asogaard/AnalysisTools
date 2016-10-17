@@ -1,6 +1,7 @@
-from ROOT import *
+from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas
 from array import array
 import math
+import sys
 
 # Global utility variables.
 eps = 1E-09
@@ -156,3 +157,89 @@ def getPlotMinMax (histograms, log, padding = 1.0, ymin = None):
 
     return (ymin, ymax)
 
+
+def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = None, DSIDvar = 'DSID'):
+    ''' Read in data arrays from TTree. '''
+    
+    values = dict()
+
+    print ""
+    print "getData: Reading data from %d files." % len(paths)
+
+    loadingCharacters  = ['\\', '|', '/', '-']
+    iLoadingCharacter  = 0
+    nLoadingCharacters = len(loadingCharacters)
+
+    if len(paths) == 0: return 
+    for ipath, path in enumerate(paths):
+
+        DSID = None
+
+        # Getting tree.
+        f = TFile.Open(path, 'READ')
+
+        if xsec:
+            for event in f.Get('outputTree'):
+                DSID = eval('event.%s' % DSIDvar)
+                break
+
+            # -- Only consider samples for which we have chosen to provide cross section information.
+            if DSID not in xsec:
+                continue
+
+            if 'weight' not in values:
+                values['weight'] = []
+                pass
+
+            pass 
+
+        # -- Ignore signal samples.
+        if ignore and ignore(DSID):
+            continue
+
+        t = f.Get(treename)
+
+        if not t:
+            "getData: Could not get tree '%s' from file '%s'." % (treename, path)
+            continue
+        N = t.GetEntries()
+
+        # -- Set up objects for reading tree.
+        branch = dict()
+        for var in variables:
+            branch[var] = array('d', [0])
+            
+            if var not in values:
+                values[var] = array('d', [])
+                pass
+            
+            t.SetBranchAddress( prefix + var, branch[var] )
+            pass
+
+        # -- Read tree
+        i = 0
+        while t.GetEntry(i):
+            for var in variables:
+                values[var].append( branch[var][0] )
+                pass
+            i += 1
+
+            if i % 10000 == 0:
+                print "\rgetData:  [%s]" % loadingCharacters[iLoadingCharacter],
+                sys.stdout.flush()
+                iLoadingCharacter = (iLoadingCharacter + 1) % nLoadingCharacters
+                pass
+            pass
+
+        if xsec:
+            weight = xsec[DSID]
+            values['weight'] += [weight for _ in range(N)]
+            pass
+        
+        pass
+
+    print ""
+    print "getData: Done."
+    print ""
+
+    return values

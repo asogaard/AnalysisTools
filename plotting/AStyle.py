@@ -1,4 +1,5 @@
-from ROOT import *
+from ROOT import gROOT, TStyle, gStyle, TColor, kGreen
+from array import *
 
 # Global style variables.
 font = 42
