@@ -72,7 +72,7 @@ done
 # -- Set number of batches to the optimal number (at most $MAXNUMBATCHES)
 let OPTNUMBATCHES=$(( $SUMFILESIZE / $MAXFILESIZE + 1 ))
 let NUMBATCHES=$(( $OPTNUMBATCHES > $MAXNUMBATCHES ? $MAXNUMBATCHES : $OPTNUMBATCHES ))
-echo " Submitting ${NUMBATCHES} out of at most ${MAXNUMBATCHES} batches."
+echo " Submitting ${#INPUT[@]} files to ${NUMBATCHES} batches out of at most ${MAXNUMBATCHES}."
 
 # -- Use python script to distribute input files equally into batches, by file size.
 DISTRIBUTE_SCRIPT="scripts/distributeEqually.py"
