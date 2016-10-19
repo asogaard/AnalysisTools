@@ -25,6 +25,8 @@
 #include "TFile.h"
 #include "TH1.h"
 #include "THStack.h"
+#include "TGraph.h"
+#include "TGaxis.h"
 #include "TTree.h"
 #include "TBranch.h"
 #include "TStyle.h"
@@ -32,6 +34,7 @@
 #include "TLatex.h"
 #include "TLegend.h"
 #include "TLine.h"
+#include "TArrow.h"
 #include "TROOT.h"
 
 // AnalysisTools include(s).
@@ -108,6 +111,9 @@ namespace AnalysisTools {
         
         void rebin (const unsigned& nrebin);
 
+	void computeImprovement (const int&  improvementDirection);
+	void printBinContents   (const bool& print);
+
 	void setNormalised (const bool& normalised);
         
         // Get method(s).
@@ -159,6 +165,9 @@ namespace AnalysisTools {
         unsigned m_rebin = 1; /* For use only when reading from histogram. */
         
         bool m_log = true; /* @TODO: Create accessors */
+	bool m_1D  = true;
+	
+	bool m_print = false;
 
 	bool m_normalised = false;
         
@@ -183,6 +192,10 @@ namespace AnalysisTools {
         map<string, TH1F* > m_ratiohists;
         
         map< unsigned, SampleInfo > m_info;
+
+	int m_improvementDirection = -1;
+	double m_scaleSignal = 10.;
+
         
         // Style stuff.
         const double m_fontSizeS = 0.035; // 0.040

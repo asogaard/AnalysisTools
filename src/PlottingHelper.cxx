@@ -113,20 +113,34 @@ namespace AnalysisTools {
 
     void PlottingHelper::drawRatioPad (const bool& ratio) {
         m_ratio = ratio;
-        if (!m_ratio) {
-            m_H = 600;
-        }
-        return;
+	if (!m_ratio) {
+	    m_H = 600;
+	}
+	return;
     }
-
+  
     void PlottingHelper::rebin (const unsigned& rebin) {
         m_rebin = rebin;
-        return;
+	return;
     }
-    
+  
+    void PlottingHelper::computeImprovement (const int& improvementDirection) {
+        if (improvementDirection > 2) {
+	    cout << "<PlottingHelper::computeImprovement> The provided number (" << improvementDirection << ") is larger than 2." << endl;
+	    return;
+	}
+	m_improvementDirection = improvementDirection;
+	return;
+    }
+  
+    void PlottingHelper::printBinContents (const bool& print) {
+        m_print = print;
+	return;
+    }
+  
     void PlottingHelper::setNormalised (const bool& normalised) {
         m_normalised = normalised;
-        return;
+	return;
     }
 
     
@@ -153,6 +167,7 @@ namespace AnalysisTools {
         TColor* myBlue = new TColor(kMyBlue,   0./255.,  30./255.,  59./255.);
         TColor* myRed  = new TColor(kMyRed,  205./255.,   0./255.,  55./255.);
 
+	const unsigned int kImprovementColor = kOrange + 7; // kViolet + 2
         
         // Canvases.
         m_outfile->cd();
@@ -308,7 +323,7 @@ namespace AnalysisTools {
         m_pads.first->SetLogy(m_log);
         m_pads.first->SetTickx();
         m_pads.first->SetTicky();
-        m_pads.first->SetRightMargin (0.05);
+        m_pads.first->SetRightMargin (m_improvementDirection != -1 ? 0.10 : 0.05); // Default: 0.05
         m_pads.first->SetTopMargin   (0.05);
         m_pads.first->SetLeftMargin  (0.15);
         m_pads.first->SetBottomMargin(0.15);
@@ -393,7 +408,10 @@ namespace AnalysisTools {
 
         // -- Signal(s).
         for (const auto& p : m_signals) {
-            legend->AddEntry(p.second, p.first.c_str(), "L");
+	    stringstream stream;
+	    stream << fixed << setprecision(1) << m_scaleSignal;
+	    string s = stream.str();
+	    legend->AddEntry(p.second, (p.first + (m_scaleSignal != 1 ? " #times " + s : "")).c_str(), "L");
         }
         
         // -- Stats. uncert.
@@ -420,14 +438,182 @@ namespace AnalysisTools {
             line.DrawLine(axismin, 0.9, axismax, 0.9);
         }
         
+	// Cut improvements.
+	if (m_improvementDirection != -1 && m_signals.size() > 0) {
+	  cout << "<PlottingHelper::draw> Drawing cut improvements." << endl;
+	  
+	  m_pads.first->SetTicky(false);
+	  m_pads.first->Update();
+	  
+	  // -- Fill.
+	  double x[100], y[100]; // @TOFIX
+	  double xMaxImpr = 0., yMaxImpr = 0.;
+	  for (unsigned i = 0; i < m_nbinsx; i++) {
+	    double S, B;
+	    switch (m_improvementDirection) {
+	    case 0: // Integrate upwards.
+	      x[i] = m_sum->GetXaxis()->GetBinLowEdge(i + 1);
+	      S = m_signals.begin()->second->Integral(i + 1, m_nbinsx + 1);
+	      B = m_sum                    ->Integral(i + 1, m_nbinsx + 1);
+	      break;             
+	    case 1: // Integrate downwards
+	      x[i] = m_sum->GetXaxis()->GetBinUpEdge(i + 1);
+	      S = m_signals.begin()->second->Integral(0, i + 1);
+	      B = m_sum                    ->Integral(0, i + 1);
+	      break;             
+	    case 2: // Select bin.
+	      x[i] = m_sum->GetXaxis()->GetBinCenter(i + 1);
+	      S = m_signals.begin()->second->GetBinContent(i + 1);
+	      B = m_sum                    ->GetBinContent(i + 1);
+	      break;             
+	    default:
+	      break;
+	    }
+	    if (m_normalised) {
+	      /* Right thing to do? */
+	      y[i] = S / sqrt(S + B + eps);
+	    } else {
+	      y[i] = S / m_scaleSignal / sqrt(S / m_scaleSignal + B + eps);
+	    }
+	    if (y[i] > yMaxImpr) { 
+	      yMaxImpr = y[i]; 
+	      xMaxImpr = x[i];
+	    }
+	  }
+	  
+	  // -- Create and style.
+	  TGraph* impr = new TGraph(m_nbinsx, x, y);
+	  impr->SetMarkerColor(kImprovementColor);
+	  impr->SetMarkerStyle(20);
+	  impr->SetMarkerSize (0.8);
+	  impr->SetLineColor  (kImprovementColor);
+	  impr->SetLineWidth  (2);
+	  
+	  // -- Draw.
+	  m_pads.first->cd();
+	  TPad* transPad = new TPad("transPad", "", 0, 0, 1, 1);
+	  transPad->SetFillStyle(4000);
+	  
+	  // -- Get proper ranges for transparent pad.
+	  double ymin = 0;
+	  double ymax = yMaxImpr * maxoffset * 1.1;
+	  double dy   = (ymax - ymin)/(1. - m_pads.first->GetTopMargin() - m_pads.first->GetBottomMargin());
+	  double dx   = (m_xmax - m_xmin)/(1. - m_pads.first->GetLeftMargin() - m_pads.first->GetRightMargin());
+	  
+	  transPad->Range(m_xmin - m_pads.first->GetLeftMargin()   * dx, \
+			  ymin   - m_pads.first->GetBottomMargin() * dy, \
+			  m_xmax + m_pads.first->GetRightMargin()  * dx, \
+			  ymax   + m_pads.first->GetTopMargin()    * dy);
+	  
+	  transPad->Draw();
+	  transPad->cd();
+	  impr->Draw("LP same");
+	  transPad->Update();
+	  
+	  TArrow arrow;
+	  arrow.SetLineWidth(3);
+	  arrow.SetLineColor(kImprovementColor);
+	  arrow.SetFillColor(kImprovementColor);
+	  switch (m_improvementDirection) {
+	  case 0: // Integrate upwards.
+	    arrow.DrawArrow(xMaxImpr - 0.06 * dx, yMaxImpr, xMaxImpr - 0.01 * dx, yMaxImpr, 0.015, "|>");       
+	    break;
+	  case 1: // Integrate downwards.
+	    arrow.DrawArrow(xMaxImpr + 0.06 * dx, yMaxImpr, xMaxImpr + 0.01 * dx, yMaxImpr, 0.015, "|>");
+	    break;
+	  case 2: // Select bin.
+	    arrow.DrawArrow(xMaxImpr, yMaxImpr + 0.06 * dy, xMaxImpr, yMaxImpr + 0.01 * dy, 0.015, "|>");
+	    break;
+	  default: 
+	    break;
+	  }
+	  
+	  // -- Draw axis on the right side of the pad.
+	  TGaxis* axis = new TGaxis(m_xmax, 0, m_xmax, ymax, 0, ymax, 50510, "+L");
+	  axis->SetNdivisions(505);
+	  axis->SetLineColor (kImprovementColor);
+	  axis->SetLabelColor(kImprovementColor);
+	  axis->SetTitleColor(kImprovementColor);
+	  axis->SetLabelFont(42);
+	  axis->SetTitleFont(42);
+	  axis->SetTitle("S / #sqrt{S + B}");
+	  axis->SetTitleOffset(1.15);
+	  axis->SetLabelOffset(0.01);
+	  axis->Draw();
+	  
+	}
+	
+	
+	// Print bin contents.
+	if (m_print) {
+	  cout << "------------------------------------------------------------------------" << endl;
+	  
+	  const unsigned Nbins = m_sum->GetXaxis()->GetNbins();
+	  
+	  // -- Headers.
+	  cout << "Bin ";
+	  
+	  for (const auto& p : m_backgrounds) {
+	    cout << " & " << p.first.c_str();
+	  }
+	  
+	  cout << " & Total expected";
+	  
+	  for (const auto& p : m_signals) {
+	    cout << " & " << p.first;
+	  }
+	  
+	  if (m_data) {
+	    cout << " & Data";
+	  }
+	  
+	  cout << " \\\\ " <<  endl;
+	  
+	  // -- Bin contents.
+	  for (unsigned ibin = 0; ibin < Nbins; ibin++) {
+	    
+	    string label = string(m_sum->GetXaxis()->GetBinLabel(ibin + 1)); 
+	    if (label == "") {
+	      cout << formatNumber( m_sum->GetBinCenter(ibin + 1) );
+	    } else {
+	      printf("%-15s", label.c_str() );
+	      //cout << label;
+	    }
+	    
+	    for (const auto& p : m_backgrounds) {
+	      cout << " & " << formatNumber( p.second->GetBinContent(ibin + 1) );
+	    }
+	    
+	    cout << " & " << formatNumber( m_sum->GetBinContent(ibin + 1) );
+	    
+	    for (const auto& p : m_signals) {
+	      cout << " & " << (m_scaleSignal == 0 ? "--" : formatNumber( p.second->GetBinContent(ibin + 1) / m_scaleSignal ));
+	    }
+	    
+	    if (m_data) {
+	      cout << " & " << formatNumber( m_data->GetBinContent(ibin + 1) );
+	    }
+	    
+	    cout << " \\\\ " <<  endl;
+	    
+	  }
+	  	 	  
+	  cout << "------------------------------------------------------------------------" << endl;
+	}
+
+
+	// Writing.
         cout << "<PlottingHelper::draw> Writing canvas." << endl;
         m_canvas->Write();
+	string savename = replaceAll(m_input + "/" + m_branch + (m_improvementDirection != -1 ? "_improvement" : ""), "/", "__");
+	m_canvas->SaveAs((m_outdir + savename + ".pdf").c_str());
+	/*
 	if (m_branch != "") {
 	  m_canvas->SaveAs((m_outdir + m_branch + ".pdf").c_str());
 	} else {
 	  m_canvas->SaveAs((m_outdir + "TESTplot.pdf").c_str());
 	}
-        
+        */
         cout << "<PlottingHelper::draw> Exiting." << endl;
         return;
     }
@@ -604,6 +790,7 @@ namespace AnalysisTools {
                     hist->Scale(m_lumi); // @TODO: Correct event weights.
                 }
                 if (isSignal) {
+		    hist->Scale(m_scaleSignal);
                     assert( m_signals.count(info.name) == 0 );
                     m_signals[info.name] = (TH1F*) hist->Clone(("autohist_Signal_" + info.name).c_str()); //.insert( pair<unsigned, TH1F*>(DSID, hist) );
 		    m_signals[info.name]->SetDirectory(0);
