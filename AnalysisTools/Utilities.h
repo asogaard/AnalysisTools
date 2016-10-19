@@ -11,7 +11,7 @@
 #include <vector>
 #include <fstream>
 #include <limits> /* std::numeric_limits<double>::infinity */
-#include <algorithm> /* std::find */
+#include <algorithm> /* std::find, std::replace */
 #include <iterator> /* std::distance */
 #include <sstream> /* std::sstream */
 #include <sys/stat.h> /* struct stat */
@@ -93,6 +93,30 @@ namespace AnalysisTools {
         vector<string> elems;
         split(s, delim, elems);
         return elems;
+    }
+
+    // Replace all instanace of 'from'-string with 'to'-string.
+    inline string replaceAll(string str, const string& from, const string& to) {
+      unsigned start_pos = 0;
+      while ((start_pos = str.find(from, start_pos)) < str.length()) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+      }
+      return str;
+    }
+
+    // Format a floating point number to a string.
+    inline string formatNumber (const double&   f,			\
+				const unsigned& precision = 2,		\
+				const unsigned& leadingPlaces = 8) {
+        const unsigned l = 100;
+	char buffer [l];
+	int cx = snprintf ( buffer, l, "%*.*f",				\
+			    leadingPlaces,				\
+			    (f == 0 ? 0 : max(int(precision) - 1 - int(log10(f/2. + eps)), 0)), \
+			    f );
+	string s = buffer;
+	return s;
     }
     
 }
