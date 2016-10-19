@@ -1,0 +1,49 @@
+# Signal
+# -------------------------------------------------------------------------------------
+#305367,   952050.0000000,    20000, 2.5725e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp015_mD10_gSp3_gD1
+#305368,   743540.0000000,    20000, 3.2777e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp025_mD10_gSp3_gD1
+#305369,   570070.0000000,    18000, 4.3075e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp035_mD10_gSp3_gD1
+#305370,   440850.0000000,    20000, 5.5524e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp045_mD10_gSp3_gD1
+#305371,   346180.0000000,    38000, 7.0253e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp055_mD10_gSp3_gD1
+ 305372,   276440.0000000,    40000, 8.7430e-03, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp065_mD10_gSp3_gD1
+#305373,   224080.0000000,    38000, 1.0585e-02, MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph100_mRp075_mD10_gSp3_gD1
+
+# Inclusive gamma background.
+# -------------------------------------------------------------------------------------
+ 361039, 34988000.0000000, 19946800, 4.1028e-01, Sherpa_CT10_SinglePhotonPt35_70_CVetoBVeto
+ 361040, 34986000.0000000,  9979800, 4.8609e-01, Sherpa_CT10_SinglePhotonPt35_70_CFilterBVeto
+ 361041, 35002000.0000000,  1995800, 1.0752e-01, Sherpa_CT10_SinglePhotonPt35_70_BFilter
+ 361042,  3129000.0000000,  1999200, 3.9960e-01, Sherpa_CT10_SinglePhotonPt70_140_CVetoBVeto
+ 361043,  3132900.0000000,  1997400, 4.8199e-01, Sherpa_CT10_SinglePhotonPt70_140_CFilterBVeto
+ 361044,  3135200.0000000,   499400, 1.1728e-01, Sherpa_CT10_SinglePhotonPt70_140_BFilter
+ 361045,   247410.0000000,  9966800, 4.1049e-01, Sherpa_CT10_SinglePhotonPt140_280_CVetoBVeto
+ 361046,   247390.0000000,  1993200, 5.0284e-01, Sherpa_CT10_SinglePhotonPt140_280_CFilterBVeto
+ 361047,   249370.0000000,   997600, 1.2874e-01, Sherpa_CT10_SinglePhotonPt140_280_BFilter
+ 361048,    13648.0000000,   997200, 4.1834e-01, Sherpa_CT10_SinglePhotonPt280_500_CVetoBVeto
+ 361049,    13617.0000000,   500000, 4.7349e-01, Sherpa_CT10_SinglePhotonPt280_500_CFilterBVeto
+ 361050,    13874.0000000,    99800, 1.4069e-01, Sherpa_CT10_SinglePhotonPt280_500_BFilter
+ 361051,      923.3400000,   200000, 3.8226e-01, Sherpa_CT10_SinglePhotonPt500_1000_CVetoBVeto
+ 361052,      921.8500000,   100000, 4.7148e-01, Sherpa_CT10_SinglePhotonPt500_1000_CFilterBVeto
+ 361053,      938.1900000,    20000, 1.4811e-01, Sherpa_CT10_SinglePhotonPt500_1000_BFilter
+ 361054,       18.4320000,   100000, 3.7036e-01, Sherpa_CT10_SinglePhotonPt1000_2000_CVetoBVeto
+ 361055,       18.3880000,    50000, 4.6691e-01, Sherpa_CT10_SinglePhotonPt1000_2000_CFilterBVeto
+ 361056,       19.0460000,    10000, 1.5751e-01, Sherpa_CT10_SinglePhotonPt1000_2000_BFilter
+ 361057,        0.0796820,   101000, 3.6729e-01, Sherpa_CT10_SinglePhotonPt2000_4000_CVetoBVeto
+ 361058,        0.0803310,    50500, 4.6642e-01, Sherpa_CT10_SinglePhotonPt2000_4000_CFilterBVeto
+ 361059,        0.0820350,    10000, 1.6920e-01, Sherpa_CT10_SinglePhotonPt2000_4000_BFilter
+ 361060,        0.0000025,     1000, 4.0351e-01, Sherpa_CT10_SinglePhotonPt4000_CVetoBVeto
+ 361061,        0.0000025,      800, 4.1614e-01, Sherpa_CT10_SinglePhotonPt4000_CFilterBVeto
+ 361062,        0.0000025,     1000, 1.4831e-01, Sherpa_CT10_SinglePhotonPt4000_BFilter
+
+# Gamma plus V background.
+# -------------------------------------------------------------------------------------
+305435,      1660.6000000,   196000, 1.0000e+00, Sherpa_CT10_WqqGammaPt140_280
+305436,       243.1100000,    96000, 1.0000e+00, Sherpa_CT10_WqqGammaPt280_500
+305437,        37.8970000,    97000, 1.0000e+00, Sherpa_CT10_WqqGammaPt500_1000
+305438,         1.8156000,    76000, 1.0000e+00, Sherpa_CT10_WqqGammaPt1000_2000
+305439,         0.0169680,    10000, 1.0000e+00, Sherpa_CT10_WqqGammaPt2000_inf
+305440,       657.5700000,   198000, 1.0000e+00, Sherpa_CT10_ZqqGammaPt140_280
+305441,        77.0200000,    98000, 1.0000e+00, Sherpa_CT10_ZqqGammaPt280_500
+305442,        10.4380000,    97000, 1.0000e+00, Sherpa_CT10_ZqqGammaPt500_1000
+305443,         0.4626600,    79000, 1.0000e+00, Sherpa_CT10_ZqqGammaPt1000_2000
+305444,         0.0042910,    10000, 1.0000e+00, Sherpa_CT10_ZqqGammaPt2000_inf
