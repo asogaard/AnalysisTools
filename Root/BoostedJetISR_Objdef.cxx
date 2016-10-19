@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <memory> /* shared_ptr */
-#include <math.h> /* log */
+#include <math.h> /* log, pow */
 
 // ROOT include(s).
 #include "TROOT.h"
@@ -345,7 +345,7 @@ int main (int argc, char* argv[]) {
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -        
         ObjectDefinition<TLorentzVector> FatjetObjdef ("Fatjets");
 
-	FatjetObjdef.addCategories({"Nominal", "D2mod"});
+	FatjetObjdef.addCategories({"Nominal", "D2mod", "tau21mod"});
 
         FatjetObjdef.setInput(&fatjets);
    
@@ -354,7 +354,8 @@ int main (int argc, char* argv[]) {
         FatjetObjdef.addInfo("D2",    fj_D2);
         FatjetObjdef.addInfo("dPhiPhoton", &fj_dphiMinPhoton);
 
-	auto rho = [](const PhysicsObject& p) { return log(p.M() * p.M() / (p.Pt() * p.Pt())); };
+	auto rho      = [](const PhysicsObject& p) { return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 2.0)); };
+	auto rhoPrime = [](const PhysicsObject& p) { return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.4)); };
      
         // * eta
         Cut<PhysicsObject> cut_fatjet_eta ("Eta");
@@ -380,6 +381,12 @@ int main (int argc, char* argv[]) {
         cut_fatjet_rho.setRange(-6, -1);
         FatjetObjdef.addCut(cut_fatjet_rho, "D2mod");
 
+	// * rho
+        Cut<PhysicsObject> cut_fatjet_rhoPrime ("rhoPrime");
+        cut_fatjet_rhoPrime.setFunction( [&rhoPrime](const PhysicsObject& p) { return rhoPrime(p); } );
+        cut_fatjet_rhoPrime.setRange(-1, 2);
+        FatjetObjdef.addCut(cut_fatjet_rhoPrime, "tau21mod");
+
         // * M
         Cut<PhysicsObject> cut_fatjet_m ("M");
         cut_fatjet_m.setFunction( [](const PhysicsObject& p) { return p.M() / 1000.; } );
@@ -396,6 +403,15 @@ int main (int argc, char* argv[]) {
 
         PlotMacro1D<PhysicsObject> plot_fatjet_tau21 ("plot_fatjet_tau21", [](const PhysicsObject& p) { return p.info("tau2") / p.info("tau1"); });
         FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_tau21);
+
+        PlotMacro1D<PhysicsObject> plot_fatjet_tau21mod ("plot_fatjet_tau21mod", [&rhoPrime](const PhysicsObject& p) { 
+	    double rhoPrimeval = rhoPrime(p);
+	    double p0 =  0.477415;
+	    double p1 = -0.103591;
+	    auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
+	    return p.info("tau2") / p.info("tau1") + (mod(-1.) - mod(rhoPrimeval));
+	  });
+        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_tau21mod);
 
         PlotMacro1D<PhysicsObject> plot_fatjet_D2 ("plot_fatjet_D2", [](const PhysicsObject& p) { return p.info("D2"); });
         FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_D2);
