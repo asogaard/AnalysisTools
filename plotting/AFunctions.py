@@ -1,4 +1,4 @@
-from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas, gPad
+from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas, gPad, gStyle, TLegend, TLatex
 from array import array
 import math
 import sys
@@ -33,6 +33,12 @@ def loadXsec (path):
     return xsec
 
 
+def getMaximum (h):
+    ''' Get *actual* maximum bin in histogram or similar. '''
+    N = h.GetXaxis().GetNbins()
+    return max([h.GetBinContent(i + 1) for i in range(N)])
+
+
 def drawText (lines = [], c = None, pos = 'NW', qualifier = 'Internal simulation'):
     ''' Draw text on TPad, including ATLAS line. '''
 
@@ -59,6 +65,8 @@ def drawText (lines = [], c = None, pos = 'NW', qualifier = 'Internal simulation
         y -= ystep;
         pass
 
+    c.Update()
+
     return
 
 
@@ -69,7 +77,7 @@ def drawLegend (histograms, names, types = None, c = None,
                 ymax = None,
                 horisontal = 'R',
                 vertical   = 'T',
-                width = 0.40):
+                width = 0.30):
     ''' Draw legend on TPad. '''
 
     if not c: c = gPad
@@ -79,6 +87,14 @@ def drawLegend (histograms, names, types = None, c = None,
     if N != len(names):
         print "drawLegend: WARNING, number of histograms (%d) and names (%d) don't match." % (N, len(names))
         return None
+
+    if types is None:
+        types = ''
+        pass
+
+    if type(types) == str:
+        types = [types] * N
+        pass
 
     if types and N != len(types):
         print "drawLegend: WARNING, number of histograms (%d) and provided types (%d) don't match." % (N, len(types))
@@ -113,7 +129,7 @@ def drawLegend (histograms, names, types = None, c = None,
     # -- Setting y coordinates.
     if not (ymin or ymax):
         if   vertical.upper() == 'T':
-            ymax = 1. - c.GetTopMargin() - offset
+            ymax = 1. - c.GetTopMargin() - offset * 1.5
         elif vertical.upper() == 'B':
             ymin = c.GetBottomMargin() + offset
         else:
@@ -127,10 +143,8 @@ def drawLegend (histograms, names, types = None, c = None,
         ymax = ymin + height
         pass
 
-    #print xmin, ymin, xmax, ymax
-
     legend = TLegend(xmin, ymin, xmax, ymax)
-    
+
     for (h,n,t) in zip(histograms, names, types):
         legend.AddEntry(h, n, t)
         pass
@@ -141,12 +155,17 @@ def drawLegend (histograms, names, types = None, c = None,
     from ROOT import SetOwnership
     SetOwnership( legend, 0 ) 
 
+    c.Update()
+
     return legend
 
 
 def getPlotMinMax (histograms, log, padding = 1.0, ymin = None):
-    ymax = max([h.GetMaximum() for h in histograms])
-    ymin = ((1e-05 if log else 0.5) if not ymin else ymin)
+    ''' Get optimal y-axis plotting range given list of histograms (or sim.). '''
+
+    #ymax = max([h.GetMaximum() for h in histograms])
+    ymax = max(map(getMaximum, histograms))
+    ymin = (ymin if ymin is not None else (1e-05 if log else 0.5))
 
     if ymax < ymin: ymax = 2 * ymin
     if log:
@@ -164,7 +183,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
     values = dict()
 
     print ""
-    print "getData: Reading data from %d files." % len(paths)
+    print "loadData: Reading data from %d files." % len(paths)
 
     loadingCharacters  = ['\\', '|', '/', '-']
     iLoadingCharacter  = 0
@@ -200,7 +219,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
         t = f.Get(treename)
 
         if not t:
-            "getData: Could not get tree '%s' from file '%s'." % (treename, path)
+            "loadData: Could not get tree '%s' from file '%s'." % (treename, path)
             continue
         N = t.GetEntries()
 
@@ -225,7 +244,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
             i += 1
 
             if i % 10000 == 0:
-                print "\rgetData:  [%s]" % loadingCharacters[iLoadingCharacter],
+                print "\rloadData:  [%s]" % loadingCharacters[iLoadingCharacter],
                 sys.stdout.flush()
                 iLoadingCharacter = (iLoadingCharacter + 1) % nLoadingCharacters
                 pass
@@ -239,7 +258,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
         pass
 
     print ""
-    print "getData: Done."
+    print "loadData: Done."
     print ""
 
     return values

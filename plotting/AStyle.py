@@ -33,7 +33,7 @@ AStyle.SetStatColor(0)
 AStyle.SetPadRightMargin (0.05)
 AStyle.SetPadBottomMargin(0.15)
 AStyle.SetPadLeftMargin  (0.15)
-
+AStyle.SetPadTopMargin (0.05)
 AStyle.SetTitleOffset(1.2, 'x')
 AStyle.SetTitleOffset(1.5, 'y')
 AStyle.SetTitleOffset(1.6, 'z')
