@@ -1,4 +1,4 @@
-from ROOT import gROOT, TStyle, gStyle, TColor, kGreen
+from ROOT  import *
 from array import *
 
 # Global style variables.

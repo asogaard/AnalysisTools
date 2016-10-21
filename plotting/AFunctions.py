@@ -1,5 +1,6 @@
-from ROOT import TFile, TTree, TH1, TProfile, TStyle, TCanvas, gPad, gStyle, TLegend, TLatex
-from array import array
+from ROOT  import *
+from array import *
+
 import math
 import sys
 
