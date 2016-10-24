@@ -253,7 +253,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
 
         if xsec:
             weight = xsec[DSID]
-            values['weight'] += array('d', [weight for _ in range(N)])
+            values['weight'] += array('d', [weight for _ in xrange(N)])
             pass
         
         pass

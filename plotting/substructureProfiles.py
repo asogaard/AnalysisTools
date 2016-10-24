@@ -110,7 +110,7 @@ def main ():
                 pass
             pass
 
-        for ievent in range(Nevents):
+        for ievent in xrange(Nevents):
             for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
 
                 for icut, cut in enumerate(cutsdict[cutvar]):
@@ -293,7 +293,7 @@ def main ():
             }
 
 
-        for ievent in range(Nevents):
+        for ievent in xrange(Nevents):
             for yvar, xvar in itertools.product(yvars, xvars):
                 profiles[yvar][xvar].Fill( values[xvar]    [ievent],
                                            values[yvar]    [ievent],
@@ -316,9 +316,9 @@ def main ():
             y  = values[yvar]
             x  = values[xvar]
             x1 = fit_limits[xvar][0]
-            values['%s_mod_%s' % (yvar, xvar)] = array('d', [ y[i] + (fit.Eval(x1) - fit.Eval(x[i])) for i in range(Nevents)])
+            values['%s_mod_%s' % (yvar, xvar)] = array('d', [ y[i] + (fit.Eval(x1) - fit.Eval(x[i])) for i in xrange(Nevents)])
 
-            for ievent in range(Nevents):
+            for ievent in xrange(Nevents):
                 profiles_mod[yvar][xvar].Fill( values[xvar][ievent],
                                                values['%s_mod_%s' % (yvar, xvar)][ievent],
                                                values['weight'][ievent]
@@ -389,9 +389,9 @@ def main ():
 
     if False:
 
-        #values['rho2'] = [0 for _ in range(Nevents)]
+        #values['rho2'] = [0 for _ in xrange(Nevents)]
 
-        #for ievent in range(Nevents):
+        #for ievent in xrange(Nevents):
             #values['rho2'][ievent] = rho(values['m'][ievent], values['pt'][ievent])
             #pass
 
@@ -448,7 +448,7 @@ def main ():
         # ^^^ TEST: Use option 's' to display RMS rather than error on the mean.
 
 
-        for ievent in range(Nevents):
+        for ievent in xrange(Nevents):
             for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
                 if yvar == yvars[0]:
                     density[xvar].Fill( values[xvar]    [ievent],
@@ -674,7 +674,7 @@ def main ():
 
             # Fill
             print "rho2 range: [%f, %f]" % (fit_limits['rho2'][0], fit_limits['rho2'][1])
-            for ievent in range(Nevents):
+            for ievent in xrange(Nevents):
                 if cutvar == 'D2mod':
                     if not (-6 < values['rho'][ievent] < -1):
                         continue
@@ -767,7 +767,7 @@ def main ():
     profilemod     = TProfile("<D2mod>     vs. rho", "", 50, -14, 0, -1000, 2000.)
     profilemodthis = TProfile("<D2modthis> vs. rho", "", 50, -14, 0, -1000, 2000.)
 
-    for ievent in range(Nevents):
+    for ievent in xrange(Nevents):
         profile.Fill( vals['rho'][ievent], 
                       vals['D2'][ievent],
                       vals['weight'][ievent] )
@@ -777,9 +777,9 @@ def main ():
     fitmod = TF1("fitmod", 'pol1', DDTmin, DDTmax)
     profile.Fit("fit", 'R0')
 
-    vals['D2modthis'] = [vals['D2'][i] + (fit.Eval(DDTmin) - fit.Eval(vals['rho'][i])) for i in range(Nevents)]
+    vals['D2modthis'] = [vals['D2'][i] + (fit.Eval(DDTmin) - fit.Eval(vals['rho'][i])) for i in xrange(Nevents)]
 
-    for ievent in range(Nevents):
+    for ievent in xrange(Nevents):
         profilemod.Fill( vals['rho'][ievent], 
                          vals['D2mod'][ievent],
                          vals['weight'][ievent] )
@@ -908,7 +908,7 @@ def main ():
     h_d2mod_pass1.SetMarkerColor(kRed)
     h_d2mod_pass2.SetLineColor  (kBlue)
     h_d2mod_pass2.SetMarkerColor(kBlue)
-    for ievent in range(Nevents):
+    for ievent in xrange(Nevents):
         h_d2mod.Fill( vals['D2mod'][ievent], vals['weight'][ievent] )
         h_d2mod_pass1.Fill( vals['D2mod'][ievent], vals['weight'][ievent] )
         if (vals['rho'][ievent] < -6.) or (vals['rho'][ievent] > -1.): continue
@@ -922,7 +922,7 @@ def main ():
     gPad.Update()
     wait()
 
-    for ievent in range(Nevents):
+    for ievent in xrange(Nevents):
         for histvar, hists in histograms.iteritems():
             bins = binsdict[histvar]
             for ibin, bin in enumerate(bins):

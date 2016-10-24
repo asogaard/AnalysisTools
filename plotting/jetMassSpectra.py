@@ -94,7 +94,7 @@ def main ():
         histograms = { var: TH1F('%s' % var, "", 100, -1, 1) for var in variables }
 
         for var, h in histograms.iteritems():
-            for ievent in range(Nevents):
+            for ievent in xrange(Nevents):
                 h.Fill( values[var]     [ievent],
                         values['weight'][ievent] )
                 pass
@@ -224,7 +224,7 @@ def main ():
 
 
         # Filling histograms.
-        for ievent in range(Nevents):
+        for ievent in xrange(Nevents):
             for histvar, hists in histograms.iteritems():
                 bins = binsdict[histvar]
                 for ibin, bin in enumerate(bins):
