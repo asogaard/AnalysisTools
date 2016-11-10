@@ -12,43 +12,36 @@ import itertools
 
 
 def displayName (var):
-    if  var == 'tau21':
-        return'#tau_{21}'
-    if  var == 'tau21mod':
-        return'#tilde{#tau}_{21}'
-    elif var == 'D2':
-        return 'D_{2}'
-    elif var == 'D2mod':
-        return '#tilde{D}_{2}'
-    elif var == 'pt':
-        return 'p_{T}'
-    elif var == 'm':
-        return 'M'
-    elif var == 'rho':
-        return '#rho'
-    elif var == 'rhoPrime':
-        return "#rho'"
-    elif var == 'rhoDDT':
-        return '#rho^{DDT}'
+    if   var == 'tau21':    return '#tau_{21}'
+    elif var == 'tau21mod': return '#tilde{#tau}_{21}'
+    elif var == 'D2':       return 'D_{2}'
+    elif var == 'D2mod':    return '#tilde{D}_{2}'
+    elif var == 'pt':       return 'p_{T}'
+    elif var == 'm':        return 'M'
+    elif var == 'rho':      return '#rho'
+    elif var == 'rhoPrime': return "#rho'"
+    elif var == 'rhoDDT':   return '#rho^{DDT}'
     return var
 
 def displayUnit (var):
-    if   var == 'pt':
-        return 'GeV'
-    elif var == 'm':
-        return 'GeV'
+    if   var == 'pt': return 'GeV'
+    elif var == 'm':  return 'GeV'
     return ''
 
 def rho (m, pt):
-    return math.log(pow(m + eps, 2.) / pow(pt, 2.))
+    if m  <= 0: return -1E+10
+    if pt <= 0: return +1E+10
+    return math.log(pow(m, 2.0) / pow(pt, 2.0))
 
 def rhoPrime (m, pt):
-    if max(m, 0) == 0:
-        return -1E+10
-    return math.log(pow(m, 2.) / pow(pt, 1.4))
+    if m  <= 0: return -1E+10
+    if pt <= 0: return +1E+10
+    return math.log(pow(m, 2.0) / pow(pt, 1.4))
 
 def rhoDDT (m, pt):
-    return math.log(pow(m + eps, 2.) / float(pt * 1.))
+    if m  <= 0: return -1E+10
+    if pt <= 0: return +1E+10
+    return math.log(pow(m, 2.0) / pow(pt, 1.0))
 
 
 # Main function.
@@ -74,14 +67,22 @@ def main ():
 
     values['rhoPrime'] = map(lambda (m,pt): rhoPrime(m,pt), zip(values['m'], values['pt']))
 
-    def modFunc (rhoval):
+    def modFuncRhoPrime (rhoPrimeVal):
         ''' Linear correction function for rhoPrime = log(m^2/pt^1.4) '''
         p0 =  0.477415
         p1 = -0.103591
-        return p0 + p1 * rhoval
+        return p0 + p1 * rhoPrimeVal
 
-    rhomin = -1.0
-    values['tau21mod'] = map(lambda (t,rp): t + (modFunc(rhomin) - modFunc(rp)), zip(values['tau21'], values['rhoPrime']))
+    def modFuncRhoDDT (rhoDDTVal):
+        ''' Linear correction function for rhoDDT = log(m^2/pt^1.4) '''
+        p0 =  0.477415
+        p1 = -0.103591
+        return p0 + p1 * rhoDDTVal
+
+    rhoPrimeMin = -1.5
+    rhoDDTMin   =  1.0
+    values['tau21_mod_rhoPrime'] = map(lambda (t,rp): t + (modFuncRhoPrime(rhoPrimeMin) - modFuncRhoPrime(rp)), zip(values['tau21'], values['rhoPrime']))
+    values['tau21_mod_rhoDDT'] = map(lambda (t,rp): t + (modFuncRhoDDT(rhoDDTMin) - modFuncRhoDDT(rp)), zip(values['tau21'], values['rhoDDT']))
 
     # ==============================================================
     # Plot substructure variables.

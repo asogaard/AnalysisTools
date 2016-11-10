@@ -1,5 +1,6 @@
 from ROOT  import *
 from array import *
+from collections import namedtuple
 
 import math
 import sys
@@ -11,14 +12,13 @@ pi  = 3.14159265359
 # Utility functions.
 def wait ():
     ''' Generic wait function. '''
-
     raw_input('...')
     return
 
 
+
 def loadXsec (path):
     ''' Load cross section weights from file. '''
-
     xsec = dict()
     with open(path, 'r') as f:
         for l in f:
@@ -34,17 +34,25 @@ def loadXsec (path):
     return xsec
 
 
+
 def getMaximum (h):
     ''' Get *actual* maximum bin in histogram or similar. '''
+    if type(h) in [TF1, TEfficiency]:
+        return -1
     N = h.GetXaxis().GetNbins()
     return max([h.GetBinContent(i + 1) for i in range(N)])
 
 
+
 def drawText (lines = [], c = None, pos = 'NW', qualifier = 'Internal simulation'):
     ''' Draw text on TPad, including ATLAS line. '''
-
     if not c: c = gPad
     c.cd()
+
+    # Checks.
+    if lines is None:
+        lines = []
+        pass
 
     t = TLatex()
 
@@ -71,23 +79,25 @@ def drawText (lines = [], c = None, pos = 'NW', qualifier = 'Internal simulation
     return
 
 
+
 def drawLegend (histograms, names, types = None, c = None,
                 xmin = None,
                 xmax = None,
                 ymin = None,
                 ymax = None,
+                header = None,
+                categories = None,
                 horisontal = 'R',
                 vertical   = 'T',
                 width = 0.30):
     ''' Draw legend on TPad. '''
-
     if not c: c = gPad
     c.cd()
 
     N = len(histograms)
     if N != len(names):
         print "drawLegend: WARNING, number of histograms (%d) and names (%d) don't match." % (N, len(names))
-        return None
+        pass
 
     if types is None:
         types = ''
@@ -101,14 +111,16 @@ def drawLegend (histograms, names, types = None, c = None,
         print "drawLegend: WARNING, number of histograms (%d) and provided types (%d) don't match." % (N, len(types))
         return None
 
+    '''
     if not types:
         types = ["" for _ in range(N)]
         pass
+        '''
 
     fontsize = gStyle.GetLegendTextSize()
 
     offset = 0.04
-    height = N * fontsize * 1.25
+    height = (min(N, len(names)) + (0 if header == None else 1) + (len(categories) if categories else 0))* fontsize * 1.25
 
     # -- Setting x coordinates.
     if not (xmin or xmax):
@@ -146,8 +158,18 @@ def drawLegend (histograms, names, types = None, c = None,
 
     legend = TLegend(xmin, ymin, xmax, ymax)
 
+    if header != None:
+        legend.AddEntry(None, header, '')
+        pass
+
     for (h,n,t) in zip(histograms, names, types):
         legend.AddEntry(h, n, t)
+        pass
+
+    if categories:
+        for icat, (name, hist, opt) in enumerate(categories):
+            legend.AddEntry(hist, name, opt)
+            pass
         pass
 
     legend.Draw()
@@ -161,12 +183,12 @@ def drawLegend (histograms, names, types = None, c = None,
     return legend
 
 
-def getPlotMinMax (histograms, log, padding = 1.0, ymin = None):
-    ''' Get optimal y-axis plotting range given list of histograms (or sim.). '''
 
-    #ymax = max([h.GetMaximum() for h in histograms])
+def getPlotMinMax (histograms, log, padding = None, ymin = None):
+    ''' Get optimal y-axis plotting range given list of histograms (or sim.). '''
+    padding = padding if padding else 1.0
     ymax = max(map(getMaximum, histograms))
-    ymin = (ymin if ymin is not None else (1e-05 if log else 0.5))
+    ymin = (ymin if ymin is not None else (1e-05 if log else 0.))
 
     if ymax < ymin: ymax = 2 * ymin
     if log:
@@ -178,9 +200,160 @@ def getPlotMinMax (histograms, log, padding = 1.0, ymin = None):
     return (ymin, ymax)
 
 
-def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = None, DSIDvar = 'DSID'):
+
+LegendOptions = namedtuple('LegendOptions', ['histograms', 'names', 'types', 'c', 'xmin', 'xmax', 'ymin', 'ymax', \
+'header', 'categories', 'horisontal', 'vertical','width'])
+LegendOptions.__new__.__defaults__ = ('LP', None, None, None,  None,  None, None, None, 'R', 'T', 0.30)
+
+TextOptions = namedtuple('TextOptions', ['lines', 'c', 'pos', 'qualifier'])
+TextOptions.__new__.__defaults__ = ([], None, 'NW','Internal simulation',)
+
+def makePlot (pathHistnamePairs,
+              legendOpts = None, #LegendOptions([], []),
+              textOpts   = None, #TextOptions(),
+              ymin = None,
+              ymax = None,
+              logy = False,
+              padding = None,
+              xtitle = None,
+              ytitle = None,
+              ztitle = None,
+              colours = None,
+              markers = None,
+              xlines = None,
+              ylines = None,
+              drawOpt = '',
+              normalise = False):
+    ''' ... '''
+
+    # Variable declarations
+    if not colours:
+        colours = [kRed   + i * 2 for i in range(3)] + \
+                  [kBlue  + i * 2 for i in range(3)] + \
+                  [kGreen + i * 2 for i in range(3)]
+        pass
+
+    if not markers:
+        markers = [20] * len(pathHistnamePairs)
+        pass
+
+    # Loop all pairs of paths and histograms.
+    # -- Assuming list(tuple(*,*)) structure.
+    histograms = list()
+    if len(pathHistnamePairs) > 0 and type(pathHistnamePairs[0]) in [tuple, list]:
+        for path, histname in pathHistnamePairs:
+            # -- Open file
+            f = TFile.Open(path, 'READ')
+            
+            # -- Get histogram.
+            print "histname: '%s'" % histname
+            h = f.Get(histname)
+            ''' If TTree? '''
+            
+            # -- Keep in memory after file is closed.
+            h.SetDirectory(0)
+            if   isinstance(h, TH2):
+                TH2.AddDirectory(False)
+            elif isinstance(h, TH1):
+                TH1.AddDirectory(False)
+                pass
+            
+            # -- Normalise.
+            if normalise and h.Integral() > 0:
+                h.Scale(1./h.Integral())
+                pass
+            
+            # -- Append to list of histograms to be plotted.
+            histograms.append(h)
+            
+            pass    
+    else:
+        histograms = pathHistnamePairs
+        pass
+
+    # Style.
+    (ymin, _ymax) = getPlotMinMax(histograms, logy, ymin = ymin, padding = padding)
+    ymax = ymax if ymax else _ymax
+    for i,h in enumerate(histograms):
+
+        if i < len(colours):
+            h.SetLineColor  (colours[i])
+            h.SetMarkerColor(colours[i])
+            h.SetMarkerStyle(markers[i])
+            pass
+
+        # -- Axes.
+        h.SetTitle(';%s;%s;%s' % ( (xtitle if xtitle else ''),
+                                   (ytitle if ytitle else ''),
+                                   (ztitle if ztitle else ''),
+                                   ))
+
+        #if xtitle: h.GetXaxis().SetTitle(xtitle)
+        #if ytitle: h.GetYaxis().SetTitle(ytitle)
+
+        if type(h) in [TEfficiency]:
+            continue
+
+        h.GetYaxis().SetRangeUser(ymin, ymax)
+
+        pass
+
+    # Canvas.
+    c = TCanvas('c', "", int(600 * (7./6. if drawOpt and 'Z' in drawOpt else 1.)), 600)
+    if drawOpt and 'Z' in drawOpt:
+        c.SetRightMargin(0.15)
+        pass
+    c.SetLogy(logy)
+
+    # Draw.
+    for i,h in enumerate(histograms):
+        h.Draw(drawOpt + ('SAME' if i > 0 else ''))
+        pass
+
+    # Lines
+    if xlines or ylines:
+        c.Update()
+
+        xmin = c.GetFrame().GetX1()
+        xmax = c.GetFrame().GetX2()
+        ymin = c.GetFrame().GetY1()
+        ymax = c.GetFrame().GetY2()
+
+        line = TLine()
+        line.SetLineColor(kGray + 2)
+        line.SetLineStyle(2)
+
+        # -- x-axis
+        for xline in xlines:
+            line.DrawLine(xline, ymin, xline, ymax)
+            pass
+
+        # -- y-axis
+        for yline in ylines:
+            line.DrawLine(xmin, yline, xmax, yline)
+            pass
+
+        pass
+
+    # Text.
+    if textOpts:
+        drawText( *[v for _,v in textOpts._asdict().items()] )
+        pass
+
+    # Legend.
+    if legendOpts:
+        legendOpts = legendOpts._replace(histograms = histograms)
+        drawLegend( *[v for _,v in legendOpts._asdict().items()] )
+        pass
+
+    # Update.
+    c.Update()
+    return c
+
+
+
+def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = None, DSIDvar = 'DSID', Nevents = None):
     ''' Read in data arrays from TTree. '''
-    
     values = dict()
 
     print ""
@@ -191,6 +364,8 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
     nLoadingCharacters = len(loadingCharacters)
 
     if len(paths) == 0: return 
+
+    ievent = 0
     for ipath, path in enumerate(paths):
 
         DSID = None
@@ -215,6 +390,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
 
         # -- Ignore signal samples.
         if ignore and ignore(DSID):
+            print "Ignoring DSID %d." % DSID
             continue
 
         t = f.Get(treename)
@@ -239,6 +415,11 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
         # -- Read tree
         i = 0
         while t.GetEntry(i):
+            # -- Break early, if needed.
+            if Nevents is not None and ievent == Nevents:
+                break
+            ievent += 1
+
             for var in variables:
                 values[var].append( branch[var][0] )
                 pass
@@ -249,12 +430,16 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
                 sys.stdout.flush()
                 iLoadingCharacter = (iLoadingCharacter + 1) % nLoadingCharacters
                 pass
+
             pass
 
         if xsec:
             weight = xsec[DSID]
-            values['weight'] += array('d', [weight for _ in xrange(N)])
+            values['weight'] += array('d', [weight for _ in xrange(i)]) # N
             pass
+
+        if Nevents is not None and ievent == Nevents:
+            break
         
         pass
 

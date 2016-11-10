@@ -10,52 +10,50 @@ from array import array
 import math
 import itertools
 
-
 def displayName (var):
-    if  var == 'tau21':
-        return'#tau_{21}'
-    if  var == 'tau21_mod_rho2':
-        return'#tilde{#tau}_{21}'
-    elif var == 'D2':
-        return 'D_{2}'
-    elif var == 'D2mod':
-        return '#tilde{D}_{2}'
-    elif var == 'pt':
-        return 'p_{T}'
-    elif var == 'm':
-        return 'M'
-    elif var == 'rho':
-        return '#rho'
-    elif var == 'rho2':
-        return "#rho'"
-    elif var == 'rhoDDT':
-        return '#rho^{DDT}'
+    if   var == "tau21":              return "#tau_{21}"
+    if   var == "tau21_ut":           return "#tau_{21,untrimmed}"
+    elif var == "D2":                 return "D_{2}"
+    elif var == "D2mod":              return "#tilde{D}_{2}"
+    elif var == "pt":                 return "p_{T}"
+    elif var == "m":                  return "M"
+    elif var == "rho":                return "#rho"
+    elif var == "rho_ut":             return "#rho_{untrimmed}"
+    elif var == "rhoPrime":           return "#rho'"
+    elif var == "rhoPrime_ut":        return "#rho'_{untrimmed}"
+    elif var == "rhoDDT":             return "#rho^{DDT}"
+    elif var == "rhoDDT_ut":          return "#rho^{DDT}_{untrimmed}"
+    elif var == "tau21_mod_rhoPrime": return "#tau_{21}'"
+    elif var == "tau21_mod_rhoDDT":   return "#tau_{21}^{DDT}"
     return var
 
 def displayUnit (var):
-    if   var == 'pt':
-        return 'GeV'
-    elif var == 'm':
-        return 'GeV'
+    if   var == 'pt': return 'GeV'
+    elif var == 'm':  return 'GeV'
     return ''
 
 def rho (m, pt):
-    return math.log(pow(m + eps, 2.) / pow(pt, 2.))
+    if   m  <= 0: return -1E+10
+    elif pt <= 0: return +1E+10
+    return math.log(pow(m, 2.) / pow(pt, 2.0))
 
-def rho2 (m, pt):
-    if max(m, 0) == 0:
-        return -1E+10
-    #return math.log(m / math.sqrt(pt))
+def rhoPrime (m, pt):
+    if   m  <= 0: return -1E+10
+    elif pt <= 0: return +1E+10
     return math.log(pow(m, 2.) / pow(pt, 1.4))
 
 def rhoDDT (m, pt):
-    return math.log(pow(m + eps, 2.) / float(pt * 1.))
+    if   m  <= 0: return -1E+10
+    elif pt <= 0: return +1E+10
+    return math.log(pow(m, 2.) / pow(pt, 1.0))
 
 
 # Main function.
 # ----------------------------------------------------------------------------------------------------
 def main ():
-    
+ 
+    gROOT.ProcessLine(".L ../share/Loader.C+");
+   
     # Initial setup.
     xsec = loadXsec('../share/weightsMC.csv')
     
@@ -63,238 +61,81 @@ def main ():
     paths = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
     # Specify which variables to get. 
+    #treename = 'BoostedJetISR/EventSelection/Nominal/NumPhotons/Postcut'
     treename = 'BoostedJetISR/Fatjets/Nominal/dPhi/Postcut'
+    #prefix   = 'plot_leadingFatjet_'
     prefix   = 'plot_fatjet_'
-    getvars  = ['pt', 'm', 'tau21', 'D2', 'D2mod', 'rho', 'rhoDDT']
+    getvars  = ['m', 'pt', 'pt_ut', 'tau21', 'tau21_ut']
 
     # Load data.
     values = loadData(paths, treename, getvars, prefix, xsec, ignore = (lambda DSID: 305367 <= DSID <= 305374 ))
 
-    if not values: return
+    if not values: 
+        print "WARNING: No value were loaded."
+        return
+
     Nevents = len(values[getvars[0]])
 
-    values['rho2'] = map(lambda (m,pt): rho2(m,pt), zip(values['m'], values['pt']))
 
-    # ==============================================================
-    # Plot substructure variable profiles.
-    # --------------------------------------------------------------
+    # -- Compute trimmed rho variables
+    values['rho']         = map(lambda (m,pt): rho     (m,pt), zip(values['m'], values['pt']))
+    values['rhoPrime']    = map(lambda (m,pt): rhoPrime(m,pt), zip(values['m'], values['pt']))
+    values['rhoDDT']      = map(lambda (m,pt): rhoDDT  (m,pt), zip(values['m'], values['pt']))
 
-    if False:
-        '''
-        cutsdict = {
-            'pt': [
-                ( 300,  400),
-                ( 800, 1200),
-                (2000, 3000)
-                ]
-            }
+    # -- Compute untrimmed rho variables
+    values['rho_ut']      = map(lambda (m,pt): rho     (m,pt), zip(values['m'], values['pt_ut']))
+    values['rhoPrime_ut'] = map(lambda (m,pt): rhoPrime(m,pt), zip(values['m'], values['pt_ut']))
+    values['rhoDDT_ut']   = map(lambda (m,pt): rhoDDT  (m,pt), zip(values['m'], values['pt_ut']))
 
-        xvars   = ['rho', 'rhoDDT']
-        yvars   = ['tau21', 'D2', 'D2mod']
-        cutvars = [p[0] for p in cutsdict.items()]
-        
-        profiles = { yvar : { xvar : { cutvar : [] for cutvar in cutvars } for xvar in xvars } for yvar in yvars  }
-
-        xaxislimits = {
-            'rho':    (-7, 0),
-            'rhoDDT': (-2, 7),
-            }
-
-        for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
-
-            for icut, _ in enumerate(cutsdict[cutvar]):
-                ps = profiles[yvar][xvar][cutvar]
-                ps.append( TProfile("<%s> vs. %s, %s cut %d" % (yvar, xvar, cutvar, icut), "", 
-                                    50, xaxislimits[xvar][0], xaxislimits[xvar][1],
-                                    -1000, 2000) )
-                pass
-            pass
-
-        for ievent in xrange(Nevents):
-            for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
-
-                for icut, cut in enumerate(cutsdict[cutvar]):
-                    if not(cut[0] <= values[cutvar][ievent] < cut[1]): continue
-                    ps = profiles[yvar][xvar][cutvar]
-                    ps[icut].Fill( values[xvar]    [ievent],
-                                   values[yvar]    [ievent],
-                                   values['weight'][ievent] )
-                    pass # end: loop cuts
-                pass # end: loop variables            
-            pass # end: loop events
-
-        
-        c = TCanvas('c', "", 600, 600)
-
-        for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
-
-            ps   = profiles[yvar][xvar][cutvar]
-            cuts = cutsdict[cutvar]
-
-            for icut, _ in enumerate(cuts):
-                ps[icut].SetLineColor  (kRed + icut * 2)
-                ps[icut].SetMarkerColor(kRed + icut * 2)
-                ps[icut].Draw('SAME' if icut > 0 else '')
-                pass
-
-            padding = 1.7
-            ymin, ymax = getPlotMinMax( ps, False, padding = padding, ymin = 0. )
-            
-            ymax = min(40, ymax)
-
-            # -- Draw.
-            for p in ps:
-                p.GetYaxis().SetRangeUser(ymin, ymax)
-                p.GetXaxis().SetTitle( "%s %s" % (displayName(xvar), displayUnit(xvar) ) )
-                p.GetYaxis().SetTitle( '#LT%s#GT' % displayName(yvar) )
-                pass
-            
-            # -- Text.
-            drawText([ "#sqrt{s} = 13 TeV",
-                       "Inclusive #gamma events",
-                       "Trimmed anti-k_{t}^{R=1.0}",
-                       "Req. 1 #gamma with p_{T} > 155 GeV",
-                       #"Jet %s slices plotted" % displayName(cutvar)
-                       ])
-            
-            cutText = TLatex()
-            cutText.DrawLatexNDC( 0.62,
-                                  0.76,
-                                  "Jet %s slices:" % displayName(cutvar) )
-
-            # -- Legend.
-            legend = drawLegend(ps,
-                                ['[%d, %d] %s' % (cut[0], cut[1], displayUnit(cutvar)) for cut in cuts],
-                                ['LP' for _ in cuts],
-                                ymax = 0.74)
-            
-            legend.SetTextSize(0.033)
-            
-            # -- Lines.
-            line = TLine()
-            line.SetLineColor(kGray + 1)
-            line.SetLineWidth(1)
-            
-            text = TLatex()
-            text.SetTextSize(0.023)
-            text.SetTextColor(kGray + 2)
-            
-            ydraw = ymax * 0.40
-            
-            xaxis = ps[0].GetXaxis
-            xmin, xmax = xaxis().GetXmin(), xaxis().GetXmax()
-            
-            offset = (0.005 * (xmax - xmin), 0.005 * (ymax - ymin))
-            
-            for cut in cuts: #(reversed(cuts) if yvar == 'tau21' else cuts):
-                clip = [False, False]
-
-                if xvar == 'rho':
-                    x1 = rho( 20, cut[0]) 
-                    x2 = rho(200, cut[0]) 
-                elif xvar == 'rhoDDT':
-                    x1 = rhoDDT( 20, cut[0]) 
-                    x2 = rhoDDT(200, cut[0])                     
-                elif xvar == 'rho2':
-                    x1 = rho2( 20, cut[0]) 
-                    x2 = rho2(200, cut[0])                     
-                else:
-                    continue
-
-                xm = (x1 + x2)/2.
-
-                if x1 < xmin:
-                    x1 = xmin
-                    clip[0] = True
-                    pass
-
-                if x2 > xmax:
-                    x2 = xmax
-                    clip[1] = True
-                    pass
-
-                line.DrawLine(x1, ydraw, x2, ydraw)
-                if not clip[0]:
-                    line.DrawLine(x1, ydraw + offset[1], x1, ydraw - offset[1])
-                    pass
-                if not clip[1]:
-                    line.DrawLine(x2, ydraw + offset[1], x2, ydraw - offset[1])
-                    pass
-
-                text.SetTextFont(42)
-                if not clip[0]:
-                    text.SetTextAlign(11)
-                    text.DrawLatex(x1, ydraw + 2 * offset[1], "M_{J} = 20 GeV")
-                    pass
-                
-                if not clip[1]:
-                    text.SetTextAlign(31)
-                    text.DrawLatex(x2, ydraw + offset[1], "200 GeV")
-                    pass
-                
-                text.SetTextFont(52)
-                #text.SetTextAlign(23)
-                text.SetTextAlign(21)
-                if clip[0]:
-                    text.SetTextAlign(11)
-                    xm = xmin + (xmax - xmin) * 0.04
-                    pass
-
-                text.DrawLatex(xm, ydraw + 2 * offset[1], "(%s = %d %s)" % (displayName(cutvar), cut[0], displayUnit(cutvar)))
-                
-                ydraw += 0.06 * (ymax - ymin)
-                pass
-            
-            # -- Show.
-            gPad.Update()
-            wait()
-
-            savename = "profile_%s_vs_%s.pdf" % (yvar, xvar)
-
-            c.SaveAs(savename)
-            
-            
-            pass # end: loop variables
-            '''
-        pass
 
 
     # ==============================================================
     # Improved bias correction.
     # --------------------------------------------------------------
 
-    if True:
+    if False:
+
+        pTcut = 250.
         
-        #xvars   = ['rho', 'rho2', 'rhoDDT']
-        xvars   = ['rho2']
-        yvars   = ['tau21']
+        #xvars   = ['rho', 'rhoPrime', 'rhoDDT']
+        xvars   = ['rho',    'rhoPrime',    'rhoDDT', 
+                   'rho_ut', 'rhoPrime_ut', 'rhoDDT_ut']
+        yvars   = ['tau21',
+                   'tau21_ut']
         
         xaxislimits = {
-            'rho':    (-8, 0),
-            'rho2':   (-4, 4),
-            'rhoDDT': (-1, 7),
+            'rho':         (-8, 0),
+            'rho_ut':      (-8, 0),
+            'rhoPrime':    (-4, 4),
+            'rhoPrime_ut': (-4, 4),
+            'rhoDDT':      (-2, 6),
+            'rhoDDT_ut':   (-2, 6),
             }
 
         profiles = { 
             yvar : {
-                xvar : TProfile('<%s> vs. %s' % (yvar, xvar), "", 50, xaxislimits[xvar][0], xaxislimits[xvar][1], -1000, 2000) for xvar in xvars
+                xvar : TProfile('<%s> vs. %s'     % (yvar, xvar), "", 50, xaxislimits[xvar][0], xaxislimits[xvar][1], -100, 200) for xvar in xvars
                 } for yvar in yvars  }
 
         profiles_mod = { 
             yvar : {
-                xvar : TProfile('<%s> vs. %s mod' % (yvar, xvar), "", 50, xaxislimits[xvar][0], xaxislimits[xvar][1], -1000, 2000) for xvar in xvars
+                xvar : TProfile('<%s> vs. %s mod' % (yvar, xvar), "", 50, xaxislimits[xvar][0], xaxislimits[xvar][1], -100, 200) for xvar in xvars
                 } for yvar in yvars  }
 
         fit_limits = {
-            'rho':    (-4.0, -2.0),
-            'rho2':   (-1.0,  2.0), # for 1.4
-            #'rho2':   (-1.5,  1.0), # for 1.5
-            'rhoDDT': ( 1.5,  3.5),
+            'rho':         (-4.0, -2.0),
+            'rho_ut':      (-4.0, -2.0),
+            'rhoPrime':    (-1.0,  2.0),
+            'rhoPrime_ut': (-1.0,  2.0),
+            'rhoDDT':      ( 1.5,  3.5),
+            'rhoDDT_ut':   ( 1.5,  3.5),
             }
 
 
         for ievent in xrange(Nevents):
             for yvar, xvar in itertools.product(yvars, xvars):
+                if values['pt'][ievent] < pTcut: continue
+                if values['m'][ievent] > values['pt'][ievent] / 2.: continue # Boosted regime
                 profiles[yvar][xvar].Fill( values[xvar]    [ievent],
                                            values[yvar]    [ievent],
                                            values['weight'][ievent] )
@@ -316,9 +157,12 @@ def main ():
             y  = values[yvar]
             x  = values[xvar]
             x1 = fit_limits[xvar][0]
-            values['%s_mod_%s' % (yvar, xvar)] = array('d', [ y[i] + (fit.Eval(x1) - fit.Eval(x[i])) for i in xrange(Nevents)])
+            #values['%s_mod_%s' % (yvar, xvar)] = array('d', [ y[i] + (fit.Eval(x1) - fit.Eval(x[i])) for i in xrange(Nevents)])
+            values['%s_mod_%s' % (yvar, xvar)] = array('d', [ y + (fit.Eval(x1) - fit.Eval(x)) for x,y in zip(values[xvar], values[yvar])])
 
             for ievent in xrange(Nevents):
+                if values['pt'][ievent] < pTcut: continue
+                if values['m'][ievent] > values['pt'][ievent] / 2.: continue
                 profiles_mod[yvar][xvar].Fill( values[xvar][ievent],
                                                values['%s_mod_%s' % (yvar, xvar)][ievent],
                                                values['weight'][ievent]
@@ -358,7 +202,9 @@ def main ():
                        "Inclusive #gamma events",
                        "Trimmed anti-k_{t}^{R=1.0}",
                        "Req. 1 #gamma with p_{T} > 155 GeV",
-                       "Jet p_{T} > 250 GeV",
+                       "Jet p_{T} > %d GeV" % int(pTcut),
+                       #"Jet M > 20 GeV",
+                       #"Jet M < p_{T} / 2 (boosted regime)",
                        ])
             
             # -- Legend.
@@ -374,7 +220,8 @@ def main ():
             gPad.Update()
             wait()
 
-            #savename = "profile_%s_vs_%s.pdf" % (yvar, xvar)
+            savename = "profile_%s_vs_%s.pdf" % (yvar, xvar)
+            print "Savename: '%s'" % savename
             #c.SaveAs(savename)
             
             
@@ -387,12 +234,12 @@ def main ():
     # Improved substructure profile plots.
     # --------------------------------------------------------------
 
-    if False:
+    if True:
 
-        #values['rho2'] = [0 for _ in xrange(Nevents)]
+        #values['rhoPrime'] = [0 for _ in xrange(Nevents)]
 
         #for ievent in xrange(Nevents):
-            #values['rho2'][ievent] = rho(values['m'][ievent], values['pt'][ievent])
+            #values['rhoPrime'][ievent] = rho(values['m'][ievent], values['pt'][ievent])
             #pass
 
         cutsdict = {
@@ -404,31 +251,38 @@ def main ():
             #    (-2, -1),
             #    ]
             'pt': [
-                ( 250,  300),
+                ( 150,  200),
+                #( 200,  250),
+                #( 250,  300),
                 #( 300,  400),
                 ( 400,  500),
                 #( 600,  750),
-                ( 750,  1000),
-                #( 900, 1100),
+                #( 750,  1000),
+                ( 900, 1100),
                 #(1100, 1500)
                 ]
             }
 
 
 
-        xvars   = ['rho', 'rho2', 'm'] # ['rho', 'rho2', 'rhoDDT']
-        yvars   = ['tau21', 'tau21_mod_rho2', 'D2', 'D2mod'] # ['tau21', 'D2'] # , 'D2mod']
+        #xvars   = ['rho', 'rhoPrime', 'm'] # ['rho', 'rhoPrime', 'rhoDDT']
+        xvars   = ['rho',    'rhoPrime',    'rhoDDT',
+                   'rho_ut', 'rhoPrime_ut', 'rhoDDT_ut']
+        #yvars   = ['tau21', 'tau21_mod_rhoPrime', 'D2', 'D2mod'] # ['tau21', 'D2'] # , 'D2mod']
+        yvars   = ['tau21', 'tau21_ut']
         cutvars = [p[0] for p in cutsdict.items()]
         
         profiles = { yvar : { xvar : { cutvar : [] for cutvar in cutvars } for xvar in xvars } for yvar in yvars  }
 
         xaxislimits = {
-            'pt':     ( 0, 2000),
-            'm':      ( 0,  300),
-            'rho':    (-8,    0),
-            'rho1':   (-6,    0),
-            'rho2':   (-4,    4),
-            'rhoDDT': (-3,    5),
+            'pt':          ( 0, 2000),
+            'm':           ( 0,  300),
+            'rho':         (-8,    0),
+            'rho_ut':      (-8,    0),
+            'rhoPrime':    (-4,    4),
+            'rhoPrime_ut': (-4,    4),
+            'rhoDDT':      (-2,    6),
+            'rhoDDT_ut':   (-2,    6),
             }
 
         density = dict()
@@ -447,8 +301,20 @@ def main ():
             pass
         # ^^^ TEST: Use option 's' to display RMS rather than error on the mean.
 
+        def sortBy (d, sortKey):
+            ''' Function for sorting the values in the dictionary 'd' (assumed to be lists of equal length) by the values on key 'sortKey'. '''
+            keys = [key for key in d]
+            if not sortKey in keys:
+                print "WARNING: Key '%s' is not present in dictionary to be sorted."
+                return
+            
+            idx = keys.index(sortKey)
+            d = { k: array('d', zip(*sorted(zip(*[d[key] for key in keys]), key = lambda tup: tup[idx]))[i]) for i,k in enumerate(keys)}
+            return d
 
         for ievent in xrange(Nevents):
+            #if values['m'] [ievent] <  20.: continue # TEMP!!
+            if values['m'][ievent] > values['pt'][ievent] / 2.: continue # Boosted regime
             for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):
                 if yvar == yvars[0]:
                     density[xvar].Fill( values[xvar]    [ievent],
@@ -456,8 +322,8 @@ def main ():
                     pass
 
                 #'''
-                if yvar == 'tau21_mod_rho2':
-                    if not(fit_limits['rho2'][0] < values['rho2'][ievent] < fit_limits['rho2'][1]):
+                if yvar == 'tau21_mod_rhoPrime':
+                    if not(fit_limits['rhoPrime'][0] < values['rhoPrime'][ievent] < fit_limits['rhoPrime'][1]):
                         continue
                     pass
                 if yvar == 'D2mod':
@@ -493,14 +359,14 @@ def main ():
             density[xvar].Scale( ymax / getMaximum(density[xvar]) * 0.2 )
             density[xvar].Smooth(4)
 
-            #density[xvar].Draw('HIST LC')
+            density[xvar].Draw('HIST LC')
 
             # -- Draw.
             for icut, _ in enumerate(cuts):
                 col = (kRed if (icut * 2) < 5 else kBlue) + ((icut * 2) % 5)
                 ps[icut].SetLineColor  (col)
                 ps[icut].SetMarkerColor(col)
-                ps[icut].Draw('SAME' if icut > 0 else '')
+                ps[icut].Draw('SAME' if icut >= 0 else '')
                 pass
             
             # -- Axis titles.            
@@ -517,21 +383,23 @@ def main ():
                        "Inclusive #gamma events",
                        "Trimmed anti-k_{t}^{R=1.0}",
                        "Req. 1 #gamma with p_{T} > 155 GeV",
-                       #("#rho' #in  [%3.1f, %3.1f]" % (fit_limits['rho2'][0], fit_limits['rho2'][1]) if yvar == 'tau21_mod_rho2' else ""),
+                       #"Jet M > 20 GeV",
+                       "Jet M < p_{T} R / 2",
+                       ("#rho' #in  [%3.1f, %3.1f]" % (fit_limits['rhoPrime'][0], fit_limits['rhoPrime'][1]) if yvar == 'tau21_mod_rhoPrime' else ""),
                        ("#rho #in  [%3.1f, %3.1f]" % (-6, -1) if yvar == 'D2mod' else ""),
                        #"Jet %s slices plotted" % displayName(cutvar)
                        ])
             
             cutText = TLatex()
             cutText.DrawLatexNDC( 0.62,
-                                  0.76,
+                                  0.76 + 0.05,
                                   "Jet %s slices:" % displayName(cutvar) )
 
             # -- Legend.
             legend = drawLegend(ps,
                                 ['[%d, %d] %s' % (cut[0], cut[1], displayUnit(cutvar)) for cut in cuts],
                                 ['LP' for _ in cuts],
-                                ymax = 0.74)
+                                ymax = 0.74 + 0.05)
             
             legend.SetTextSize(0.033)
             
@@ -554,15 +422,17 @@ def main ():
             for cut in cuts[:3]: #(reversed(cuts) if yvar == 'tau21' else cuts):
                 clip = [False, False]
 
+
+                Mmin, Mmax = (20., 200.)
                 if xvar == 'rho':
-                    x1 = rho( 20, cut[0]) 
-                    x2 = rho(200, cut[0]) 
+                    x1 = rho(Mmin, cut[0]) 
+                    x2 = rho(Mmax, cut[0]) 
                 elif xvar == 'rhoDDT':
-                    x1 = rhoDDT( 20, cut[0]) 
-                    x2 = rhoDDT(200, cut[0])                     
-                elif xvar == 'rho2':
-                    x1 = rho2( 20, cut[0]) 
-                    x2 = rho2(200, cut[0])                     
+                    x1 = rhoDDT(Mmin, cut[0]) 
+                    x2 = rhoDDT(Mmax, cut[0])                     
+                elif xvar == 'rhoPrime':
+                    x1 = rhoPrime(Mmin, cut[0]) 
+                    x2 = rhoPrime(Mmax, cut[0])                     
                 else:
                     continue
 
@@ -589,12 +459,12 @@ def main ():
                 text.SetTextFont(42)
                 if not clip[0]:
                     text.SetTextAlign(11)
-                    text.DrawLatex(x1, ydraw + 2 * offset[1], "M_{J} = 20 GeV")
+                    text.DrawLatex(x1, ydraw + 2 * offset[1], "M_{J} = %d GeV" % Mmin)
                     pass
                 
                 if not clip[1]:
                     text.SetTextAlign(31)
-                    text.DrawLatex(x2, ydraw + offset[1], "200 GeV")
+                    text.DrawLatex(x2, ydraw + offset[1], "%d GeV" % Mmax)
                     pass
                 
                 text.SetTextFont(52)
@@ -625,7 +495,7 @@ def main ():
 
     if True:
 
-        #cutvar = 'tau21_mod_rho2'
+        #cutvar = 'tau21_mod_rhoPrime'
         #cutvar = 'D2mod'
         #cutvar = 'D2'
         cutvar = 'tau21'
@@ -673,14 +543,14 @@ def main ():
 
 
             # Fill
-            print "rho2 range: [%f, %f]" % (fit_limits['rho2'][0], fit_limits['rho2'][1])
+            print "rhoPrime range: [%f, %f]" % (fit_limits['rhoPrime'][0], fit_limits['rhoPrime'][1])
             for ievent in xrange(Nevents):
                 if cutvar == 'D2mod':
                     if not (-6 < values['rho'][ievent] < -1):
                         continue
                     pass
-                elif cutvar == 'tau21_mod_rho2': 
-                    if not (fit_limits['rho2'][0] < values['rho2'][ievent] < fit_limits['rho2'][1]):
+                elif cutvar == 'tau21_mod_rhoPrime': 
+                    if not (fit_limits['rhoPrime'][0] < values['rhoPrime'][ievent] < fit_limits['rhoPrime'][1]):
                         continue
                     pass
                 if values[cutvar][ievent] < cut:
@@ -723,9 +593,11 @@ def main ():
                       "Inclusive #gamma events",
                       "Trimmed anti-k_{t}^{R=1.0}",
                       "Req. 1 #gamma with p_{T} > 155 GeV",
-                      "Req. #geq 1 jet with p_{T} > 250 GeV",
+                      "Req. #geq 1 jet with p_{T} > 150 GeV",
+                      #"Jet M > 20 GeV",
+                      "Jet M < p_{T} R / 2",
                       ] + 
-                     (["#rho' #in  [-1, 2]"] if cutvar == 'tau21_mod_rho2' else []) +
+                     (["#rho' #in  [-1, 2]"] if cutvar == 'tau21_mod_rhoPrime' else []) +
                      (["#rho #in  [-6, -1]"] if cutvar == 'D2mod' else [])
                      )
 
@@ -990,7 +862,7 @@ def main ():
                           "Trimmed anti-k_{t}^{R=1.0}",
                           "Req. 1 #gamma with p_{T} > 155 GeV", 
                           ] 
-                 + ([] if histvar == 'pt' else ["Jets with p_{T} > 250 GeV"])
+                 + ([] if histvar == 'pt' else ["Jets with p_{T} > 150 GeV"])
                  #+ (["Requiring #tau_{21} < 0.38"] if histvar in ['pt', 'rho'] else []))
                  + ["Requiring %s #in [%3.1f, %3.1f) %s" % ((displayName[cutvar] if cutvar in displayName else cutvar),
                                                             p[0], 
