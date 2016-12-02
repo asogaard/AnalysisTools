@@ -10,7 +10,7 @@ namespace AnalysisTools {
     }
     
     template <>
-    void EventSelection::addInfo (const string& name, const double& info) {
+    void EventSelection::addInfo (const string& name, const double* info) {
         assert( m_infoDouble.count(name) == 0);
         assert( m_infoFloat .count(name) == 0);
         assert( m_infoInt   .count(name) == 0);
@@ -20,7 +20,7 @@ namespace AnalysisTools {
     }
     
     template <>
-    void EventSelection::addInfo (const string& name, const float& info) {
+    void EventSelection::addInfo (const string& name, const float* info) {
         assert( m_infoDouble.count(name) == 0);
         assert( m_infoFloat .count(name) == 0);
         assert( m_infoInt   .count(name) == 0);
@@ -30,7 +30,7 @@ namespace AnalysisTools {
     }
 
     template <>
-    void EventSelection::addInfo (const string& name, const int& info) {
+    void EventSelection::addInfo (const string& name, const int* info) {
         assert( m_infoDouble.count(name) == 0);
         assert( m_infoFloat .count(name) == 0);
         assert( m_infoInt   .count(name) == 0);
@@ -40,7 +40,7 @@ namespace AnalysisTools {
     }
     
     template <>
-    void EventSelection::addInfo (const string& name, const bool& info) {
+    void EventSelection::addInfo (const string& name, const bool* info) {
         assert( m_infoDouble.count(name) == 0);
         assert( m_infoFloat .count(name) == 0);
         assert( m_infoInt   .count(name) == 0);
@@ -67,16 +67,16 @@ namespace AnalysisTools {
             m_passes[category] = true;
             
             for (const auto& name_val : this->m_infoDouble) {
-                m_events[category].addInfo(name_val.first, (double) name_val.second);
+                m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
             for (const auto& name_val : this->m_infoFloat) {
-                m_events[category].addInfo(name_val.first, (double) name_val.second);
+                m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
             for (const auto& name_val : this->m_infoInt) {
-                m_events[category].addInfo(name_val.first, (double) name_val.second);
+                m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
             for (const auto& name_val : this->m_infoBool) {
-                m_events[category].addInfo(name_val.first, (double) name_val.second);
+                m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
             /* @TODO: Switch away from vectors for 'EventSelection'. */
             for (const auto& name_val : m_collections) {

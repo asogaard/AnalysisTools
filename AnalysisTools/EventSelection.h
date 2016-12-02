@@ -43,10 +43,11 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void addCollection (const string& name, PhysicsObjects* collection);
+        void addCollection (const string& name, PhysicsObjects*         collection);
+        //void addCollection (const string& name, vector<TLorentzVector>* collection);// @TODO: Add such a method?
         
         template <class U>
-        void addInfo (const string& name, const U& info);
+        void addInfo (const string& name, const U* info);
   
         
         // Get method(s).
@@ -72,10 +73,10 @@ namespace AnalysisTools {
         map< string, PhysicsObjects* > m_collections;
         map< string, bool >            m_passes;
 
-        map< string, double > m_infoDouble;
-        map< string, float >  m_infoFloat;
-        map< string, int >    m_infoInt;
-        map< string, bool >   m_infoBool;
+        map< string, const double* > m_infoDouble;
+        map< string, const float* >  m_infoFloat;
+        map< string, const int* >    m_infoInt;
+        map< string, const bool* >   m_infoBool;
 
         
     };
