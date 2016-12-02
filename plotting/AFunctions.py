@@ -5,6 +5,14 @@ from collections import namedtuple
 import math
 import sys
 
+try:
+    import numpy as np
+    from root_numpy import tree2array
+except:
+    print "Make numpy and root_numpy available in order to use e.g. 'loadDataFast'."
+    pass
+
+
 # Global utility variables.
 eps = 1E-09
 pi  = 3.14159265359
@@ -64,7 +72,7 @@ def drawText (lines = [], c = None, pos = 'NW', qualifier = 'Internal simulation
     scale = (w/float(h) if w > h else h/float(w))
 
     x =       c.GetLeftMargin() + offset * scale
-    y = 1.0 - c.GetTopMargin()  - offset - t.GetTextSize() * 1.2
+    y = 1.0 - c.GetTopMargin()  - offset - t.GetTextSize() * 1.0
 
     t.DrawLatexNDC(x, y, "#scale[1.15]{#font[72]{ATLAS} }#scale[1.05]{%s}" % qualifier)
     y -= ystep * 1.25
@@ -101,6 +109,9 @@ def drawLegend (histograms, names, types = None, c = None,
 
     if types is None:
         types = ''
+        if drawOpt == 'HIST':
+            types = 'LE'
+            pass
         pass
 
     if type(types) == str:
@@ -110,12 +121,6 @@ def drawLegend (histograms, names, types = None, c = None,
     if types and N != len(types):
         print "drawLegend: WARNING, number of histograms (%d) and provided types (%d) don't match." % (N, len(types))
         return None
-
-    '''
-    if not types:
-        types = ["" for _ in range(N)]
-        pass
-        '''
 
     fontsize = gStyle.GetLegendTextSize()
 
@@ -159,7 +164,7 @@ def drawLegend (histograms, names, types = None, c = None,
     legend = TLegend(xmin, ymin, xmax, ymax)
 
     if header != None:
-        legend.AddEntry(None, header, '')
+        legend.AddEntry(None, header, opt)
         pass
 
     for (h,n,t) in zip(histograms, names, types):
@@ -218,12 +223,14 @@ def makePlot (pathHistnamePairs,
               xtitle = None,
               ytitle = None,
               ztitle = None,
-              colours = None,
+              colours = None, 
+              linewidths = None,
               markers = None,
               xlines = None,
               ylines = None,
               drawOpt = '',
-              normalise = False):
+              normalise = False,
+              profileRMS = False):
     ''' ... '''
 
     # Variable declarations
@@ -237,32 +244,55 @@ def makePlot (pathHistnamePairs,
         markers = [20] * len(pathHistnamePairs)
         pass
 
+    if not linewidths:
+        linewidths = [2] * len(pathHistnamePairs)
+        pass
+
     # Loop all pairs of paths and histograms.
     # -- Assuming list(tuple(*,*)) structure.
     histograms = list()
     if len(pathHistnamePairs) > 0 and type(pathHistnamePairs[0]) in [tuple, list]:
-        for path, histname in pathHistnamePairs:
-            # -- Open file
-            f = TFile.Open(path, 'READ')
-            
-            # -- Get histogram.
-            print "histname: '%s'" % histname
-            h = f.Get(histname)
-            ''' If TTree? '''
-            
-            # -- Keep in memory after file is closed.
-            h.SetDirectory(0)
-            if   isinstance(h, TH2):
-                TH2.AddDirectory(False)
-            elif isinstance(h, TH1):
-                TH1.AddDirectory(False)
+        for entry in pathHistnamePairs:
+            if type(entry) is list:
+                print "WARNING: You're passing a list of lists to makePlot."
+                continue
+
+            # Check if entry is histogram.
+            if type(entry) in [TH1F, TH2F, TProfile, TEfficiency]:
+                h = entry
+            else:
+                # Otherwise, read from file.
+                path, histname = entry
+                
+                # -- Open file
+                f = TFile.Open(path, 'READ')
+                
+                # -- Get histogram.
+                print "histname: '%s'" % histname
+                h = f.Get(histname)
+                ''' If TTree? '''
+                
+                # -- Keep in memory after file is closed.
+                h.SetDirectory(0)
+                if   isinstance(h, TH2):
+                    TH2.AddDirectory(False)
+                elif isinstance(h, TH1):
+                    TH1.AddDirectory(False)
+                    pass
+                
                 pass
-            
+
+            # Common, regardless of how the histogram was obtained.
             # -- Normalise.
             if normalise and h.Integral() > 0:
                 h.Scale(1./h.Integral())
                 pass
             
+            # -- Make TProfile show RMS
+            if isinstance(h, TProfile) and profileRMS:
+                h.SetErrorOption('s')
+                pass
+
             # -- Append to list of histograms to be plotted.
             histograms.append(h)
             
@@ -280,19 +310,18 @@ def makePlot (pathHistnamePairs,
             h.SetLineColor  (colours[i])
             h.SetMarkerColor(colours[i])
             h.SetMarkerStyle(markers[i])
+            h.SetLineWidth  (linewidths[i])
             pass
 
         # -- Axes.
-        h.SetTitle(';%s;%s;%s' % ( (xtitle if xtitle else ''),
-                                   (ytitle if ytitle else ''),
-                                   (ztitle if ztitle else ''),
-                                   ))
-
-        #if xtitle: h.GetXaxis().SetTitle(xtitle)
-        #if ytitle: h.GetYaxis().SetTitle(ytitle)
-
         if type(h) in [TEfficiency]:
+            h.SetTitle(';%s;%s;%s' % ( (xtitle if xtitle else ''),
+                                       (ytitle if ytitle else ''),
+                                       (ztitle if ztitle else ''),
+                                       ))
             continue
+        if xtitle: h.GetXaxis().SetTitle(xtitle)
+        if ytitle: h.GetYaxis().SetTitle(ytitle)
 
         h.GetYaxis().SetRangeUser(ymin, ymax)
 
@@ -305,34 +334,44 @@ def makePlot (pathHistnamePairs,
         pass
     c.SetLogy(logy)
 
-    # Draw.
-    for i,h in enumerate(histograms):
-        h.Draw(drawOpt + ('SAME' if i > 0 else ''))
-        pass
+    # Draw axes.
+    histograms[0].Draw('AXIS')
+    #for i,h in enumerate(histograms):
+    #    h.Draw(drawOpt + ('SAME' if i > 0 else ''))
+    #    pass
 
     # Lines
     if xlines or ylines:
         c.Update()
 
-        xmin = c.GetFrame().GetX1()
-        xmax = c.GetFrame().GetX2()
-        ymin = c.GetFrame().GetY1()
-        ymax = c.GetFrame().GetY2()
+        xmin = gPad.GetUxmin() # c.GetFrame().GetX1()
+        xmax = gPad.GetUxmax() # c.GetFrame().GetX2()
+        ymin = ymin if ymin else gPad.GetUymin() # c.GetFrame().GetY1()
+        ymax = ymax if ymax else gPad.GetUymax() # c.GetFrame().GetY2()
 
         line = TLine()
         line.SetLineColor(kGray + 2)
         line.SetLineStyle(2)
 
         # -- x-axis
-        for xline in xlines:
-            line.DrawLine(xline, ymin, xline, ymax)
+        if xlines:
+            for xline in xlines:
+                line.DrawLine(xline, ymin, xline, ymax)
+                pass
             pass
 
         # -- y-axis
-        for yline in ylines:
-            line.DrawLine(xmin, yline, xmax, yline)
+        if ylines:
+            for yline in ylines:
+                line.DrawLine(xmin, yline, xmax, yline)
+                pass
             pass
 
+        pass
+
+    # Draw histograms.
+    for i,h in enumerate(histograms):
+        h.Draw(drawOpt + ' SAME')
         pass
 
     # Text.
@@ -349,6 +388,84 @@ def makePlot (pathHistnamePairs,
     # Update.
     c.Update()
     return c
+
+
+
+def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = None, DSIDvar = 'DSID', Nevents = 29):
+    
+    print ""
+    print "loadDataFast: Reading data from %d files." % len(paths)
+
+    ievent = 0
+
+    # Initialise data array.
+    data = None
+
+    # Initialise DSID variable.
+    DSID = None
+
+    # Loop paths.
+    for ipath, path in enumerate(paths):
+
+        # Print progress.
+        print "\rloadDataFast:   [%-*s]" % (len(paths), '-' * (ipath + 1)),
+        sys.stdout.flush()
+
+        # Get file.
+        f = TFile(path, 'READ')
+
+        # Get tree.
+        t = f.Get(treename)
+
+        # Get DSID.
+        for event in f.Get('outputTree'):
+            DSID = eval('event.%s' % DSIDvar)
+            break
+
+        # Check whether to explicitly ignore.
+        if ignore and DSID and ignore(DSID):
+            print "Ignoring DSID %d." % DSID
+            continue
+
+        # Load new data array.
+        arr = tree2array(t,
+                         branches = [prefix + br for br in branches],
+                         include_weight = True,
+                         )                         
+        # Add cross sections weights.
+        if xsec and DSID:
+
+            # Ignore of we didn't provide cross section information.
+            if DSID not in xsec:
+                print "Skipping DSID %d." % DSID
+                continue
+
+            # Scale weight by cross section.
+            arr['weight'] *= xsec[DSID]
+
+            pass
+
+        # Append to existing data arra
+        if data is None:
+            data = arr
+        else:
+            data = np.concatenate((data, arr))
+            pass
+
+        pass
+
+    print ""
+
+    # Change branch names to remove prefix.
+    data.dtype.names = [name.replace(prefix, '') for name in data.dtype.names]
+    
+    # Dict-ify.
+    values = dict()
+    for branch in data.dtype.names:
+        values[branch] = data[branch]
+        pass
+
+    return values
 
 
 
@@ -382,8 +499,8 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
             if DSID not in xsec:
                 continue
 
-            if 'weight' not in values:
-                values['weight'] = array('d', [])
+            if 'xsec' not in values:
+                values['xsec'] = array('d', [])
                 pass
 
             pass 
@@ -402,14 +519,14 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
 
         # -- Set up objects for reading tree.
         branch = dict()
-        for var in variables:
+        for var in variables + ['weight'] :
             branch[var] = array('d', [0])
             
             if var not in values:
                 values[var] = array('d', [])
                 pass
             
-            t.SetBranchAddress( prefix + var, branch[var] )
+            t.SetBranchAddress( var if var == 'weight' else prefix + var, branch[var] )
             pass
 
         # -- Read tree
@@ -420,7 +537,7 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
                 break
             ievent += 1
 
-            for var in variables:
+            for var in variables + ['weight']:
                 values[var].append( branch[var][0] )
                 pass
             i += 1
@@ -434,14 +551,18 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
             pass
 
         if xsec:
-            weight = xsec[DSID]
-            values['weight'] += array('d', [weight for _ in xrange(i)]) # N
+            xsec_weight = xsec[DSID]
+            values['xsec'] += array('d', [xsec_weight for _ in xrange(i)]) # N
             pass
 
         if Nevents is not None and ievent == Nevents:
             break
         
         pass
+
+    # Scale 'weight' to also include cross section
+    values['weight'] = array('d', [ w * x for (w,x) in zip(values['weight'], values['xsec'])])
+    values.pop('xsec')
 
     print ""
     print "loadData: Done."
