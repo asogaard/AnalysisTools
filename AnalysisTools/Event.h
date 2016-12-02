@@ -39,7 +39,7 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void addInfo       (const string& name, const double&              val);
+        void addInfo       (const string& name, const double&   val);
         void addCollection (const string& name, PhysicsObjects* collection);
         void addGRL        (GRL* grl);
         void               setParticle   (const string& name, const PhysicsObject& particle);
