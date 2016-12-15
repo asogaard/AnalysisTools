@@ -49,6 +49,10 @@ namespace AnalysisTools {
         return m_parent;
     }
     
+    vector< pair<ILocalised*, string> > Localised::children () const {
+      return m_children;
+    }
+    
     
     // High-level management method(s).
     void Localised::grab (ILocalised* other, const string& postfix) {
@@ -60,10 +64,9 @@ namespace AnalysisTools {
     void Localised::put (ILocalised* other, const string& postfix) {
         assert( !locked() );
         assert( m_name != "" );
-        
         // * Don't raise error. This is to allow for cases where you e.g. add a Cut to a Selection, which hasn't been added to an Analysis yet.
         if (other->m_dir == nullptr) { return; }
-        
+
         m_parent = other;
         
         // * Get directory of 'other' Localised, ie. the place where 'this' Localised should be put.
@@ -87,9 +90,8 @@ namespace AnalysisTools {
         
         // * Grab all children to the this directory
         for (auto child_postfix : m_children) {
-            child_postfix.first->put(this, child_postfix.second);
+	  child_postfix.first->put(this, child_postfix.second);
         }
-
         return;
     }
     
@@ -98,6 +100,10 @@ namespace AnalysisTools {
     void Localised::setDir (TDirectory* dir) {
         assert( !locked() );
         m_dir = dir;
+	
+	if (m_dir) {
+	  m_dir->cd();
+	}
         return;
     }
     
