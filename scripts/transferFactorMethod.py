@@ -31,6 +31,10 @@ from scipy import interpolate
 # ----------------------------------------------------------------------------------------------------
 def main ():
  
+    # Whether to save plots to file.
+    save = True
+
+    # Load ROOT dictionary for reading TLorentzVectors from file (no necessary).
     gROOT.ProcessLine(".L share/Loader.C+");
    
     # Initial setup.
@@ -89,7 +93,7 @@ def main ():
 
         profiles = { 
             yvar : {
-                xvar : TProfile2D('Npass/Nfail vs (%s, %s)' % (yvar, xvar), "",
+                xvar : TProfile2D('Substructure cut efficiency vs (%s, %s)' % (yvar, xvar), "",
                                   axislimits[xvar][0], axislimits[xvar][1], axislimits[xvar][2], 
                                   axislimits[yvar][0], axislimits[yvar][1], axislimits[yvar][2]
                                   ) for xvar in xvars
@@ -117,13 +121,15 @@ def main ():
             ps.GetXaxis().SetTitle('%s%s' % (displayName(xvar), (' [%s]' % displayUnit(xvar) if displayUnit(xvar) else '')))
             ps.GetYaxis().SetTitle('%s%s' % (displayName(yvar), (' [%s]' % displayUnit(yvar) if displayUnit(yvar) else '')))
             ps.GetYaxis().SetTitleOffset(1.6)
-            ps.GetZaxis().SetTitle('N_{pass}/N_{fail}')
+            ps.GetZaxis().SetTitle('#tau_{21}^{DDT} cut efficiency')
             ps.GetZaxis().SetTitleOffset(1.3)
             ps.GetZaxis().SetRangeUser(0., 1.0)
 
             ps.Draw('COL Z')
             gPad.Update()
-            #gPad.SaveAs('plotting/transferFactorMap.pdf')
+            if save:
+                gPad.SaveAs('plotting/transferFactorMap.pdf')
+                pass
 
             # Interpolation grid
             #x, y = np.mgrid[axislimits[xvar][1]:axislimits[xvar][2]:axislimits[xvar][0] * 1j, 
@@ -155,7 +161,7 @@ def main ():
 
             print tck
 
-            nx_new, ny_new = (500,500)
+            nx_new, ny_new = (50,50)
 
             xnew, ynew = np.mgrid[axislimits[xvar][1]:axislimits[xvar][2]:nx_new*1j,
                                   axislimits[yvar][1]:axislimits[yvar][2]:ny_new*1j]
@@ -168,7 +174,7 @@ def main ():
             ps_new.GetXaxis().SetTitle('%s%s' % (displayName(xvar), (' [%s]' % displayUnit(xvar) if displayUnit(xvar) else '')))
             ps_new.GetYaxis().SetTitle('%s%s' % (displayName(yvar), (' [%s]' % displayUnit(yvar) if displayUnit(yvar) else '')))
             ps_new.GetYaxis().SetTitleOffset(1.6)
-            ps_new.GetZaxis().SetTitle('N_{pass}/N_{fail} density')
+            ps_new.GetZaxis().SetTitle('#tau_{21}^{DDT} cut efficiency density')
             ps_new.GetZaxis().SetTitleOffset(1.3)
             
             for i,j in itertools.product(xrange(nx_new), xrange(ny_new)):
@@ -178,9 +184,11 @@ def main ():
             c1 = TCanvas('c1', "", 700, 600)
             c1.SetRightMargin(0.18)
             ps_new.GetZaxis().SetRangeUser(0, 1.)
-            ps_new.Draw('COL Z')
+            ps_new.Draw('CONT4 Z')
             gPad.Update()
-            #gPad.SaveAs('plotting/transferFactorDensity.pdf')
+            if save:
+                gPad.SaveAs('plotting/transferFactorDensity.pdf')
+                pass
 
 
             dev = TH1F('dev', "", 25, -6., 4.)
@@ -221,7 +229,7 @@ def main ():
             c2 = makePlot([dev],
                      legendOpts,
                      textOpts,
-                     xtitle = 'Transfer factor pull',
+                     xtitle = '#tau_{21}^{DDT} cut efficiency density pull',
                      ytitle = 'Counts',
                      colours = [kViolet + 7, kAzure + 7, kTeal, kSpring - 2, kOrange - 3, kPink],
                      )
@@ -231,7 +239,9 @@ def main ():
             print "dev.Integral(): %f | Overflow: %f | Underflow: %f" % (dev.Integral(), dev.GetBinContent(0), dev.GetBinContent(20 + 1))
             print "dev.GetRMS(): %f (%f)" % (dev.GetRMS(), 0.845864)
             gPad.Update()
-            #gPad.SaveAs('plotting/transferFactorPulls.pdf')
+            if save:
+                gPad.SaveAs('plotting/transferFactorPulls.pdf')
+                pass
 
             wait()
 

@@ -7,8 +7,18 @@
 
 import sys
 
+# Try to import necessary packages.
+# Require correct environment setup on lxplus.
+try:
+    import numpy as np
+    from scipy import interpolate
+except:
+    print "ERROR: numpy and scipy were not set up properly."
+    print "See e.g. [http://rootpy.github.io/root_numpy/start.html]."
+    pass
+
 # Main function.
-def transferFactorCalculator (path):
+def transferFactorCalculator (rho, pt):
 
     # Scipy bi-linear spline representation data object.
     # Cf. [https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.interpolate.bisplrep.html]
@@ -22,49 +32,33 @@ def transferFactorCalculator (path):
             3] # Spline degree, y
 
     # Limits for the transfer factor map. Return zero if outside.
-    limits = { 'x': (  1.,    7.),
-               'y': (400., 2000.) }
-
-    with open(path) as f:
-        for line in f:
-
-            # Read coordinates as: " x,y\n"
-            coords = map(float, [field.strip() for field in line.split(',')])
+    limits = { 'rho': (  1.,    7.),
+               'pt':  (400., 2000.) }
 
             # Check limits.
-            if (limits['x'][0] <= coords[0] <= limits['x'][1]) and \
-               (limits['y'][0] <= coords[1] <= limits['y'][1]):
-                # Calculate and return transfer factor.
-                print interpolate.bisplev(coords[0], coords[1], tck)
-            else:
-                # Return fallback value.
-                print 0.
-                pass
+    if (limits['rho'][0] <= rho <= limits['rho'][1]) and \
+       (limits['pt'] [0] <= pt  <= limits['pt'] [1]):
+        # Calculate and return transfer factor.
+        return interpolate.bisplev(rho, pt, tck)
 
-            pass # end: loop lines
-        pass # end: open file
-
-    return
+    # Return fallback value.
+    return 0.
 
 if __name__ == '__main__':
 
-    # Try to import necessary packages.
-    # Require correct environment setup on lxplus.
-    try:
-        import numpy as np
-        from scipy import interpolate
+    # Perform input check
+    if len(sys.argv) < 2:
+        print "Please specify as path, as"
+        print " $ python %s <path-to-coordinates-file>" % (sys.argv[0])
+    else:
+        with open(sys.argv[1]) as f:
+            for line in f:
 
-        # Perform input check
-        if len(sys.argv) < 2:
-            print "Please specify as path, as"
-            print " $ python %s <path-to-coordinates-file>" % (sys.argv[0])
-        else:
-            transferFactorCalculator(sys.argv[1])
+                # Read coordinates as: " x,y\n"
+                coords = map(float, [field.strip() for field in line.split(',')])
+
+                print transferFactorCalculator(*coords)
+                pass
             pass
-
-    except:
-        print "ERROR: numpy and scipy were not set up properly."
-        print "See e.g. [http://rootpy.github.io/root_numpy/start.html]."
         pass
-
     pass
