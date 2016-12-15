@@ -4,13 +4,14 @@
 /**
  * @file IOperation.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
+#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
-#include <assert.h>
+#include <cassert>
 #include <memory> /* std::unique_ptr */
 
 // ROOT include(s).
@@ -28,9 +29,9 @@ using namespace std;
 
 namespace AnalysisTools {
     
-    enum class CutPosition { Pre, Post};
+    enum class CutPosition { Pre, Post };
     
-    class IOperation : virtual public ILocalised{
+    class IOperation : virtual public ILocalised {
         
         /**
          * Base interface class for all operation-type objects.
@@ -40,28 +41,9 @@ namespace AnalysisTools {
         
     public:
         
-        IOperation() {};
-        ~IOperation () {
-            for (auto p : m_trees) {
-                TTree* tree = p.second;
-                if (tree) {
-                    delete tree;
-                    tree = nullptr;
-                }
-            }
-            /*
-            for (auto p : m_plots) {
-                for (IPlotMacro* plot : p.second) {
-                    if (plot) {
-                        delete plot;
-                        plot = nullptr;
-                    }
-                }
-                p.second.clear();
-            }
-             */
-        };
-        
+        //IOperation () {};
+        virtual ~IOperation () {};
+
         
     public:
         
@@ -74,9 +56,10 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        virtual vector< IPlotMacro* > plots (const CutPosition& pos) const = 0;
-        virtual vector< IPlotMacro* > plots ()                       const = 0;
+        virtual std::vector< IPlotMacro* > plots (const CutPosition& pos) const = 0;
+        virtual std::vector< IPlotMacro* > plots ()                       const = 0;
         
+	virtual void print () const = 0;
         
     public:
         
@@ -87,21 +70,22 @@ namespace AnalysisTools {
     protected:
         
         /// Data members.
-        map<CutPosition, vector< IPlotMacro* > > m_plots =  {
-            {CutPosition::Pre,  vector< IPlotMacro* >()},
-            {CutPosition::Post, vector< IPlotMacro* >()}
-        };
+        map< CutPosition, std::vector< std::unique_ptr<IPlotMacro> > > m_plots;/* = {
+	  {CutPosition::Pre,  std::vector< std::unique_ptr<IPlotMacro> >()},
+	  {CutPosition::Post, std::vector< std::unique_ptr<IPlotMacro> >()}
+	  };*/
         
-        map<CutPosition, TTree*> m_trees = {
+        map< CutPosition, std::unique_ptr<TTree> > m_trees;/* = {
             {CutPosition::Pre,  nullptr},
             {CutPosition::Post, nullptr}
-        };
+	    };*/
         
         bool m_initialised = false;
         
     };
     
-    using OperationsPtr = vector< IOperation* >;
+    //using OperationsPtr = std::vector< IOperation* >;
+    using OperationPtrs = std::vector< std::unique_ptr<IOperation> >;
  
 }
 
