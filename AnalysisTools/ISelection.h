@@ -7,11 +7,12 @@
  **/
 
 // STL include(s).
+#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
-#include <assert.h>
-#include <memory> /* std::unique_ptr */
+#include <cassert>
+#include <memory> /* std::unique_ptr, std::shared_ptr */
 
 // ROOT include(s).
 #include "TH1.h"
@@ -21,13 +22,13 @@
 
 // AnalysisTools include(s).
 #include "AnalysisTools/IOperation.h"
-#include "AnalysisTools/ILocalised.h"
+#include "AnalysisTools/Localised.h"
 
 using namespace std;
 
 namespace AnalysisTools {
     
-    class ISelection : virtual public ILocalised {
+  class ISelection : virtual public ILocalised {
         
         /**
          * Base interface class for all selection-type objects: Pre-selection, object definition, event selection, and possibly others.
@@ -37,10 +38,10 @@ namespace AnalysisTools {
         
     public:
         
-        ISelection() {};
+        //virtual  ISelection () = 0;
         virtual ~ISelection () {};
-        
-    
+
+
     public:
         
         // Set method(s).
@@ -51,37 +52,42 @@ namespace AnalysisTools {
         virtual vector< string > categories       () = 0;
         virtual bool             categoriesLocked () = 0;
         
-        virtual OperationsPtr operations    (const string& category) = 0;
-        virtual OperationsPtr allOperations () = 0;
-        virtual TH1F*         cutflow       (const string& category) = 0;
+        virtual std::vector<IOperation*> operations    (const string& category) const = 0;
+        virtual std::vector<IOperation*> allOperations () = 0;
+        virtual TH1F*                    cutflow       (const string& category) = 0;
         
         virtual bool hasRun () = 0;
         
         
         // High-level management method(s).
         virtual bool run () = 0;
-        
+
+	virtual void print () const = 0;
         
     protected:
         
         // Low-level management method(s).
         // ...
         
-        
+	
     protected:
+     
+	/// Data member(s).
+	std::vector< std::string > m_categories;
+        bool m_categoriesLocked = false;
         
-        vector< string > m_categories;
-        bool             m_categoriesLocked = false;
-        
-        map< string, OperationsPtr > m_operations;
-        map< string, TH1F* >         m_cutflow;
+        map< string, std::vector< std::unique_ptr<IOperation> > > m_operations;
+        map< string, std::unique_ptr<TH1F> > m_cutflow;
         
         bool m_hasRun = false;
+
+	const float* m_weight = nullptr;
 
         
     };
     
-    using SelectionsPtr      = vector< ISelection* >;
+    //using SelectionsPtr = std::vector< std::unique_ptr<ISelection> >;
+    //using SelectionsPtr = std::vector< ISelection* >;
  
 }
 
