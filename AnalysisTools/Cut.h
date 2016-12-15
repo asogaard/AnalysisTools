@@ -11,7 +11,8 @@
 #include <string>
 #include <vector>
 #include <functional> /* std::function */
-#include <assert.h> /* assert */
+#include <cassert> /* assert */
+#include <memory> /* std::unique_ptr */
 
 // xAOD include(s)
 // ...
@@ -37,6 +38,13 @@ namespace  AnalysisTools {
 
 using namespace std;
 
+/**
+ * @TODO: 
+ *  - Turn IOperation into OperationBase (mixin)
+ *  - Assignment operator(s)
+ */
+
+
 namespace AnalysisTools {
     
     template <class T>
@@ -55,21 +63,44 @@ namespace AnalysisTools {
 
         // Constructor(s).
         Cut () :
-            Localised("Cut")
+	    Cut("Cut")
         {};
         
         Cut (const string& name) :
             Localised(name)
-        {};
+	{ 
+	  // Can't use initialiser lists with unique_ptr.
+	  this->m_plots.clear();
+	  this->m_plots[CutPosition::Pre]  = std::vector< std::unique_ptr<IPlotMacro> >();
+	  this->m_plots[CutPosition::Post] = std::vector< std::unique_ptr<IPlotMacro> >();
+	};
         
         Cut (const string& name, const function< double(const T&) >& f) :
-            Localised(name),
-            m_function(f)
-        {};
-       
-        
+            Cut(name)
+        {
+	  m_function = f;
+	};
+
+	Cut (const Cut<T>& other) : 
+	    Cut(other.m_name) 
+	{
+	  this->m_initialised = false;
+	  this->m_trees.clear();
+
+	  this->m_function = other.m_function;
+	  this->m_ranges   = other.m_ranges;
+
+	  // Copy plotting macros.
+	  for (const auto& pos : { CutPosition::Pre, CutPosition::Post }) {
+	    for (IPlotMacro* plot : other.plots(pos)) {
+	      addPlot(pos, *plot);
+	    }
+	  }
+	};
+
+	        
         // Destructor(s).
-        ~Cut () {};
+	~Cut () {};
         
         
     public:
@@ -99,9 +130,10 @@ namespace AnalysisTools {
         
         
         // Get method(s).
-        vector< IPlotMacro* > plots (const CutPosition& pos) const;
-        vector< IPlotMacro* > plots ()                       const;
+        virtual std::vector< IPlotMacro* > plots (const CutPosition& pos) const;
+        virtual std::vector< IPlotMacro* > plots ()                       const;
         
+	virtual void print () const;
         
         // High-level management method(s).
         bool apply (const T& obj, const float& w = 1);

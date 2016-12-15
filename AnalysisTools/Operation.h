@@ -55,12 +55,40 @@ namespace AnalysisTools {
 
         // Constructor(s).
         Operation () :
-            Localised("Operation")
+	    Operation("Operation")
         {};
         
         Operation (const string& name) :
             Localised(name)
-        {};
+        {
+	  // Can't use initialiser lists with unique_ptr.
+	  this->m_plots.clear();
+	  this->m_plots[CutPosition::Pre]  = std::vector< std::unique_ptr<IPlotMacro> >();
+          this->m_plots[CutPosition::Post] = std::vector< std::unique_ptr<IPlotMacro> >();
+	};
+
+	Operation (const string& name, const function< double(T&) >& f) :
+            Operation(name)
+	{
+	    m_function = f;
+	};
+	    
+	Operation (const Operation<T>& other) :
+            Operation(other.m_name)
+        {
+	  this->m_initialised = false;
+	  this->m_trees.clear();
+	  	  
+	  this->m_function = other.m_function;
+	  this->m_ranges   = other.m_ranges;
+	  
+	  // Copy plotting macros.
+	  for (const auto& pos : { CutPosition::Pre, CutPosition::Post }) {
+	    for (IPlotMacro* plot : other.plots(pos)) {
+	      addPlot(pos, *plot);
+	    }
+	  }
+	};
         
         
         // Destructor(s).
@@ -76,9 +104,10 @@ namespace AnalysisTools {
         void addPlot    (const CutPosition& pos, const IPlotMacro& plot);
         
         // Get method(s).
-        vector< IPlotMacro* > plots (const CutPosition& pos) const;
-        vector< IPlotMacro* > plots ()                       const;
+	virtual std::vector< IPlotMacro* > plots (const CutPosition& pos) const;
+        virtual std::vector< IPlotMacro* > plots ()                       const;
         
+	virtual void print () const;
         
         // High-level management method(s).
         bool apply (T& obj, const float& w = 1.);

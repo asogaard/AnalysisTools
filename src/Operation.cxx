@@ -21,14 +21,16 @@ namespace AnalysisTools {
         /* Let IPlotMacro + PlotMacro1D<T> -> PlotMacro<T>? */
         try {
             const PlotMacro1D<T>& p  = dynamic_cast< const PlotMacro1D<T>& > (plot);
-            PlotMacro1D<T>* storePlot = new PlotMacro1D<T>( p );
-            this->m_plots.at(pos).push_back(storePlot);
+            //PlotMacro1D<T>* storePlot = new PlotMacro1D<T>( p );
+            //this->m_plots.at(pos).push_back(storePlot);
+	    this->m_plots.at(pos).push_back( makeUniqueMove( new PlotMacro1D<T>(p) ) );
         }
         catch (const std::bad_cast& e) {
             try {
                 const PlotMacro1D<float>& p  = dynamic_cast< const PlotMacro1D<float>& >(plot);
-                PlotMacro1D<float>* storePlot = new PlotMacro1D<float>( p );
-                this->m_plots.at(pos).push_back(storePlot);
+                //PlotMacro1D<float>* storePlot = new PlotMacro1D<float>( p );
+                //this->m_plots.at(pos).push_back(storePlot);
+		this->m_plots.at(pos).push_back( makeUniqueMove( new PlotMacro1D<float>(p) ) );
             } catch (const std::bad_cast& ee) {
                 cout << "<Operation<T>::addPlot> Doesn't recognise template argument of plot '" << plot.name() << "'." << endl;
             }
@@ -39,17 +41,29 @@ namespace AnalysisTools {
     
     // Get method(s).
     template <class T>
-    vector< IPlotMacro* > Operation<T>::plots (const CutPosition& pos) const {
-        return m_plots.at(pos);
+    std::vector< IPlotMacro* > Operation<T>::plots (const CutPosition& pos) const {
+        std::vector< IPlotMacro* > outputList;
+	for (auto& plot : this->m_plots.at(pos)) {
+	    outputList.push_back( plot.get() );
+	}
+	return outputList;
+	// return this->m_plots.at(pos);
     }
 
     template <class T>
-    vector< IPlotMacro* > Operation<T>::plots () const {
-        vector< IPlotMacro* > plotsOut = m_plots.at(CutPosition::Pre);
-        plotsOut.insert( plotsOut.end(), m_plots.at(CutPosition::Post).begin(), m_plots.at(CutPosition::Post).end() );
-        return plotsOut;
+    std::vector< IPlotMacro* > Operation<T>::plots () const {
+        std::vector< IPlotMacro* > plotsPre  = plots(CutPosition::Pre);
+        std::vector< IPlotMacro* > plotsPost = plots(CutPosition::Post);
+        //plotsOut.insert( plotsOut.end(), m_plots.at(CutPosition::Post).begin(), m_plots.at(CutPosition::Post).end() );
+	plotsPre.insert( plotsPre.end(), plotsPost.begin(), plotsPost.end() );
+        return plotsPre;
     }
-    
+
+    template <class T>
+    void Operation<T>::print () const{
+      INFO("      Configuration for operation '%s':", name().c_str());
+      return;
+    }
     
     // High-level management method(s).
     template <class T>
@@ -59,7 +73,7 @@ namespace AnalysisTools {
         if (!m_initialised) { init(); }
         
         // * Pre-cut distributions.
-        for (auto& plot : plots(CutPosition::Pre)) {
+        for (IPlotMacro* plot : plots(CutPosition::Pre)) {
             if (plot->name() == "weight") {
                 ((PlotMacro1D<float>*) plot)->fill(w);
             } else {
@@ -81,7 +95,7 @@ namespace AnalysisTools {
         
         // * Post-cut distributions.
         if (passes) {
-            for (auto& plot : plots(CutPosition::Post)) {
+            for (IPlotMacro* plot : plots(CutPosition::Post)) {
                 if (plot->name() == "weight") {
                     ((PlotMacro1D<float>*) plot)->fill(w);
                 } else {
@@ -101,13 +115,13 @@ namespace AnalysisTools {
     // Low-level management method(s).
     template <class T>
     void Operation<T>::init () {
-        
+        INFO("Trying to initialise %s.", this->name().c_str()); 
         assert ( this->dir() );
         
         this->dir()->cd();
         
-        this->m_trees[CutPosition::Pre]  = new TTree("Precut",  "TTree with (pre-)cut value distribution");
-        this->m_trees[CutPosition::Post] = new TTree("Postcut", "TTree with (post-)cut value distribution");
+        this->m_trees[CutPosition::Pre]  = makeUniqueMove( new TTree("Precut",  "TTree with (pre-)cut value distribution") );
+        this->m_trees[CutPosition::Post] = makeUniqueMove( new TTree("Postcut", "TTree with (post-)cut value distribution") );
         
         PlotMacro1D<float> weight ("weight");
 
@@ -116,8 +130,8 @@ namespace AnalysisTools {
         addPlot(CutPosition::Pre,  weight);
         addPlot(CutPosition::Post, weight);
         
-        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(m_trees[CutPosition::Pre]);  }
-        for (auto plot : plots(CutPosition::Post)) { plot->setTree(m_trees[CutPosition::Post]); }
+        for (auto plot : plots(CutPosition::Pre))  { plot->setTree(m_trees[CutPosition::Pre] .get());  }
+        for (auto plot : plots(CutPosition::Post)) { plot->setTree(m_trees[CutPosition::Post].get()); }
         
         m_initialised = true;
         
