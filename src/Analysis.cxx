@@ -1,18 +1,39 @@
 #include "AnalysisTools/Analysis.h"
 
+// For explicit template instantiations.
+#include "TLorentzVector.h"
+#include "AnalysisTools/PhysicsObject.h"
+#include "AnalysisTools/ObjectDefinition.h"
+#include "AnalysisTools/EventSelection.h"
+
 namespace AnalysisTools {
     
     // Set method(s).
-    void Analysis::addSelection (ISelection* selection) {
-        m_selections.push_back( selection );
-        this->grab(selection);
+    template<typename T>
+    void Analysis::addSelection (T* selection) { // ISelection*
+        m_selections.emplace_back(makeUniqueMove(new T(*selection))); // std::move(std::unique_ptr<ISelection>(new T(*selection))) );
+	this->grab(m_selections.back().get());
+        //m_selections.push_back( selection );
+	//this->grab(selection);
         return;
     }
     
     void Analysis::addTree (const string& name) {
+
+        DEBUG("Entering");
+
+	// Make sure that an output file exists.
         assert( hasOutput() );
-        m_outfile->cd();
-        m_outtree = new TTree(name.c_str(), "Physics output tree");
+
+	// Move to the directory of the current analysis.
+	DEBUG("  Going to '%s'.", this->dir()->GetName());
+	this->dir()->cd();
+
+	// Create a TTree in the current directory.
+        m_outtree = std::shared_ptr<TTree>(new TTree(name.c_str(), "Physics output tree"));
+
+	DEBUG("Exiting.");
+
         return;
     }
     
@@ -28,12 +49,12 @@ namespace AnalysisTools {
         return;
     }
     
-    TTree* Analysis::tree () {
+    std::shared_ptr<TTree> Analysis::tree () {
         assert( m_outtree );
         return m_outtree;
     }
     
-    TFile* Analysis::file () {
+    std::shared_ptr<TFile> Analysis::file () {
         assert( m_outfile );
         return m_outfile;
     }
@@ -48,7 +69,7 @@ namespace AnalysisTools {
     
     // High-level management method(s).
     bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
-
+        DEBUG("Entering.");
         // * Progress bar.
         int barWidth = 67;
         
@@ -103,20 +124,26 @@ namespace AnalysisTools {
         }
         
         // * Running.
+	DEBUG("  Calling the actual 'run' method.");
         return run();
+	DEBUG("Exiting.");
     }
     
     bool Analysis::run (const unsigned& current, const unsigned& maximum) {
-        return run (current, maximum, -1);;
+        return run (current, maximum, -1);
     }
     
     bool Analysis::run () {
+	DEBUG("Entering (actual run method).");
         bool status = true;
-        for (ISelection* selection : m_selections) {
+        for (auto& selection : m_selections) {
+	    DEBUG("  Setting weight.");
             selection->setWeight(m_weight);
+	    DEBUG("  Running %s.", selection->name().c_str());
             status &= selection->run();
             if (!status) { break; }
         }
+	DEBUG("Exiting (actual run method).");
         return status;
     }
     
@@ -139,16 +166,23 @@ namespace AnalysisTools {
         }
         
         
-        m_outfile = new TFile(filename.c_str(), "RECREATE");
+        m_outfile = std::shared_ptr<TFile>( new TFile(filename.c_str(), "RECREATE"));
         
-        this->m_dir = m_outfile->mkdir(this->m_name.c_str());
+        //this->m_dir = m_outfile->mkdir(this->m_name.c_str());
+	setup_();
 
         return;
+    }
+
+    void Analysis::setOutput (std::shared_ptr<TFile> outfile) {
+      m_outfile = outfile;
+      setup_();
+      return;
     }
     
     void Analysis::closeOutput () {
         if (m_outfile) {
-            m_outfile->Close();
+	    m_outfile->Close();
             m_outfile = nullptr;
         }
         return;
@@ -159,9 +193,43 @@ namespace AnalysisTools {
     }
     
     void Analysis::save () {
+
+        DEBUG("Entering.");
+
+	// Make sure that an output file exists.
         assert( hasOutput() );
+
+	// Save file.
         m_outfile->Write();
+
+	DEBUG("Exiting.");
+
         return;
     }
+
+    void Analysis::print () const {
+      INFO("");
+      INFO("Configuration for analysis '%s':", name().c_str());
+      for (const auto& selection : m_selections) {
+	selection->print();
+      }
+      INFO("");
+      return;
+    }
+
+    void Analysis::setup_ () {
+
+      // Create a new directory, with the name of the analysis.
+      this->setDir( m_outfile->mkdir(this->m_name.c_str()) );
+
+      // Add output tree to the newly created directory.
+      addTree();
+
+      return;
+    }
+
+    /// Explicitly instatiate templates.
+    template void Analysis::addSelection< ObjectDefinition<TLorentzVector> >(ObjectDefinition<TLorentzVector>*);
+    template void Analysis::addSelection< EventSelection >(EventSelection*);
     
 }
