@@ -18,7 +18,10 @@ if not argv[1].split('.')[-1] == "xml":
     sys.exit()
 
 # Variables.
-path = '/'.join(argv[1].split('/')[0:-1])
+path = '.'
+if len(argv[1].split('/')) > 1:
+    path = '/'.join(argv[1].split('/')[0:-1])
+    pass
 GRLname = argv[1].split('/')[-1]
 
 outputFile = path + '/' + GRLname.replace('.xml', '.txt')
