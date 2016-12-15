@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <assert.h> /* assert */
+#include <cassert> /* assert */
 #include <memory> /* shared_ptr */
 
 // ROOT include(s).
@@ -20,12 +20,13 @@
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/GRL.h"
+#include "AnalysisTools/Logger.h"
 
 using namespace std;
 
 namespace AnalysisTools {
 
-    class Event : public TLorentzVector {
+    class Event : public Logger {
         
     public:
 

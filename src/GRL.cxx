@@ -13,8 +13,8 @@ namespace AnalysisTools {
       // * Open stream to XML file.
         ifstream file ( path.c_str() );
         if (!file.is_open()) {
-            cout << "<GRL::loadXML> ERROR: GRL file not found. Exiting." << endl;
-            return;
+	  cout << "<GRL::loadXML> ERROR: GRL file '" << path << "' not found. Exiting." << endl;
+	  return;
         }
         
         // * Reading good runs.

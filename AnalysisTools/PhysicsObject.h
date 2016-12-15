@@ -46,7 +46,6 @@ namespace AnalysisTools {
         
         // Set method(s).
         void addInfo (const string& name, const double& val);
-
         
         // Get method(s).
         double info (const string& name) const;
