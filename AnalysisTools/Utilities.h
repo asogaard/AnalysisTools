@@ -4,7 +4,7 @@
 /**
  * @file Utilities.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
 #include <string>
@@ -14,6 +14,8 @@
 #include <algorithm> /* std::find, std::replace */
 #include <iterator> /* std::distance */
 #include <sstream> /* std::sstream */
+#include <memory> /* std::unique_ptr */
+#include <utility> /* std::move */
 #include <sys/stat.h> /* struct stat */
 
 using namespace std;
@@ -117,6 +119,12 @@ namespace AnalysisTools {
 			    f );
 	string s = buffer;
 	return s;
+    }
+
+    // Utility function for creating and moving unique pointer.
+    template<typename T>
+    inline  std::unique_ptr<T> makeUniqueMove (T* p) {
+        return std::move(std::unique_ptr<T>(p));
     }
     
 }
