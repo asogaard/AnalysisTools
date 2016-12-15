@@ -51,6 +51,7 @@ namespace AnalysisTools {
         virtual bool        locked   () const = 0;
         virtual bool        hasChild (ILocalised* other, const string& postfix = "") const = 0;
         virtual ILocalised* parent () const = 0;
+        virtual vector< pair<ILocalised*, string> > children () const = 0;
         
         // High-level management method(s).
         virtual void grab (ILocalised* other, const string& postfix = "") = 0;
@@ -74,7 +75,7 @@ namespace AnalysisTools {
         bool        m_locked = false;
         
         ILocalised* m_parent = nullptr;
-        vector< pair<ILocalised*, string> > m_children;
+        vector< pair<ILocalised*, string> > m_children = {};
 
     };
     
