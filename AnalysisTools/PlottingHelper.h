@@ -42,14 +42,12 @@
 
 // AnalysisTools include(s).
 #include "AnalysisTools/Utilities.h"
+#include "AnalysisTools/Logger.h"
 
 // Typedef(s).
 typedef std::unique_ptr<TH1>     upTH1;
 typedef std::unique_ptr<TPad>    upTPad;
 typedef std::unique_ptr<TCanvas> upTCanvas;
-typedef std::shared_ptr<TH1>     spTH1;
-typedef std::shared_ptr<TPad>    spTPad;
-typedef std::shared_ptr<TCanvas> spTCanvas;
 
 // Making an exception for now...
 using namespace std;
@@ -83,7 +81,7 @@ namespace AnalysisTools {
    * This template class allows for plotting any type of ROOT histogram
    */
   template<class HistType>
-  class PlottingHelper {
+  class PlottingHelper : public Logger {
 
     typedef std::unique_ptr<HistType> upHistType;
 
@@ -153,18 +151,17 @@ namespace AnalysisTools {
     
     
     /// High-level management method(s).
-    void draw ();
+    bool draw ();
     void save (const string& path);
     
     
   protected:
     
     /// Low-level management method(s).
-    void closePads_ ();
     bool setupCanvas_ ();
     std::unique_ptr<HistType> getHistogram_ (TFile* file, const std::string& path);
-    void loadHistograms_ ();
-    void loadSampleInfo_ ();
+    bool loadHistograms_ ();
+    bool loadSampleInfo_ ();
     
     void styleHist_ (HistType* hist, const bool& isMC, const string& name); // const unsigned& DSID = 0);
     
@@ -179,7 +176,7 @@ namespace AnalysisTools {
     TFile* m_outfile = nullptr;
     string m_outdir  = "./";
     
-    string m_sampleinfofile = "share/weightsMC.csv"; // "crossSections.csv";
+    string m_sampleinfofile = "share/sampleInfo.csv";
     string m_settingsfile   = "share/plotSettings.csv";
     
     double m_lumi = 0.;
@@ -212,8 +209,8 @@ namespace AnalysisTools {
     upTCanvas m_canvas;
     pair< upTPad, upTPad > m_pads = {nullptr, nullptr};
     
-    unsigned m_W = 600;
-    unsigned m_H = 700;
+    unsigned m_width  = 600;
+    unsigned m_height = 700;
     
     upHistType m_sum  = nullptr;
     upHistType m_data = nullptr;
@@ -227,12 +224,11 @@ namespace AnalysisTools {
     
     int m_improvementDirection = -1;
     double m_scaleSignal = 10.;
-    
-        
+            
   };
 
 
-  // Convenient class-specific typedef(s).
+  /// Convenient, class-specific typedef(s).
   template<class HistType>
   using PlottingHelpers = std::vector< PlottingHelper<HistType> >;
   

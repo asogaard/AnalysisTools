@@ -3,10 +3,10 @@
 namespace AnalysisTools {
 
   /// Utility function for creating and moving unique pointer.
-  template<typename T>
+  /*template<typename T>
   std::unique_ptr<T> makeUniqueMove (T* p) {
     return std::move(std::unique_ptr<T>(p));
-  }
+    }*/
 
 
   /// Set method(s).
@@ -121,7 +121,7 @@ namespace AnalysisTools {
   void PlottingHelper<HistType>::drawRatioPad (const bool& ratio) {
     m_ratio = ratio;
     if (!m_ratio) {
-      m_H = 600;
+      m_height = 600;
     }
     return;
   }
@@ -141,7 +141,7 @@ namespace AnalysisTools {
   template<class HistType>
   void PlottingHelper<HistType>::computeImprovement (const int& improvementDirection) {
     if (improvementDirection > 2) {
-      cout << "<PlottingHelper<HistType>::computeImprovement> The provided number (" << improvementDirection << ") is larger than 2." << endl;
+      INFO("The provided number (%d) is larger than 2.", improvementDirection);
       return;
     }
     m_improvementDirection = improvementDirection;
@@ -183,22 +183,22 @@ namespace AnalysisTools {
   // ---------------------------------------------------------------------------
 
   template<class HistType>
-  void PlottingHelper<HistType>::draw () {
+  bool PlottingHelper<HistType>::draw () {
 
-    cout << "<PlottingHelper<HistType>::draw> Entering." << endl;
+    DEBUG("Entering.");
 
     // General style settings/variables.      
     gStyle->SetOptStat(0);
     gStyle->SetLegendBorderSize(0);
     gStyle->SetLegendFillColor(0);
     
-    const unsigned kMyBlue  = 1001;
-    const unsigned kMyRed   = 1002;
+    const unsigned kMyBlue  = 1001u;
+    const unsigned kMyRed   = 1002u;
     const unsigned kMyGreen = kGreen + 2;
     const unsigned kMyLightGreen = kGreen - 10;
     
-    TColor myBlue(kMyBlue,   0./255.,  30./255.,  59./255.);
-    TColor myRed (kMyRed,  205./255.,   0./255.,  55./255.);
+    //TColor myBlue(kMyBlue,   0./255.,  30./255.,  59./255.);
+    //TColor myRed (kMyRed,  205./255.,   0./255.,  55./255.);
     
     const unsigned kImprovementColor = kOrange + 7; // kViolet + 2
 
@@ -206,30 +206,40 @@ namespace AnalysisTools {
     assert( m_outfile );
     
     // Load sample information from file.
-    loadSampleInfo_();
+    if (!loadSampleInfo_()) {
+      return false;
+    }
 
     // Load histograms.
-    loadHistograms_();
+    if (!loadHistograms_()) {
+      return false;
+    }
 
     // Setup canvas and pads as appropriate.
-    setupCanvas_();
+    if (!setupCanvas_()) {
+      return false;
+    }
         
     // Normalising.
     if (m_normalised) {
-      cout << "<PlottingHelper::draw> Normalising." << endl;
+      DEBUG("Normalising.");
 
       // Initialise integral variable.
       float integral;
       
       // Data.
-      integral = m_data->Integral();
-      if (integral > 0) { m_data->Scale(1/integral); }
+      if (m_data) {
+	integral = m_data->Integral();
+	if (integral > 0) { m_data->Scale(1/integral); }
+      }
       
       // Background(s).
-      integral = m_sum->Integral();
-      if (integral > 0) {
-	m_sum->Scale(1/integral);
-	for (const auto& p : m_backgrounds) { p.second->Scale(1/integral); }
+      if (m_sum) {
+	integral = m_sum->Integral();
+	if (integral > 0) {
+	  m_sum->Scale(1/integral);
+	  for (const auto& p : m_backgrounds) { p.second->Scale(1/integral); }
+	}
       }
       
       // Signal.
@@ -242,7 +252,6 @@ namespace AnalysisTools {
     // Sort backgrounds by integral.
     m_backgroundsSorted.clear();
     for (const auto& p : m_backgrounds) {
-      //m_backgroundsSorted.push_back( pair<string, upHistType>(p.first, std::move(p.second)) );
       m_backgroundsSorted.push_back(std::pair<std::string, HistType*>(p.first, p.second.get()));
     }
     std::sort(m_backgroundsSorted.begin(), m_backgroundsSorted.end(),
@@ -253,53 +262,54 @@ namespace AnalysisTools {
     
     std::unique_ptr<THStack> background (new THStack("StackedBackgrounds", ""));
     for (const auto& p : m_backgroundsSorted) {
-      background->Add(p.second); // .get());
+      background->Add(p.second);
     }
     
     // Drawing (main pad).
-    cout << "<PlottingHelper::draw> Going to first pad." << endl;
+    DEBUG("Going to first pad.");
     m_pads.first->cd();
     
-    background->Draw("HIST");
-    gPad->Update();
-    
-    /* Get plot maximum. */
-    
+    // Get plot maximum.
+    DEBUG("Getting plot maximum");
     double maxData = 0., maxMC = 0.;
-    for (unsigned ibin = 0; ibin < m_data->GetXaxis()->GetNbins(); ibin++) {
-      maxData = max(m_data->GetBinContent(ibin + 1), maxData);
-      maxMC   = max(m_sum ->GetBinContent(ibin + 1), maxMC);
+    unsigned nBins = (m_data ? m_data->GetXaxis()->GetNbins() : (m_sum ? m_sum->GetXaxis()->GetNbins() : 0) );
+    for (unsigned ibin = 0; ibin < nBins; ibin++) {
+      if (m_data) { maxData = max(m_data->GetBinContent(ibin + 1), maxData); }
+      if (m_sum)  { maxMC   = max(m_sum ->GetBinContent(ibin + 1), maxMC); }
     }
     
-    const double plotmax = max(maxData, maxMC); //max(m_data->GetMaximum(), m_sum->GetMaximum());
+    const double plotmax = max(maxData, maxMC);
     const double plotmin = (m_normalised ? 1e-05 : 0.5); // log-plots only
-    //const double m_padding = 2.3; /* @TODO: Make dependent on the number of text lines. */
     
+    // Setting y-axis range.
+    DEBUG("Setting y-axis range.");
     if (m_log) {
-      //m_sum->SetMaximum(exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
-      //m_sum->SetMinimum(plotmin);
       m_sum->GetYaxis()->SetRangeUser(plotmin, exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
     } else {
-      m_sum->SetMaximum(m_padding * plotmax);
       m_sum->GetYaxis()->SetRangeUser(0, m_padding * plotmax);
     }
     
-    
+    // Check x-axis labels.
+    if (m_ratio) {
+      m_sum->GetXaxis()->SetTitleOffset(9999.);
+      m_sum->GetXaxis()->SetLabelOffset(9999.);
+    }
+
     // -- Background
-    cout << "<PlottingHelper::draw> Drawing background." << endl;
+    DEBUG("Drawing background.");
     m_sum->DrawCopy("AXIS");
     background->Draw("HIST same");
-    m_sum->DrawCopy("E2 same");
+    m_sum->DrawCopy("E3 same"); // E2
     
     // -- Signal
-    cout << "<PlottingHelper::draw> Drawing signal." << endl;
+    DEBUG("Drawing signal.");
     for (const auto& p : m_signals) {
-      cout << "<PlottingHelper::draw>  - " << p.first << endl;
+      DEBUG(" - %s", p.first.c_str());
       p.second->DrawCopy("HIST same");
     }
     
     // -- Data
-    cout << "<PlottingHelper::draw> Drawing data." << endl;
+    DEBUG("Drawing data");
     if (m_data) {
       m_data->DrawCopy("PE same");
     }
@@ -309,7 +319,6 @@ namespace AnalysisTools {
     // Ratio distributions.
     if (m_data) {
       m_ratiohists["Ratio"] = makeUniqueMove((HistType*) m_data->Clone("DataMC_Ratio"));
-      m_ratiohists["Ratio"]->SetDirectory(0);
       m_ratiohists["Ratio"]->Divide(m_sum.get());
       
       m_ratiohists["StatsError"] = makeUniqueMove((HistType*) m_ratiohists["Ratio"]->Clone("DataMC_StatsError"));
@@ -318,9 +327,8 @@ namespace AnalysisTools {
 	m_ratiohists["StatsError"]->SetBinContent(i + 1, 1);
 	double c = m_sum->GetBinContent(i + 1);
 	double e = m_sum->GetBinError(i + 1);
-	m_ratiohists["StatsError"]->SetBinError  (i + 1, (c > 0 ? e/c : 0));
+	m_ratiohists["StatsError"]->SetBinError  (i + 1, (c > 0 ? e/c : 999.));
       }
-      m_ratiohists["StatsError"]->GetYaxis()->SetTitle("Data / MC");
       
       // Styling.
       styleHist_(m_ratiohists["Ratio"].get(),      false, "Ratio");
@@ -338,25 +346,25 @@ namespace AnalysisTools {
       
       m_ratiohists["StatsError"]->GetXaxis()->SetTickLength(0.03 * 0.75/0.25);
       
-      //m_ratiohists["StatsError"]->GetYaxis()->SetRangeUser(0.75, 1.25);
-      m_ratiohists["StatsError"]->GetYaxis()->SetRangeUser(0.0, 2.0);
+      m_ratiohists["StatsError"]->GetYaxis()->SetRangeUser(0.5, 1.5);
       
-      m_ratiohists["StatsError"]->GetXaxis()->SetTitle(m_axistitles.at(0).c_str());
       m_ratiohists["StatsError"]->GetXaxis()->SetLabelOffset(0.02);
       
     }
     
     if (m_ratio) {
-      cout << "<PlottingHelper::draw> Drawing ratio pads." << endl;
+      DEBUG("Drawing ratio pads.");
       m_pads.second->cd();
+
+      m_ratiohists["StatsError"]->GetYaxis()->SetTitle("Data / MC");
+      m_ratiohists["StatsError"]->Draw("E3"); // E2
+      m_ratiohists["Ratio"]->DrawCopy("PE0L SAME");
       
-      m_ratiohists["StatsError"]->Draw("E2");
-      m_ratiohists["Ratio"]->Draw("PE0L same");
     }
-    
-    
+   
+
     // Borders and axis ticks.
-    cout << "<PlottingHelper::draw> Setting borders and axis ticks." << endl;
+    DEBUG("Setting borders and axis ticks.");
     m_pads.first->SetLogy(m_log);
     m_pads.first->SetTickx();
     m_pads.first->SetTicky();
@@ -378,7 +386,7 @@ namespace AnalysisTools {
     
     
     // Text.
-    cout << "<PlottingHelper::draw> Drawing text." << endl;
+    DEBUG("Drawing text.");
     m_pads.first->cd();
     
     TLatex latex;
@@ -388,7 +396,8 @@ namespace AnalysisTools {
     string text;
     
     double xDraw = 0.21;
-    double yDraw = 0.855;
+    double yDraw0 = 0.855;
+    double yDraw  = yDraw0;
     double yStep = s_fontSizeM * 1.25;
     
     text = "ATLAS #font[42]{Internal}";
@@ -422,20 +431,20 @@ namespace AnalysisTools {
     
     
     // Legend.
-    cout << "<PlottingHelper::draw> Drawing legends." << endl;
+    DEBUG("Drawing legend.");
     unsigned N = (m_data ? 1 : 0) + m_backgrounds.size() + m_signals.size() + 1;
     
-    xDraw = 0.63; // 0.65;
-    yDraw = 0.95; // 0.9;
+    xDraw = 0.61; // 0.63
+    yDraw = yDraw0 + 0.35 * yStep; // 0.95;
     
     double xmin = xDraw - yStep * 0.25 - (m_improvementDirection != -1 ? 0.05 : 0);
     double ymax = yDraw - yStep * 1;
     
     double width  = (m_improvementDirection != -1 ? 0.85 : 0.90) - xmin;
-    double height = N * s_fontSizeS * 1.2;
+    double height = N * s_fontSizeM * 1.2;
     
     TLegend* legend = new TLegend(xmin, ymax - height, xmin + width, ymax);
-    legend->SetTextSize(s_fontSizeS);
+    legend->SetTextSize(s_fontSizeM);
     legend->SetMargin(0.25);
     legend->SetFillStyle(0);
     
@@ -468,7 +477,7 @@ namespace AnalysisTools {
     
     
     // Lines.
-    cout << "<PlottingHelper::draw> Drawing lines." << endl;
+    DEBUG("Drawing lines.");
     TLine line;
     if (m_ratio) {
       m_pads.second->cd();
@@ -485,7 +494,7 @@ namespace AnalysisTools {
     
     // Cut improvements.
     if (m_improvementDirection != -1 && m_signals.size() > 0) {
-      cout << "<PlottingHelper::draw> Drawing cut improvements." << endl;
+      INFO("Computing cut improvements.");
       
       m_pads.first->SetTicky(false);
       m_pads.first->Update();
@@ -521,11 +530,10 @@ namespace AnalysisTools {
 	  xMaxImpr = x[i];
 	}
 	if (i == m_nbinsx - 1) {
-	  cout << "<PlottingHelper::draw> -- Baseline sensitivity: " << y[i] << endl;
+	  INFO(" -- Baseline sensitivity: %.4f", y[i]);
 	}
       }
-      
-      cout << "<PlottingHelper::draw> -- Maximal sensitivity: " << yMaxImpr << "(" << xMaxImpr << ")" << endl;
+      INFO(" -- Maximal sensitivity: %.4f (at %.3f)", yMaxImpr, xMaxImpr);
       
       // -- Create and style.
       TGraph* impr = new TGraph(m_nbinsx, x, y);
@@ -649,7 +657,7 @@ namespace AnalysisTools {
     
     
     // Writing.
-    cout << "<PlottingHelper::draw> Writing canvas." << endl;
+    DEBUG("Writing canvas.");
     m_canvas->Write();
     string savename = replaceAll(m_input + "/" + m_branch + (m_improvementDirection != -1 ? "_improvement" : ""), "/", "__");
     m_canvas->SaveAs((m_outdir + savename + ".pdf").c_str());
@@ -660,8 +668,10 @@ namespace AnalysisTools {
       m_canvas->SaveAs((m_outdir + "TESTplot.pdf").c_str());
       }
     */
-    cout << "<PlottingHelper::draw> Exiting." << endl;
-    return;
+
+    INFO("Exiting.");
+
+    return true;
   }
   
   template<class HistType>
@@ -675,26 +685,6 @@ namespace AnalysisTools {
   // ---------------------------------------------------------------------------
 
   template<class HistType>
-  void PlottingHelper<HistType>::closePads_ () {
-    /*
-      if (m_canvas) {
-      delete m_canvas;
-      m_canvas = nullptr;
-      }
-      if (m_pads.first) {
-      delete m_pads.first;
-      m_pads.first = nullptr;
-      }
-      if (m_pads.second) {
-      delete m_pads.second;
-      m_pads.second = nullptr;
-      }
-    */
-    return;
-  }
-
-
-  template<class HistType>
   bool PlottingHelper<HistType>::setupCanvas_ () {
 
     // Make sure the the output file exists.
@@ -703,9 +693,12 @@ namespace AnalysisTools {
     // Move to the output file.
     m_outfile->cd();
 
+    // Check whether to draw ratio pad.
+    drawRatioPad(m_ratio and m_data);
+
     // Create the canvas.
     std::string canvasName = (m_input + (m_branch != "" ? ":" : "") + m_branch);
-    m_canvas = makeUniqueMove(new TCanvas(canvasName.c_str(), "", m_W, m_H));
+    m_canvas = makeUniqueMove(new TCanvas(canvasName.c_str(), "", m_width, m_height));
 
     // Create necessary pads.
     m_canvas->cd();
@@ -727,12 +720,10 @@ namespace AnalysisTools {
 						     const std::string& path) {
 
     // Try to the object specified by the input name.
-    cout << "Getting '" << path << "'." << endl;
     TObject* obj = (TObject*) file->Get(path.c_str());
-    cout << "  pointer: " << obj << endl;
       
     if (obj == nullptr) {
-      cout << "<PlottingHelper::getHistogram_> Warning: Requested input '" << m_input << "' could not be retrieved from file '" << file->GetName() << "'." << endl;
+      WARNING("Requested input '%s' could not be retrieved from file '%s'.", m_input.c_str(), file->GetName());
       return nullptr;
     }
     
@@ -754,8 +745,12 @@ namespace AnalysisTools {
       
       // Reading tree.
       /* @TODO: Distinguish between the number of ':' in the input name, to allow for TH2/TProfile as well. */
-      unsigned it = 0; // @TODO: Fix counter.
-      string histname = m_input + ":" + m_branch + "_autohist_" + to_string(it++);
+      unsigned DSID = 0;
+      TTree* t = (TTree*) file->Get("outputTree");
+      t->SetBranchAddress("DSID", &DSID);
+      t->GetEntry(0);
+      delete t;
+      string histname = m_input + ":" + m_branch + "_autohist_" + to_string(DSID);
       
       // Move to output file.
       m_outfile->cd();
@@ -780,7 +775,7 @@ namespace AnalysisTools {
       unsigned nEntries = tree->GetEntries();
       for (unsigned iEntry = 0; iEntry < nEntries; iEntry++) {
 	tree->GetEntry(iEntry);
-	hist->Fill(value, weight);
+	hist->Fill(min(max(value, m_xmin + 1E-06), m_xmax - 1E-06), weight);
 	/**
 	 * @TODO: Depending on HistType, call 'Fill()' with more argument (e.g. for HistType == TProfile).
 	 */
@@ -793,19 +788,19 @@ namespace AnalysisTools {
       
     }
     
-    return hist; // std::move(hist);
+    return hist;
   }
   
   
   template<class HistType>
-  void PlottingHelper<HistType>::loadHistograms_ () {
+  bool PlottingHelper<HistType>::loadHistograms_ () {
     
-    cout << "<PlottingHelper::loadHistograms_> Entering." << endl;
+    DEBUG("Entering.");
     
     // Check whether any file names were provided.
     if (m_filenames.size() == 0) {
-      cout << "<PlottingHelper::loadHistograms_> WARNING: No input files were provided." << endl;
-      return;
+      ERROR("No input files were provided.");
+      return false;
     }
     
     // Initialise luminosity counter.
@@ -814,13 +809,13 @@ namespace AnalysisTools {
     // Looping input files.
     // -------------------------------------------------------------------------
    
-    cout << "<PlottingHelper::loadHistograms_>   Looping " << m_filenames.size() << " input files." << endl;
+    INFO("Looping %d input files.", m_filenames.size());
     unsigned it = 0;
     for (const string& filename : m_filenames) {
    
       // Make sure that the current file exists.
       if (!fileExists(filename)) {
-	cout << "<PlottingHelper::loadHistograms_> Warning: Input file '" << filename << "' doesn't exist." << endl;
+	WARNING("Input file '%s' doesn't exist.", filename.c_str());
 	continue;
       }
       
@@ -829,66 +824,6 @@ namespace AnalysisTools {
 
       std::unique_ptr<HistType> hist (getHistogram_ (&file, m_input));
 
-      /*
-      // Try to the object specified by the input name.
-      TObject* obj = (TObject*) file.Get(m_input.c_str());
-      
-      if (obj == nullptr) {
-	cout << "<PlottingHelper::loadHistograms_> Warning: Requested input '" << m_input << "' could not be retrieved from file '" << filename << "'." << endl;
-	continue;
-      }
-      
-      double sumOfWeights = 1.;
-      //sumOfWeights = ((TH1F*) file->Get("h_rawWeight"))->Integral();
-      
-      
-      // Get histogram.
-      // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      
-      TH1F* hist;
-      
-      if ((hist = dynamic_cast<TH1F*>(obj))) {
-	
-	/ * Reading histogram. * /
-	hist->SetDirectory(0);     // < Keep in memory after file is closed!
-	TH1::AddDirectory(kFALSE); // < Keep in memory after file is closed!
-	
-	if (m_rebin > 1) {
-	  hist->Rebin(m_rebin);
-	}
-	
-      } else if (TTree* tree = dynamic_cast<TTree*>(obj)) {
-	
-	/ * Reading tree. * /
-	/ * @TODO: Distinguish between the number of ':' in the input name, to allow for TH2/TProfile as well. * /
-	string histname = m_input + ":" + m_branch + "_autohist_" + to_string(it++);
-	
-	m_outfile->cd();
-	hist = new TH1F(histname.c_str(), "", m_nbinsx, m_xmin, m_xmax);
-	hist->GetXaxis()->Set(m_nbinsx, m_xmin, m_xmax);
-	hist->Sumw2(); // ?
-	
-	double var, weight = 1.;
-	tree->SetBranchAddress(m_branch.c_str(), &var);
-	tree->SetBranchAddress("weight",         &weight);
-	
-	unsigned nEntries = tree->GetEntries();
-	for (unsigned iEntry = 0; iEntry < nEntries; iEntry++) {
-	  tree->GetEntry(iEntry);
-	  hist->Fill(var, weight);
-	}
-	
-      } else {
-	
-	cout << "<PlottingHelper::loadHistograms_> Warning: Requested input '" << m_input << "' could not be cast as either TH1F* or TTree*." << endl;
-	continue;
-	
-      }
-      
-
-    */
-      
-      
       // Get DSID from filename.
       /**
        * @TODO: - Use regex?
@@ -903,7 +838,7 @@ namespace AnalysisTools {
       DSID = stoi(DSID_string);
       
       if (m_info.count(DSID) == 0) {
-	cout << "<PlottingHelper::loadHistograms_> Warning: DSID '" << DSID << "' was not found in m_info." << endl;
+	WARNING("DSID %d was not found in m_info.", DSID);
 	continue;
       }
 
@@ -918,27 +853,16 @@ namespace AnalysisTools {
 	m_lumi += info.lumi / 1000.; // Scaling pb-1 -> fb-1.
       }
             
-      // Set axis titles.
-      if (m_axistitles.at(0) != "" && !m_ratio) {
-	hist->GetXaxis()->SetTitle(m_axistitles.at(0).c_str());
-      } else {
-	hist->GetXaxis()->SetLabelOffset(9999.9);
-      }
-      if (m_axistitles.at(1) != "") {
-	hist->GetYaxis()->SetTitle((m_axistitles.at(1) + (m_normalised ? " (Normalised)" : "")).c_str());
-      }
-      /* @TODO: z-axis? */
-      
       // Perform styling.
       styleHist_(hist.get(), isMC, info.name);
-      
-      
+            
       // Add histogram to appropriate collection.
       if (isMC) {
 	// Scaling MC samples by cross section.
 	hist->Scale(info.xsec / float(info.evts));
 
 	if (isSignal) {
+
 	  // Scaling signal MC samples by optional scaling factor.
 	  hist->Scale(m_scaleSignal);
 
@@ -946,37 +870,34 @@ namespace AnalysisTools {
 	  assert( m_signals.count(info.name) == 0 );
 
 	  // Move histogram to signal collection.
-	  m_signals[info.name] = std::move(hist); //(hist->Clone(("autohist_Signal_" + info.name).c_str()));
-	  //m_signals[info.name]->SetDirectory(0);
+	  m_signals[info.name] = std::move(hist);
 
 	} else {
 
 	  // Check whether the sum background MC distribution exists.
 	  if (m_sum) {
+
 	    // If so contents of histogram to existing sum.
 	    m_sum->Add(hist.get());
 
 	  } else {
+
 	    // Otherwise move first histogram to sum.
 	    m_sum = makeUniqueMove( (TH1F*) hist->Clone("sum") );
-	    m_sum->SetDirectory(0);
-	    m_sum->Sumw2();
+
 	  }
 
 	  // Check whether this is the first sample of a given type.
 	  if (m_backgrounds.count(info.name) == 0) {
 
 	    // If so, move first histogram to background collection.
-	    m_backgrounds[info.name] = std::move(hist); //(TH1F*) hist->Clone(("autohist_Background_" + info.name).c_str()); //.insert( pair<unsigned, TH1F*>(DSID, hist) );
-	    //m_backgrounds[info.name]->SetDirectory(0);
-	    // Explicitly copy bin labels
-	    //for (unsigned ibin = 0; ibin < hist->GetXaxis()->GetNbins(); ibin++) {
-	    //m_backgrounds[info.name]->GetXaxis()->SetBinLabel(ibin + 1, hist->GetXaxis()->GetBinLabel(ibin + 1));
-	    //}
+	    m_backgrounds[info.name] = std::move(hist);
+
 	  } else {
 
 	    // Otherwise add contents of histogram to existing collection.
 	    m_backgrounds[info.name]->Add(hist.get());
+
 	  }
 
 	}
@@ -985,22 +906,22 @@ namespace AnalysisTools {
 
 	// Check whether the sum data distribution exists.
 	if (m_data) {
+
 	  // If so, add contents of histogram to existing data sum.
 	  m_data->Add(hist.get());
+
 	} else {
+
 	  // Otherwise move first histogram to data sum.
-	  m_data = std::move(hist); // (TH1F*) hist->Clone("autohist_Data");
-	  //m_data->SetDirectory(0);
-	  //m_data->Sumw2();
+	  m_data = std::move(hist);
+
 	}
       }
             
     } // end: loop file names.
     
     // If no data is present, scale MC to 1 fb-1.
-    if (m_lumi == 0.) {
-      m_lumi = 1.;
-    }
+    if (m_lumi == 0.) { m_lumi = 1.; }
     
     // Scale MC distributions to amount of luminosity added.
     for (const auto& pair : m_signals) {
@@ -1013,48 +934,41 @@ namespace AnalysisTools {
       m_sum->Scale(m_lumi);
     }
     
-    // If no data is present, make a dummy histogram. (Why?)
-    if (!m_data) { 
-      m_data = makeUniqueMove((HistType*) m_sum->Clone("dummy_data"));
-      m_data->SetDirectory(0);
-      m_data->Scale(0.);
-    }
-
     // Perform styling.
     styleHist_(m_sum.get(),  true,  "StatsError");
     styleHist_(m_data.get(), false, "Data");
     
     m_outfile->cd();
     
-    cout << "<PlottingHelper::loadHistograms_> Exiting." << endl;
+    DEBUG("Exiting.");
     
-    return;
+    return true;
   }
   
   
   template<class HistType>
-  void PlottingHelper<HistType>::loadSampleInfo_ () {
+  bool PlottingHelper<HistType>::loadSampleInfo_ () {
 
-    cout << "<PlottingHelper::loadSampleInfo_> Entering." << endl;
+    INFO("Entering.");
 
     // Clear sample info container.
     m_info.clear();
     
     // Make sure that the sample info file is specified and exists.
     if (m_sampleinfofile == "") {
-      cout << "<PlottingHelper::loadSampleInfo_> WARNING: Please specify a sample info file." << endl;
-      return;
+      ERROR("Please specify a sample info file.");
+      return false;
     }
     if (!fileExists(m_sampleinfofile)) {
-      cout << "<PlottingHelper::loadSampleInfo_> ERROR: Sample info file '"<< m_sampleinfofile <<"' was not found. Exiting." << endl;
-      return;
+      ERROR("Sample info file '%s' was not found.", m_sampleinfofile.c_str());
+      return false;
     }
     
     // Open sample info file.
     ifstream file ( m_sampleinfofile.c_str() );
     if (!file.is_open()) {
-      cout << "<PlottingHelper::loadSampleInfo_> ERROR: Cross section file could not be opened. Exiting." << endl;
-      return;
+      ERROR("Sample info file could not be opened.");
+      return false;
     }
 
     // Read each line in file.
@@ -1105,7 +1019,7 @@ namespace AnalysisTools {
 	unsigned evts = (unsigned) stoi(fields.at(2));
 	
 	if (evts == 0) {
-	  std::cout << "<PlottingHelper::loadSampleInfo_> Warning: DSID '" << DSID << "' has 0 events. Skipping." << std::endl;
+	  WARNING("DSID %d has 0 events. Skipping.", DSID);
 	  continue; 
 	}
 	info.evts = evts;
@@ -1148,17 +1062,17 @@ namespace AnalysisTools {
     // Close sample info file.
     file.close();
     
-    cout << "<PlottingHelper::loadSampleInfo_> Exiting." << endl;
+    DEBUG("Exiting");
     
-    return;
+    return true;
   }
   
   
   template<class HistType>
-  void PlottingHelper<HistType>::styleHist_ (HistType* hist, const bool& isMC, const string& name) { // const unsigned& DSID) {
+  void PlottingHelper<HistType>::styleHist_ (HistType* hist, const bool& isMC, const string& name) { 
     
-    cout << "<PlottingHelper::styleHist_> Calling with: '" << name << "' (" << (isMC ? "MC" : "data") << ")." << endl;
-    
+    DEBUG("Calling with: %s (%s)", name.c_str(), (isMC ? "MC" : "data"));
+
     if (!hist) { return; }
     
     // Base styling.
@@ -1181,17 +1095,30 @@ namespace AnalysisTools {
     
     
     if (name == "StatsError") {
-      hist->SetFillColor(kGray + 1);
+      hist->SetFillColor(kGray + 3);
       hist->SetFillStyle(3254);
       
       hist->SetMarkerColor(0);
       hist->SetMarkerStyle(0);
       
       hist->SetLineStyle(1);
-      hist->SetLineColor(kGray + 2);
+      hist->SetLineWidth(2);
+      hist->SetLineColor(kGray + 3);
+
       return;
     }
     
+    // Set axis titles.
+    /**
+     * @TODO: z-axis title?
+     */
+    if (m_axistitles.at(0) != "") {
+	hist->GetXaxis()->SetTitle(m_axistitles.at(0).c_str());
+    }
+    if (m_axistitles.at(1) != "") {
+      hist->GetYaxis()->SetTitle((m_axistitles.at(1) + (m_normalised ? " (Normalised)" : "")).c_str());
+    }
+
     if (isMC) {
       
       // Determine whether is signal.
@@ -1213,13 +1140,12 @@ namespace AnalysisTools {
 	
       }
       
-      hist->SetFillColor(kRed); // TEMP
-      
       /* Incl. gamma */
       std::regex re_inclGamma("Incl. #gamma.*");
       std::smatch re_match_inclGamma;
       if      (std::regex_match(name, re_match_inclGamma, re_inclGamma)) { 
-	hist->SetFillColor (kAzure + m_backgrounds.size() + 1); // 1); 
+	//hist->SetFillColor (kAzure + m_backgrounds.size() + 1);
+	hist->SetFillColor (kAzure + 7);
       }
       
       /* V (-> ll/lv) + X */
@@ -1253,8 +1179,7 @@ namespace AnalysisTools {
       
     }
     
-    return;
-    
+    return;    
   }
 
   /// Explicitly instatiate templates.
