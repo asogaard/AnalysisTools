@@ -34,9 +34,13 @@ def loadXsec (path):
             if line == '' or line.startswith('#'):
                 continue
             fields = [f.strip() for f in line.split(',')]
-            if int(fields[2]) == 0:
+            try:
+                if int(fields[2]) == 0:
+                    continue
+                xsec[int(fields[0])] = float(fields[1]) / float(fields[2]) * float(fields[3])
+            except:
+                # If data.
                 continue
-            xsec[int(fields[0])] = float(fields[1]) / float(fields[2]) * float(fields[3])
             pass
         pass
     return xsec
@@ -109,9 +113,6 @@ def drawLegend (histograms, names, types = None, c = None,
 
     if types is None:
         types = ''
-        if drawOpt == 'HIST':
-            types = 'LE'
-            pass
         pass
 
     if type(types) == str:
@@ -216,6 +217,7 @@ TextOptions.__new__.__defaults__ = ([], None, 'NW','Internal simulation',)
 def makePlot (pathHistnamePairs,
               legendOpts = None, #LegendOptions([], []),
               textOpts   = None, #TextOptions(),
+              canvas = None,
               ymin = None,
               ymax = None,
               logy = False,
@@ -224,20 +226,23 @@ def makePlot (pathHistnamePairs,
               ytitle = None,
               ztitle = None,
               colours = None, 
+              fillcolours = None, 
+              alpha = None,
               linewidths = None,
               markers = None,
               xlines = None,
               ylines = None,
-              drawOpt = '',
+              drawOpts = None,
               normalise = False,
               profileRMS = False):
     ''' ... '''
 
     # Variable declarations
     if not colours:
-        colours = [kRed   + i * 2 for i in range(3)] + \
-                  [kBlue  + i * 2 for i in range(3)] + \
-                  [kGreen + i * 2 for i in range(3)]
+        colours = [kViolet + 7, kAzure + 7, kTeal, kSpring - 2, kOrange - 3, kPink]
+        #colours = [kRed   + i * 2 for i in range(3)] + \
+        #          [kBlue  + i * 2 for i in range(3)] + \
+        #          [kGreen + i * 2 for i in range(3)]
         pass
 
     if not markers:
@@ -246,6 +251,16 @@ def makePlot (pathHistnamePairs,
 
     if not linewidths:
         linewidths = [2] * len(pathHistnamePairs)
+        pass
+
+    if fillcolours:
+        if not type(fillcolours) == list:
+            fillcolours = [fillcolours] * len(pathHistnamePairs)
+            pass
+        pass
+
+    if not type(alpha) == list:
+        alpha = [alpha] * len(pathHistnamePairs)
         pass
 
     # Loop all pairs of paths and histograms.
@@ -285,7 +300,7 @@ def makePlot (pathHistnamePairs,
             # Common, regardless of how the histogram was obtained.
             # -- Normalise.
             if normalise and h.Integral() > 0:
-                h.Scale(1./h.Integral())
+                h.Scale(1./h.Integral(0, h.GetXaxis().GetNbins() + 1))
                 pass
             
             # -- Make TProfile show RMS
@@ -307,8 +322,22 @@ def makePlot (pathHistnamePairs,
     for i,h in enumerate(histograms):
 
         if i < len(colours):
-            h.SetLineColor  (colours[i])
-            h.SetMarkerColor(colours[i])
+            if alpha[i]:
+                h.SetLineColorAlpha(colours[i], alpha[i])
+            else:
+                h.SetLineColor     (colours[i])
+                pass
+
+            h.SetMarkerColor   (colours[i])
+
+            if fillcolours:
+                if alpha[i]:
+                    h.SetFillColorAlpha(fillcolours[i], alpha[i])
+                else:
+                    h.SetFillColor(fillcolours[i])
+                    pass
+                pass
+
             h.SetMarkerStyle(markers[i])
             h.SetLineWidth  (linewidths[i])
             pass
@@ -328,11 +357,18 @@ def makePlot (pathHistnamePairs,
         pass
 
     # Canvas.
-    c = TCanvas('c', "", int(600 * (7./6. if drawOpt and 'Z' in drawOpt else 1.)), 600)
-    if drawOpt and 'Z' in drawOpt:
-        c.SetRightMargin(0.15)
+
+    if canvas:
+        c = canvas
+    else:
+        is2D = (drawOpts and True in ['Z' in opt for opt in drawOpts])
+        c = TCanvas('c', "", int(600 * (7./6. if is2D else 1.)), 600)
+        if is2D:
+            c.SetRightMargin(0.15)
+            pass
         pass
     c.SetLogy(logy)
+    c.cd()
 
     # Draw axes.
     histograms[0].Draw('AXIS')
@@ -369,10 +405,20 @@ def makePlot (pathHistnamePairs,
 
         pass
 
+    if not drawOpts:
+        drawOpts = ''
+        pass
+
+    if type(drawOpts) is str:
+        drawOpts = [drawOpts] * len(histograms)
+        pass
+
     # Draw histograms.
-    for i,h in enumerate(histograms):
+    for i, (drawOpt, h) in enumerate(zip(drawOpts,histograms)):
         h.Draw(drawOpt + ' SAME')
         pass
+
+    histograms[0].Draw('AXIS SAME')
 
     # Text.
     if textOpts:
@@ -391,7 +437,7 @@ def makePlot (pathHistnamePairs,
 
 
 
-def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = None, DSIDvar = 'DSID', Nevents = 29):
+def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = None, keepOnly = None, DSIDvar = 'DSID', isMCvar = 'isMC', Nevents = 29):
     
     print ""
     print "loadDataFast: Reading data from %d files." % len(paths)
@@ -403,6 +449,7 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
 
     # Initialise DSID variable.
     DSID = None
+    isMC = None
 
     # Loop paths.
     for ipath, path in enumerate(paths):
@@ -414,17 +461,29 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
         # Get file.
         f = TFile(path, 'READ')
 
-        # Get tree.
-        t = f.Get(treename)
-
         # Get DSID.
         for event in f.Get('outputTree'):
             DSID = eval('event.%s' % DSIDvar)
+            isMC = eval('event.%s' % isMCvar)
             break
 
-        # Check whether to explicitly ignore.
-        if ignore and DSID and ignore(DSID):
-            print "Ignoring DSID %d." % DSID
+        if not DSID:
+            print "\rloadDataFast:   Could not retrieve DSID file output is probably empty. Skipping."
+            continue
+
+        # Check whether to explicitly keep or ignore.
+        if keepOnly and DSID and not keepOnly(DSID):
+            print "\rNot keeping DSID %d." % DSID
+            continue
+        elif ignore and DSID and ignore(DSID):
+            print "\rloadDataFast:   Ignoring DSID %d." % DSID
+            continue
+
+        # Get tree.
+        t = f.Get(treename)
+        
+        if not t:
+            print "\rloadDataFast:   Tree '%s' was not found in file '%s'. Skipping." % (treename, path)
             continue
 
         # Load new data array.
@@ -433,11 +492,11 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
                          include_weight = True,
                          )                         
         # Add cross sections weights.
-        if xsec and DSID:
+        if isMC and xsec and DSID:
 
             # Ignore of we didn't provide cross section information.
             if DSID not in xsec:
-                print "Skipping DSID %d." % DSID
+                print "\rloadDataFast:   Skipping DSID %d (no sample info)." % DSID
                 continue
 
             # Scale weight by cross section.

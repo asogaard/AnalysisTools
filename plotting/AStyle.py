@@ -35,7 +35,7 @@ AStyle.SetPadBottomMargin(0.15)
 AStyle.SetPadLeftMargin  (0.15)
 AStyle.SetPadTopMargin (0.05)
 AStyle.SetTitleOffset(1.2, 'x')
-AStyle.SetTitleOffset(1.5, 'y')
+AStyle.SetTitleOffset(1.6, 'y') # 1.5
 AStyle.SetTitleOffset(1.6, 'z')
 
 # -- Fonts

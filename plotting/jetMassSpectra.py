@@ -12,15 +12,20 @@ import itertools
 
 
 def displayName (var):
-    if   var == 'tau21':    return '#tau_{21}'
-    elif var == 'tau21mod': return '#tilde{#tau}_{21}'
-    elif var == 'D2':       return 'D_{2}'
-    elif var == 'D2mod':    return '#tilde{D}_{2}'
-    elif var == 'pt':       return 'p_{T}'
-    elif var == 'm':        return 'M'
-    elif var == 'rho':      return '#rho'
-    elif var == 'rhoPrime': return "#rho'"
-    elif var == 'rhoDDT':   return '#rho^{DDT}'
+    if   var == "tau21":              return "#tau_{21}"
+    elif var == "tau21_ut":           return "#tau_{21,untrimmed}"
+    elif var == "D2":                 return "D_{2}"
+    elif var == "D2mod":              return "#tilde{D}_{2}"
+    elif var == "pt":                 return "p_{T}"
+    elif var == "m":                  return "M"
+    elif var == "rho":                return "#rho"
+    elif var == "rho_ut":             return "#rho_{untrimmed}"
+    elif var == "rhoPrime":           return "#rho'"
+    elif var == "rhoPrime_ut":        return "#rho'_{untrimmed}"
+    elif var == "rhoDDT":             return "#rho^{DDT}"
+    elif var == "rhoDDT_ut":          return "#rho^{DDT}_{untrimmed}"
+    elif var == "tau21_mod_rhoPrime": return "#tilde{#tau}_{21}" # '
+    elif var == "tau21_mod_rhoDDT":   return "#tau_{21}^{DDT}"
     return var
 
 def displayUnit (var):
@@ -54,68 +59,38 @@ def main ():
     # Get list of file paths to plot from commandline arguments.
     paths = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
-    # Specify which variables to get. 
-    treename = 'BoostedJetISR/Fatjets/Nominal/dPhi/Postcut'
-    prefix   = 'plot_fatjet_'
-    getvars  = ['pt', 'm', 'tau21', 'D2', 'D2mod', 'rho', 'rhoDDT']
+    # Specify which variables to get.
+    treename = 'BoostedJetISR/EventSelection/{0}/{1}/Precut'
+    prefix   = ''
+    getvars  = ['pt', 'm', 'CutVariable', '_rho_']
 
     # Load data.
-    values = loadData(paths, treename, getvars, prefix, xsec, ignore = (lambda DSID: 305367 <= DSID <= 305374 ))
+    values = { 'Nominal'  : {},
+               'rhoPrime' : {},
+               'rhoDDT'   : {},
+               }
+    Nevents = dict()
+    for var in ['rhoPrime', 'rhoDDT', 'Nominal']:
+        getvars[3] = var
+        print treename.format(var, 'tau21' + ('_mod_%s' % var if 'rho' in var else ''))
+        values[var] = loadData(paths, treename.format(var, 'tau21' + ('_mod_%s' % var if 'rho' in var else '')), getvars, prefix, xsec, ignore = (lambda DSID: 305367 <= DSID <= 305374 ))
 
-    if not values: return
-    Nevents = len(values[getvars[0]])
-
-    values['rhoPrime'] = map(lambda (m,pt): rhoPrime(m,pt), zip(values['m'], values['pt']))
-
-    def modFuncRhoPrime (rhoPrimeVal):
-        ''' Linear correction function for rhoPrime = log(m^2/pt^1.4) '''
-        p0 =  0.477415
-        p1 = -0.103591
-        return p0 + p1 * rhoPrimeVal
-
-    def modFuncRhoDDT (rhoDDTVal):
-        ''' Linear correction function for rhoDDT = log(m^2/pt^1.4) '''
-        p0 =  0.477415
-        p1 = -0.103591
-        return p0 + p1 * rhoDDTVal
-
-    rhoPrimeMin = -1.5
-    rhoDDTMin   =  1.0
-    values['tau21_mod_rhoPrime'] = map(lambda (t,rp): t + (modFuncRhoPrime(rhoPrimeMin) - modFuncRhoPrime(rp)), zip(values['tau21'], values['rhoPrime']))
-    values['tau21_mod_rhoDDT'] = map(lambda (t,rp): t + (modFuncRhoDDT(rhoDDTMin) - modFuncRhoDDT(rp)), zip(values['tau21'], values['rhoDDT']))
-
-    # ==============================================================
-    # Plot substructure variables.
-    # --------------------------------------------------------------
-    
-    if False:
-        
-        variables = ['tau21mod']
-
-        histograms = { var: TH1F('%s' % var, "", 100, -1, 1) for var in variables }
-
-        for var, h in histograms.iteritems():
-            for ievent in xrange(Nevents):
-                h.Fill( values[var]     [ievent],
-                        values['weight'][ievent] )
-                pass
-
-            h.GetXaxis().SetTitle( displayName(var) )
-            h.GetYaxis().SetTitle("Number of jets (a.u.)")
-
-            c = TCanvas('c', "", 600, 600)
-
-            h.Draw('HIST')
-
-            drawText()
-            gPad.Update()
-            wait()
+        if 'rho' in var:
+            values[var]['tau21_mod_%s' % var] = values[var]['CutVariable']
+        else:
+            values[var]['tau21'] = values[var]['CutVariable']
             pass
 
+        if not values[var]:
+            print "WARNING: No value were loaded."
+            return
+
+        Nevents[var] = len(values[var][getvars[0]])
         pass
 
+
     # ==============================================================
-    # Plot substructure variable profiles.
+    # Plot jet mass spectra 
     # --------------------------------------------------------------
 
     if True:
@@ -123,16 +98,44 @@ def main ():
         # Define cut binning.
         binsdict = {
             'tau21': [
-                (0.1, 0.2),
-                (0.2, 0.3),
-                (0.3, 0.4),
-                (0.4, 0.5),
-                (0.5, 0.6),
-                (0.6, 0.7),
-                (0.7, 0.8),
-                (0.8, 0.9),
+                #(0.1, 0.2),
+                #(0.2, 0.3),
+                #(0.3, 0.4),
+                #(0.4, 0.5),
+                #(0.5, 0.6),
+                #(0.6, 0.7),
+                #(0.7, 0.8),
+                #(0.8, 0.9),
+                (0.0, 0.4),
+                (0.4, 1.5),
                 ],
             
+            'tau21_mod_rhoPrime': [
+                #(0.1, 0.2),
+                #(0.2, 0.3),
+                #(0.3, 0.4),
+                #(0.4, 0.5),
+                #(0.5, 0.6),
+                #(0.6, 0.7),
+                #(0.7, 0.8),
+                #(0.8, 0.9),
+                (0.0, 0.4),
+                (0.4, 1.5),
+                ],
+
+            'tau21_mod_rhoDDT': [
+                #(0.1, 0.2),
+                #(0.2, 0.3),
+                #(0.3, 0.4),
+                #(0.4, 0.5),
+                #(0.5, 0.6),
+                #(0.6, 0.7),
+                #(0.7, 0.8),
+                #(0.8, 0.9),
+                (0.0, 0.4),
+                (0.4, 1.5),
+                ],
+
             'tau21mod': [
                 (0.0, 0.1),
                 (0.1, 0.2),
@@ -168,6 +171,8 @@ def main ():
                 ],
             
             'pt' : [
+                ( 150.,  200.),
+                ( 200.,  250.),
                 ( 250.,  300.),
                 ( 300.,  400.),
                 ( 400.,  500.),
@@ -191,7 +196,14 @@ def main ():
         DDTmax = -1.0
         
         cuts = {
-            'tau21': {},
+            'tau21': {
+                },
+            'tau21_mod_rhoPrime': {
+                'rhoPrime' : (-1.5, 9999.),
+                },
+            'tau21_mod_rhoDDT': {
+                'rhoDDT' : (1.0, 9999.),
+                },
             'tau21mod': {
                 'rhoPrime' : (-1.0, 2.0),
                 },
@@ -200,8 +212,8 @@ def main ():
                 'rho' : (DDTmin, DDTmax),
                 },
             'pt'   : {
-                'tau21': (0.0, 0.4),
-                
+                'tau21_mod_rhoPrime': (0.0, 0.6),
+                'rhoPrime':          (-1.5, 8.0),
                 #'D2':    (0.0, 1.2),
 
                 #'D2mod': ( 0.0, 2.3),
@@ -219,84 +231,112 @@ def main ():
 
 
         # Define histograms.
-        variables =  ['pt'] # ['tau21', 'tau21mod', 'pt']
+        #variables =  ['pt'] # ['tau21', 'tau21mod', 'pt']
+        variables =  ['tau21', 'tau21_mod_rhoPrime', 'tau21_mod_rhoDDT']
 
-        histograms = { var : [TH1F('h_%s_%d' % (var, ibin), "", 50, 0, 200) for ibin in range(len(binsdict[var]))] for var in variables }
+        # Loop correction (rho) variable
+        for correctVar in ['Nominal', 'rhoPrime', 'rhoDDT']:
+            histograms = { var : [TH1F('h_%s_%d' % (var, ibin), "", 50, 0, 200) for ibin in range(len(binsdict[var]))] for var in ['tau21_mod_%s' % correctVar if 'rho' in correctVar else 'tau21']}# variables }
+            
+            print "Keys:"
+            for key, _ in values[correctVar].iteritems():
+                print " -- '%s'" % key
+                pass
 
-
-        # Filling histograms.
-        for ievent in xrange(Nevents):
-            for histvar, hists in histograms.iteritems():
-                bins = binsdict[histvar]
-                for ibin, bin in enumerate(bins):
-
-                    # -- Has to be within bin.
-                    if not(bin[0] <= values[histvar][ievent] < bin[1]): continue
-
-                    # -- Has to pass all cuts.
-                    if False in [p[0] <= values[k][ievent] < p[1] for k, p in cuts[histvar].iteritems()]: continue
-
-                    # -- Fill.
-                    hists[ibin].Fill( values['m'][ievent], values['weight'][ievent] )
-
+            # Filling histograms.
+            for ievent in xrange(Nevents[correctVar]):
+                for histvar, hists in histograms.iteritems():
+                    bins = binsdict[histvar]
+                    for ibin, bin in enumerate(bins):
+                        
+                        # -- Has to be within bin.
+                        if not(bin[0] <= values[correctVar][histvar][ievent] < bin[1]): continue
+                        
+                        # -- Has to pass all cuts.
+                        if False in [p[0] <= values[correctVar][k][ievent] < p[1] for k, p in cuts[histvar].iteritems()]: continue
+                        
+                        # -- Fill.
+                        hists[ibin].Fill( values[correctVar]['m'][ievent], values[correctVar]['weight'][ievent] )
+                        
+                        pass
                     pass
                 pass
-            pass
-
-        
-        # Drawing histograms.
-        print " == Drawing histograms."
-        log = True
-        padding = 1.7
-
-        c = TCanvas('c', "", 600, 600)
-        c.SetLogy(log)
-        
-        for histvar, hists in histograms.iteritems():
-            for h in hists:
-                if h.Integral() == 0.: continue
-                h.Scale(1./h.Integral())
-                pass
-
-            (ymin, ymax) = getPlotMinMax(hists, log, padding, ymin = (1e-03 if histvar == 'pt' else None))
             
-            for ibin, h in enumerate(hists):
-                h.GetYaxis().SetRangeUser(ymin, ymax)
-                h.SetLineColor((kRed if ibin < 5 else kBlue) + (ibin % 5))
-                h.GetXaxis().SetTitle('Jet mass [GeV]')
-                h.GetYaxis().SetTitle('Jets (normalised)')
+            
+            # Drawing histograms.
+            print " == Drawing histograms."
+            log = True
+            padding = 1.5
+            
+            c = TCanvas('c', "", 600, 600)
+            c.SetLogy(log)
+            
+            for histvar, hists in histograms.iteritems():
+                for h in hists:
+                    if h.Integral() == 0.: continue
+                    h.Scale(1./h.Integral())
+                    pass
                 
-                h.Draw('HIST ' + ('' if ibin == 0 else 'SAME'))
+                (ymin, ymax) = getPlotMinMax(hists, log, padding, ymin = (1e-03 if histvar == 'pt' else None))
+                
+                for ibin, h in enumerate(hists):
+                    h.GetYaxis().SetRangeUser(ymin, ymax)
+                    #h.SetLineColor((kRed if ibin < 5 else kBlue) + (ibin % 5))
+                    h.SetLineColor((kRed if ibin < 3 else kBlue) + (ibin % 3) * 2)
+                    h.GetXaxis().SetTitle('Jet mass [GeV]')
+                    h.GetYaxis().SetTitle('Jets (normalised)')
+                    
+                    h.Draw('HIST ' + ('' if ibin == 0 else 'SAME'))
+                    pass
+                
+                
+                
+                def cutInterval(a,b,digits = 1):
+                    s = '---'
+                    if   a <= -9999.:
+                        s = "< %.*f" % (digits, b)
+                    elif b >= 9999.:
+                        s = "> %.*f" % (digits, a)
+                    else:
+                        s = "#in  [%.*f, %.*f]" % (digits, a, digits, b)
+                        pass
+                    return s
+
+                drawText([ "#sqrt{s} = 13 TeV",
+                           "Inclusive #gamma events",
+                           "Trimmed anti-k_{t}^{R=1.0}",
+                           "Req. 1 #gamma with p_{T} > 155 GeV",                       
+                           ]
+                         + ([] if histvar == 'pt' else ["Jet p_{T} > 150 GeV"])
+                         + ["Jet M < p_{T}  / 2"]
+                         + ["%s %s %s" % (displayName(cutvar), cutInterval(p[0], p[1]), displayUnit(cutvar)) for cutvar, p in cuts[histvar].iteritems()]
+                         )
+                
+                # -- Legend.
+                legend = drawLegend(hists,
+                                    ["[%.1f, %.1f] %s" % (p[0], p[1], displayUnit(histvar)) for p in binsdict[histvar]],
+                                    'L',
+                                    header = 'Jet %s slices:' % displayName(histvar),
+                                    ymax = 0.835
+                                    )
+                
+                legend.SetTextSize(0.033)
+                
+                # -- Show.
+                gPad.Update()
+                
+                savename = "jetMassSpectrum__%s.pdf" % histvar
+                print "savename: '%s'" % savename
+
+                wait()
+                c.SaveAs(savename)
+
                 pass
-
-
-
-            drawText([ "#sqrt{s} = 13 TeV",
-                       "Inclusive #gamma events",
-                       "Trimmed anti-k_{t}^{R=1.0}",
-                       "Req. 1 #gamma with p_{T} > 155 GeV",                       
-                       ]
-                     + ([] if histvar == 'pt' else ["Jet p_{T} > 250 GeV"])
-                     + ["%s #in  [%.1f, %.1f] %s" % (displayName(cutvar), p[0], p[1], displayUnit(cutvar)) for cutvar, p in cuts[histvar].iteritems()]
-                     )
             
-            # -- Legend.
-            legend = drawLegend(hists,
-                                ["%s #in  [%.0f, %.0f) %s" % (displayName(histvar), p[0], p[1], displayUnit(histvar)) for p in binsdict[histvar]],
-                                'L'
-                                )
-            
-            legend.SetTextSize(0.033)
-            
-            # -- Show.
-            gPad.Update()
-            wait()
-
-            pass
-
+            pass #end: loop correctVar
         pass
-
-
+    pass
+    
 # Main function call.
 if __name__ == '__main__':
     main()
