@@ -3,8 +3,9 @@
 #include <vector>
 #include <iostream>
 #include <memory> /* shared_ptr */
-#include <math.h> /* log, pow */
-#include <assert.h> /* assert */
+#include <cmath> /* log, pow */
+#include <cassert> /* assert */
+#include <algorithm> /* std::sort */
 
 // ROOT include(s).
 #include "TROOT.h"
@@ -41,9 +42,9 @@ int main (int argc, char* argv[]) {
     }
 
     // Load dictionaries and stuff.
-    //gROOT->ProcessLine(".L share/Loader.C+");
-    gROOT->ProcessLine( "#include <vector>" );
-    gROOT->LoadMacro( "share/TLorentzVectorDict.h+" );
+    gROOT->ProcessLine(".L share/Loader.C+");
+    //gROOT->ProcessLine( "#include <vector>" );
+    //gROOT->LoadMacro( "share/TLorentzVectorDict.h+" );
     
     
     // Get input files.
@@ -94,7 +95,7 @@ int main (int argc, char* argv[]) {
         
         
         // Get number of events.
-        const unsigned int nEvents = inputTree->GetEntries();
+        const unsigned nEvents = inputTree->GetEntries();
         if (nEvents == 0) {
             cout << " -- (File '" << input << "' is empty.)" << endl;
             continue;
@@ -102,9 +103,11 @@ int main (int argc, char* argv[]) {
         
         
         // Set up addresses for reading.
-        unsigned int runNumber = 0;
-        unsigned int mcChannelNumber = 0;
-        float        weight_mc = 0;
+        unsigned runNumber = 0;
+        unsigned lumiBlock = 0;
+        unsigned long long eventNumber = 0;
+        unsigned mcChannelNumber = 0;
+        float    weight_mc = 0;
 
 	vector< float > *ph_pt  = 0;
 	vector< float > *ph_eta = 0;
@@ -130,9 +133,12 @@ int main (int argc, char* argv[]) {
 	vector<TLorentzVector> fatjets;
 
 	vector< float > fj_dphiMinPhoton;
+	vector< float > fj_tau21DDT;
 	
         // Set up branches for reading.
-	TBranch *runNumberBranch, *mcChannelNumberBranch, *weight_mcBranch;
+	TBranch *runNumberBranch, *lumiBlockBranch, *eventNumberBranch;
+
+	TBranch *mcChannelNumberBranch, *weight_mcBranch;
 
 	TBranch *ph_ptBranch,    *ph_etaBranch,    *ph_phiBranch;
 	TBranch *fj_ptBranch, *fj_etaBranch, *fj_phiBranch, *fj_mBranch;
@@ -146,8 +152,11 @@ int main (int argc, char* argv[]) {
         
         // Connect branches to addresses.
         inputTree->SetBranchAddress( "runNumber",         &runNumber,           &runNumberBranch );
+        //inputTree->SetBranchAddress( "lumiBlock",         &lumiBlock,           &lumiBlockBranch ); // @TODO: insert
+        inputTree->SetBranchAddress( "eventNumber",       &eventNumber,         &eventNumberBranch );
         inputTree->SetBranchAddress( "mcChannelNumber",   &mcChannelNumber,     &mcChannelNumberBranch );
-        inputTree->SetBranchAddress( "weight_mc",   &weight_mc,     &weight_mcBranch );
+        inputTree->SetBranchAddress( "weight_mc",         &weight_mc,           &weight_mcBranch );
+	/* @TODO: Pile-up reweighting? */
 
 	// Photon kinematic quantities
         inputTree->SetBranchAddress( "ph_pt",  &ph_pt , &ph_ptBranch );
@@ -174,23 +183,21 @@ int main (int argc, char* argv[]) {
         inputTree->SetBranchAddress( "HLT_j400",       &HLT_j400,       &HLT_j400Branch );
 
         
-        // Get GRL.
-        // -------------------------------------------------------------------
+         // Get GRL.
+        // -------------------------------------------------------------------       
+        GRL grl2015 ("share/GRL/data15_13TeV.periodAllYear_DetStatus-v79-repro20-02_DQDefects-00-02-02_PHYS_StandardGRL_All_Good_25ns.txt");
+	GRL grl2016 ("share/GRL/data16_13TeV.periodAllYear_DetStatus-v83-pro20-15_DQDefects-00-02-04_PHYS_StandardGRL_All_Good_25ns.txt");
         
-        //GRL grl("share/GRL/data15_13TeV.periodAllYear_DetStatus-v79-repro20-02_DQDefects-00-02-02_PHYS_StandardGRL_All_Good_25ns.txt");
         
-        
-        
-        // Get file name.
+         // Get file name.
         // -------------------------------------------------------------------
         inputTree->GetEvent(0);
         
         bool     isMC = (mcChannelNumber > 0);
         unsigned DSID = (isMC ? mcChannelNumber : runNumber);
 
-        string filedir  = "outputObjdef";
-        string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
-        
+        const string filedir  = "outputObjdef";
+        const string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
         
         
          // Get MC event weight.
@@ -204,37 +211,48 @@ int main (int argc, char* argv[]) {
         }
 
         
-        // Set up AnalysisTools
-        // -------------------------------------------------------------------
+         // Set up AnalysisTools
+        // -------------------------------------------------------------------       
+	Analysis ISRgammaAnalysis ("BoostedJet+ISRgamma");
+	Analysis ISRjetAnalysis   ("BoostedJet+ISRjet");
         
-        Analysis analysis ("BoostedJetISR");
-        
-        analysis.openOutput(filedir + "/" + filename);
-        analysis.addTree();
-        analysis.setWeight(weight);
-        
-        
-        
-        // Set up output branches.
-        // -------------------------------------------------------------------
+	const bool debug = false;
 
+	std::vector<Analysis*> analyses = { &ISRgammaAnalysis, &ISRjetAnalysis };
+	for (auto* analysis : analyses) {
+	  analysis->setDebug(debug);
+	}
+
+	ISRgammaAnalysis.openOutput(filedir + "/" + filename);
+	ISRjetAnalysis  .setOutput (ISRgammaAnalysis.file());
+
+	for (auto* analysis : analyses) {
+	  analysis->setWeight(weight);
+	}
+        
+	const bool blind = true;
+        
+        
+         // Set up output branches.
+        // -------------------------------------------------------------------
 	vector<TLorentzVector> signalPhotons, signalFatjets;
 
-        analysis.tree()->Branch("signalPhotons",      &signalPhotons,      32000, 0); /* Suppresses "TTree::Bronch" warnings */
-        analysis.tree()->Branch("signalFatjets",      &signalFatjets,      32000, 0);
-
-        analysis.tree()->Branch("signalFatjets_tau21",   &fj_tau21);
-        analysis.tree()->Branch("signalFatjets_D2",      &fj_D2);
-
-        analysis.tree()->Branch("signalFatjets_tau21_ut",  &fjut_tau21);
-        analysis.tree()->Branch("signalFatjets_pt_ut",     &fjut_pt);
-
-        analysis.tree()->Branch("isMC",   &isMC);
-        analysis.tree()->Branch("DSID",   &DSID);
-
+	for (auto* analysis : analyses) {
+	  analysis->tree()->Branch("signalPhotons",      &signalPhotons,      32000, 0); /* Suppresses "TTree::Bronch" warnings */
+	  analysis->tree()->Branch("signalFatjets",      &signalFatjets,      32000, 0);
+	  
+	  analysis->tree()->Branch("signalFatjets_tau21",   &fj_tau21);
+	  analysis->tree()->Branch("signalFatjets_D2",      &fj_D2);
+	
+	  analysis->tree()->Branch("signalFatjets_tau21_ut",  &fjut_tau21);
+	  analysis->tree()->Branch("signalFatjets_pt_ut",     &fjut_pt);
+	
+	  analysis->tree()->Branch("isMC",   &isMC);
+	  analysis->tree()->Branch("DSID",   &DSID);
+	}
+       
         
-        
-        // Copy histograms.
+         // Copy histograms.
         // -------------------------------------------------------------------
 	/*
         TH1F* h_rawWeight = (TH1F*) inputFile.Get("h_rawWeight");
@@ -242,6 +260,181 @@ int main (int argc, char* argv[]) {
         h_rawWeight->Write();
 	*/
         
+
+
+ 	 // Plotting macros.
+        // -------------------------------------------------------------------
+
+	auto rho      = [](const PhysicsObject& p) { 
+	  return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 2.0));
+	};
+	auto rhoPrime = [](const PhysicsObject& p) { 
+	  return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.4));
+	};
+	auto rhoDDT   = [](const PhysicsObject& p) { 
+	  return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.0));
+	};
+
+	auto tau21DDT = [&rhoDDT](const PhysicsObject& p) {
+	  // Linear correction function.
+	  const double p0 =  0.6887;
+	  const double p1 = -0.0941;
+	  const double rhoDDTmin = 1.0;
+	  auto linearCorrection = [&p0, &p1] (const double& x) { return p0 + p1 * x; };	  
+
+	  // (DDT) modified tau21 value.
+	  return p.info("tau21") + (linearCorrection(rhoDDTmin) - linearCorrection(rhoDDT(p)));
+	};
+     
+	// Leading fatjet pt.
+	PlotMacro1D<Event> plot_event_leadingFatjet_pt ("leadingfatjet_pt");
+	plot_event_leadingFatjet_pt.setFunction( [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return e.collection("Fatjets")->at(0).Pt() / 1000.; 
+	  });
+
+	// Leading fatjet mass.
+	PlotMacro1D<Event> plot_event_leadingFatjet_m ("leadingfatjet_m");
+	plot_event_leadingFatjet_m.setFunction( [](const Event& e) {
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; } 
+	    return e.collection("Fatjets")->at(0).M() / 1000.; 
+	  });
+
+	// Leading fatjet phi.
+	PlotMacro1D<Event> plot_event_leadingFatjet_phi ("leadingfatjet_phi");
+	plot_event_leadingFatjet_phi.setFunction( [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return e.collection("Fatjets")->at(0).Phi(); 
+	  });
+
+	// Leading fatjet eta.
+	PlotMacro1D<Event> plot_event_leadingFatjet_eta ("leadingfatjet_eta");
+	plot_event_leadingFatjet_eta.setFunction( [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return e.collection("Fatjets")->at(0).Eta(); 
+	  });
+
+	// Leading fatjet rhoPrime.
+	PlotMacro1D<Event> plot_event_leadingFatjet_rhoPrime ("leadingfatjet_rhoPrime");
+	plot_event_leadingFatjet_rhoPrime.setFunction( [&rhoPrime](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return rhoPrime(e.collection("Fatjets")->at(0)); 
+	  });
+
+	// Leading fatjet rhoDDT.
+	PlotMacro1D<Event> plot_event_leadingFatjet_rhoDDT ("leadingfatjet_rhoDDT");
+	plot_event_leadingFatjet_rhoDDT.setFunction( [&rhoDDT](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return rhoDDT(e.collection("Fatjets")->at(0)); 
+	  });
+
+	// Leading fatjet tau21
+	PlotMacro1D<Event> plot_event_leadingFatjet_tau21 ("leadingfatjet_tau21");
+	plot_event_leadingFatjet_tau21.setFunction( [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return e.collection("Fatjets")->at(0).info("tau21"); 
+	  });
+
+	// Photon pt.
+        PlotMacro1D<Event> plot_event_leadingPhoton_pt ("leadingphoton_pt");
+	plot_event_leadingPhoton_pt.setFunction([](const Event& e) { 
+	    if (e.collection("Photons")->size() == 0) { return -9999.; }
+	    return e.collection("Photons")->at(0).Pt() / 1000.; 
+	  });
+
+	// Delta-eta separation between photon and leading fatjet.
+	PlotMacro1D<Event> plot_event_leadingFatjetPhotonDeltaEta ("leadingFatjetPhotonDeltaEta", [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return std::fabs(e.collection("Fatjets")->at(0).Eta() - e.collection("Photons")->at(0).Eta()); 
+	  });
+
+	// Delta-eta separation between photon and recoil system (all fat jets).
+	PlotMacro1D<Event> plot_event_recoilPhotonDeltaEta ("recoilPhotonDeltaEta", [](const Event& e) {
+	    TLorentzVector recoil;
+	    for (unsigned i = 0; i < e.collection("Fatjets")->size(); i++) {
+	      recoil += e.collection("Fatjets")->at(i);
+	    }
+	    return std::fabs(recoil.Eta() - e.collection("Photons")->at(0).Eta());
+	  });
+
+	// HLT_j380 trigger decision
+        PlotMacro1D<Event> plot_event_HLT_j380 ("HLT_j380");
+	plot_event_HLT_j380.setFunction([](const Event& e) { 
+	    return e.info("HLT_j380"); 
+	  });
+        
+	// HLT_j400 trigger decision
+        PlotMacro1D<Event> plot_event_HLT_j400 ("HLT_j400");
+	plot_event_HLT_j400.setFunction([](const Event& e) { 
+	    return e.info("HLT_j400"); 
+	  });
+        
+	// HLT_g140_loose trigger decision
+        PlotMacro1D<Event> plot_event_HLT_g140_loose ("HLT_g140_loose");
+	plot_event_HLT_g140_loose.setFunction([](const Event& e) {
+	    return e.info("HLT_g140_loose");
+	  });
+
+	// Physics object pT.
+        PlotMacro1D<PhysicsObject> plot_object_pt ("pt");
+	plot_object_pt.setFunction([](const PhysicsObject& p) { 
+	    return p.Pt() / 1000.;
+	  });
+
+	// Physics object m.
+	PlotMacro1D<PhysicsObject> plot_object_m ("m");
+	plot_object_m.setFunction([](const PhysicsObject& p) { 
+	    return p.M() / 1000.; 
+	  });
+
+	// Physics object eta.
+	PlotMacro1D<PhysicsObject> plot_object_eta ("eta");
+	plot_object_eta.setFunction([](const PhysicsObject& p) { 
+	    return p.Eta();
+	  });
+
+	// Physics object phi.
+	PlotMacro1D<PhysicsObject> plot_object_phi ("phi");
+	plot_object_phi.setFunction([](const PhysicsObject& p) { 
+	    return p.Phi();
+	  });
+
+	// Physics object (jet) tau21.
+	PlotMacro1D<PhysicsObject> plot_object_tau21 ("plot_object_tau21");
+	plot_object_tau21.setFunction([](const PhysicsObject& p) { 
+	    return p.info("tau21"); 
+	  });
+
+	// Physics object (jet) untrimmed tau21.
+	PlotMacro1D<PhysicsObject> plot_object_tau21_ut ("plot_object_tau21_ut", [](const PhysicsObject& p) { 
+	    return p.info("tau21_ut"); 
+	  });
+
+	// Physics object (jet) untrimmed pT.
+	PlotMacro1D<PhysicsObject> plot_object_pt_ut ("plot_object_pt_ut");
+	plot_object_pt_ut.setFunction([](const PhysicsObject& p) { 
+	    return p.info("pt_ut") / 1000.; 
+	  });
+
+	// Physics object (jet) D2.
+	PlotMacro1D<PhysicsObject> plot_object_D2 ("plot_object_D2");
+	plot_object_D2.setFunction([](const PhysicsObject& p) { 
+	    return p.info("D2"); 
+	  });
+
+	// Leading fatjet tau21 (mod rhoDDT)
+	PlotMacro1D<Event> plot_event_leadingFatjet_tau21DDT ("tau21DDT", [&rhoDDT](const Event& e) {
+	  if (e.collection("Fatjets")->size() == 0) { return -9999.; }	  
+	  //double rhoDDT_val = rhoDDT(e.collection("Fatjets")->at(0));
+	  //double p0 =  0.6887;
+	  //double p1 = -0.0941;
+	  //double tau21 = e.collection("Fatjets")->at(0).info("tau21");
+	  //auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
+	  //return tau21 + (mod(1.0) - mod(rhoDDT_val));
+	  return e.collection("Fatjets")->at(0).info("tau21DDT");
+	});
+        
+
 
         // Pseudo-objdefs (for creating collections).
         // -------------------------------------------------------------------
@@ -265,66 +458,65 @@ int main (int argc, char* argv[]) {
         
         // Pre-selection
         // -------------------------------------------------------------------
-        
-        EventSelection preSelection ("PreSelection");
 
+        EventSelection preSelection ("PreSelection");
+	preSelection.setDebug(debug);	
         preSelection.addInfo("HLT_j380", &HLT_j380);
         preSelection.addInfo("HLT_j400", &HLT_j400);
         preSelection.addInfo("HLT_g140_loose", &HLT_g140_loose);
 
-        preSelection.addCollection("Fatjets", AllFatjets);
-        preSelection.addCollection("Photons", AllPhotons);
+        //preSelection.addCollection("Fatjets", AllFatjets);
+        //preSelection.addCollection("Photons", AllPhotons);
+	preSelection.addCollection("Fatjets", "AllFatjets");
+	preSelection.addCollection("Photons", "AllPhotons");
 
         // * GRL
-	/*
 	Cut<Event> event_grl ("GRL");
-        event_grl.setFunction( [&grl, &mcChannelNumber, &lumiBlock, &runNumber](const Event& e) { return mcChannelNumber > 0 || grl.contains(runNumber, lumiBlock); } );
+        event_grl.setFunction( [&grl2015, &grl2016, &isMC, &runNumber, &lumiBlock](const Event& e) { 
+	    return isMC || grl2015.contains(runNumber, lumiBlock) || grl2016.contains(runNumber, lumiBlock);
+	  });
 	preSelection.addCut(event_grl);
-	*/
+
 
         // * Event cleaning
+	// ...
+
         // * Jet cleaning
+	// ...
 
 	// * Trigger
         Cut<Event> cut_event_trigger ("Trigger");
-        cut_event_trigger.setFunction( [](const Event& e) { return e.info("HLT_j380"); });
+        cut_event_trigger.setFunction( [](const Event& e) { 
+	    return e.info("HLT_g140_loose"); 
+	  });
         preSelection.addCut(cut_event_trigger);
 
+        //cut_event_trigger.setFunction( [](const Event& e) { 
+	//   return e.info("HLT_j380") || e.info("HLT_g140_loose"); 
+	//  });
+        //preSelection.addCut(cut_event_trigger);
+
 	// * Trigger efficiency turn-on vs. leading jet pt.
-        PlotMacro1D<Event> plot_event_leadingFatjetPt ("plot_event_leadingFatjetPt", [](const Event& e) { 
-	    return e.collection("Fatjets")->at(0).Pt() / 1000.; 
-	  });
-        preSelection.addPlot(CutPosition::Pre,  plot_event_leadingFatjetPt);
-        preSelection.addPlot(CutPosition::Post, plot_event_leadingFatjetPt);
+        preSelection.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_pt);
+        preSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
 
-        PlotMacro1D<Event> plot_event_leadingPhotonPt ("plot_event_leadingPhotonPt", [](const Event& e) { 
-	    return e.collection("Photons")->at(0).Pt() / 1000.; 
-	  });
-        preSelection.addPlot(CutPosition::Pre,  plot_event_leadingPhotonPt);
-        preSelection.addPlot(CutPosition::Post, plot_event_leadingPhotonPt);
+        //preSelection.addPlot(CutPosition::Pre,  plot_event_leadingPhoton_pt);
+        //preSelection.addPlot(CutPosition::Post, plot_event_leadingPhoton_pt);
 
-        PlotMacro1D<Event> plot_event_HLT_j380 ("plot_event_HLT_j380", [](const Event& e) { 
-	    return e.info("HLT_j380"); 
-	  });
         preSelection.addPlot(CutPosition::Pre,  plot_event_HLT_j380);
         preSelection.addPlot(CutPosition::Post, plot_event_HLT_j380);
         
-        PlotMacro1D<Event> plot_event_HLT_j400 ("plot_event_HLT_j400", [](const Event& e) { 
-	    return e.info("HLT_j400"); 
-	  });
         preSelection.addPlot(CutPosition::Pre,  plot_event_HLT_j400);
         preSelection.addPlot(CutPosition::Post, plot_event_HLT_j400);
         
-        PlotMacro1D<Event> plot_event_HLT_g140_loose ("plot_event_HLT_g140_loose", [](const Event& e) { 
-	    return e.info("HLT_g140_loose"); 
-	  });
         preSelection.addPlot(CutPosition::Pre,  plot_event_HLT_g140_loose);
         preSelection.addPlot(CutPosition::Post, plot_event_HLT_g140_loose);
+
         
-        
+
         // Object definitions
         // -------------------------------------------------------------------
-        
+
         // Photons.
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ObjectDefinition<TLorentzVector> PhotonObjdef ("Photons");
@@ -337,423 +529,248 @@ int main (int argc, char* argv[]) {
         cut_photon_pt.setRange(155., inf);
         PhotonObjdef.addCut(cut_photon_pt);
         
-        
         // * Check distributions.
-        PlotMacro1D<PhysicsObject> plot_photon_pt ("plot_photon_pt", [](const PhysicsObject& p) { return p.Pt() / 1000.; });
-        PhotonObjdef.addPlot(CutPosition::Post, plot_photon_pt);
+        PhotonObjdef.addPlot(CutPosition::Post, plot_object_pt);
+        PhotonObjdef.addPlot(CutPosition::Post, plot_object_eta);
+        PhotonObjdef.addPlot(CutPosition::Post, plot_object_phi);
         
 
         // Jets.
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -        
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ObjectDefinition<TLorentzVector> FatjetObjdef ("Fatjets");
 
-	FatjetObjdef.addCategories({"Nominal"}); //, "D2mod", "tau21mod"});
+	FatjetObjdef.addCategories({"Nominal"});
 
         FatjetObjdef.setInput(&fatjets);
    
-        FatjetObjdef.addInfo("tau21",    fj_tau21);
-	FatjetObjdef.addInfo("tau21_ut", fjut_tau21);
-	FatjetObjdef.addInfo("pt_ut",    fjut_pt);
-        FatjetObjdef.addInfo("D2",       fj_D2);
+        FatjetObjdef.addInfo("tau21",       fj_tau21);
+	FatjetObjdef.addInfo("tau21_ut",    fjut_tau21);
+	FatjetObjdef.addInfo("pt_ut",       fjut_pt);
+        FatjetObjdef.addInfo("D2",          fj_D2);
         FatjetObjdef.addInfo("dPhiPhoton", &fj_dphiMinPhoton);
 
-	auto rho      = [](const PhysicsObject& p) { return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 2.0)); };
-	auto rhoPrime = [](const PhysicsObject& p) { return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.4)); };
-	auto rhoDDT   = [](const PhysicsObject& p) { return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.0)); };
-     
         // * eta
         Cut<PhysicsObject> cut_fatjet_eta ("Eta");
-        cut_fatjet_eta.setFunction( [](const PhysicsObject& p) { return (p.Pt() > 0. ? p.Eta() : -1000.); } );
+        cut_fatjet_eta.setFunction( [](const PhysicsObject& p) { 
+	    return (p.Pt() > 0. ? p.Eta() : -1000.); 
+	  } );
         cut_fatjet_eta.setRange(-2.5, 2.5);
         FatjetObjdef.addCut(cut_fatjet_eta);
 
         // * pt
         Cut<PhysicsObject> cut_fatjet_pt ("pT");
         cut_fatjet_pt.setFunction( [](const PhysicsObject& p) { return p.Pt() / 1000.; } );
-        //cut_fatjet_pt.setRange(150., inf);
-	cut_fatjet_pt.setRange(400., inf);
+        cut_fatjet_pt.setRange(150., inf);	
+	//cut_fatjet_pt.setRange(400., inf);
         FatjetObjdef.addCut(cut_fatjet_pt);
 
         // * dPhi(photon)
         Cut<PhysicsObject> cut_fatjet_dphi ("dPhi");
         cut_fatjet_dphi.setFunction( [](const PhysicsObject& p) { return p.info("dPhiPhoton"); } );
         cut_fatjet_dphi.setRange(pi/2., inf);
-
-
-	 // Fatjet property plots; for use with substructureProfiles.py
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	// * pt
-	PlotMacro1D<PhysicsObject> plot_fatjet_pt ("plot_fatjet_pt", [](const PhysicsObject& p) { 
-	    return p.Pt() / 1000.; 
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_pt);
-
-	// * m
-	PlotMacro1D<PhysicsObject> plot_fatjet_m ("plot_fatjet_m", [](const PhysicsObject& p) { 
-	    return p.M() / 1000.;
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_m);
-
-	// * tau21
-	PlotMacro1D<PhysicsObject> plot_fatjet_tau21 ("plot_fatjet_tau21", [](const PhysicsObject& p) { 
-	    return p.info("tau21");
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_tau21);
-
-	// * tau21_ut
-	PlotMacro1D<PhysicsObject> plot_fatjet_tau21_ut ("plot_fatjet_tau21_ut", [](const PhysicsObject& p) { 
-	    return p.info("tau21_ut"); 
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_tau21_ut);
-
-	// * pt_ut
-	PlotMacro1D<PhysicsObject> plot_fatjet_pt_ut ("plot_fatjet_pt_ut", [](const PhysicsObject& p) { 
-	    return p.info("pt_ut") / 1000.; 
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_pt_ut);
-
-	// * D2
-	PlotMacro1D<PhysicsObject> plot_fatjet_D2 ("plot_fatjet_D2", [](const PhysicsObject& p) { 
-	    return p.info("D2"); 
-	  });
-        cut_fatjet_dphi.addPlot(CutPosition::Post, plot_fatjet_D2);
-
-
-
-	 // Actually add the cut.
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
         FatjetObjdef.addCut(cut_fatjet_dphi);
 
-
-	/*
-	// * rho
-        Cut<PhysicsObject> cut_fatjet_rho ("rho");
-        cut_fatjet_rho.setFunction( [&rho](const PhysicsObject& p) { return rho(p); } );
-        cut_fatjet_rho.setRange(-6, -1);
-        FatjetObjdef.addCut(cut_fatjet_rho, "D2mod");
-
-	// * rhoPrime
-        Cut<PhysicsObject> cut_fatjet_rhoPrime ("rhoPrime");
-        cut_fatjet_rhoPrime.setFunction( [&rhoPrime](const PhysicsObject& p) { return rhoPrime(p); } );
-        cut_fatjet_rhoPrime.setRange(-1, 2);
-        FatjetObjdef.addCut(cut_fatjet_rhoPrime, "tau21mod");
-
-        // * M
-        Cut<PhysicsObject> cut_fatjet_m ("M");
-        cut_fatjet_m.setFunction( [](const PhysicsObject& p) { return p.M() / 1000.; } );
-        cut_fatjet_m.setRange(55., 75.);
-        FatjetObjdef.addCut(cut_fatjet_m);
-
-	// * BONUS: rho (applied before looking at tau21mod distribution).
-        FatjetObjdef.addCut(cut_fatjet_rho, "tau21mod");
-
-	// * BONUS: D2mod (applied before looking at tau21mod distribution).
-        Cut<PhysicsObject> cut_fatjet_D2mod ("D2mod");
-        cut_fatjet_D2mod.setFunction( [&rho](const PhysicsObject& p) { 
-	    double rhoval = rho(p);
-            double p0 =  0.452934;
-            double p1 = -0.368133;
-            auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-            return p.info("D2") + (mod(-6.) - mod(rhoval));
+	// * Boosted regime
+	Cut<PhysicsObject> cut_fatjet_BoostedRegime ("BoostedRegime");
+	cut_fatjet_BoostedRegime.setFunction( [](const PhysicsObject& p) { 
+	    return p.Pt() > 2 * p.M();
 	  });
-        cut_fatjet_D2mod.setRange(-inf, 2.4);
-        FatjetObjdef.addCut(cut_fatjet_D2mod, "tau21mod");
+	FatjetObjdef.addCut(cut_fatjet_BoostedRegime);
 
-	// * BONUS: rhoPrime (applied before looking at D2mod distribution).
-        FatjetObjdef.addCut(cut_fatjet_rhoPrime, "D2mod");
-
-	// * tau21mod (applied before looking at D2mod distribution).
-        Cut<PhysicsObject> cut_fatjet_tau21mod ("tau21mod");
-        cut_fatjet_tau21mod.setFunction( [&rhoPrime](const PhysicsObject& p) { 
-	    double rhoPrimeval = rhoPrime(p);
-            double p0 =  0.477415;
-            double p1 = -0.103591;
-            auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-            return p.info("tau2") / p.info("tau1") + (mod(-1.) - mod(rhoPrimeval));
+	// * rhoDDT
+	Cut<PhysicsObject> cut_fatjet_rhoDDT ("rhoDDT");
+	cut_fatjet_rhoDDT.setFunction( [&rhoDDT](const PhysicsObject& p) { 
+	    return rhoDDT(p);
 	  });
-	cut_fatjet_tau21mod.setRange(-inf, 0.6);
-        FatjetObjdef.addCut(cut_fatjet_tau21mod, "D2mod");
+	cut_fatjet_rhoDDT.addRange(1.0, inf);
+	FatjetObjdef.addCut(cut_fatjet_rhoDDT);
 
-
-	// * Plots
-        PlotMacro1D<PhysicsObject> plot_fatjet_pt ("plot_fatjet_pt", [](const PhysicsObject& p) { return p.Pt() / 1000.; });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_pt);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_m ("plot_fatjet_m", [](const PhysicsObject& p) { return p.M() / 1000.; });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_m);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_tau21 ("plot_fatjet_tau21", [](const PhysicsObject& p) { return p.info("tau2") / p.info("tau1"); });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_tau21);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_tau21_ut ("plot_fatjet_tau21_ut", [](const PhysicsObject& p) { return p.info("tau21_ut"); });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_tau21_ut);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_pt_ut ("plot_fatjet_pt_ut", [](const PhysicsObject& p) { return p.info("pt_ut") / 1000.; });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_pt_ut);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_tau21mod ("plot_fatjet_tau21mod", [&rhoPrime](const PhysicsObject& p) { 
-	    double rhoPrimeval = rhoPrime(p);
-	    double p0 =  0.477415;
-	    double p1 = -0.103591;
-	    auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	    return p.info("tau2") / p.info("tau1") + (mod(-1.) - mod(rhoPrimeval));
+	// * computing tau21DDT value
+	Operation<PhysicsObject> operation_fatjet_tau21DDT ("tau21DDT");
+	operation_fatjet_tau21DDT.setFunction( [&tau21DDT](PhysicsObject& p) { 
+	    p.addInfo("tau21DDT", tau21DDT(p));
+	    return true;
 	  });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_tau21mod);
+	FatjetObjdef.addOperation(operation_fatjet_tau21DDT);
 
-        PlotMacro1D<PhysicsObject> plot_fatjet_D2 ("plot_fatjet_D2", [](const PhysicsObject& p) { return p.info("D2"); });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_D2);
+        // * Check distributions.
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_pt);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_m);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_eta);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_phi);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_tau21);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_tau21_ut);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_pt_ut);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_D2);
 
-        PlotMacro1D<PhysicsObject> plot_fatjet_D2mod ("plot_fatjet_D2mod", [&rho](const PhysicsObject& p) { 
-	    double rhoval = rho(p);
-	    double p0 =  0.452934;
-	    double p1 = -0.368133;
-	    auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	    return p.info("D2") + (mod(-6.) - mod(rhoval));
-	  });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_D2mod);
 
-        PlotMacro1D<PhysicsObject> plot_fatjet_rho ("plot_fatjet_rho", [&rho](const PhysicsObject& p) { return rho(p); });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_rho);
-
-        PlotMacro1D<PhysicsObject> plot_fatjet_rhoDDT ("plot_fatjet_rhoDDT", [](const PhysicsObject& p) { return log(p.M() * p.M() / (p.Pt() * 1000.) ); });
-        FatjetObjdef.addPlot(CutPosition::Post, plot_fatjet_rhoDDT);
-	*/
-        
-        
-        
         
         // Stuff for binding selections together.
         // -------------------------------------------------------------------
-        
-        PhysicsObjects* SelectedPhotons = PhotonObjdef.result(); //"Nominal");
+
+	PhysicsObjects* SelectedPhotons = PhotonObjdef.result(); //"Nominal");
         PhysicsObjects* SelectedFatjets = FatjetObjdef.result("Nominal");
-        
-        
-        
+
+                
         // Event selection
         // -------------------------------------------------------------------
-        
+
         EventSelection eventSelection ("EventSelection");
+	eventSelection.setDebug(debug);
 
-	eventSelection.addCategories({"Nominal", "rhoPrime", "rhoDDT"});
+        eventSelection.addInfo("isMC", &isMC);
 
-        eventSelection.addCollection("Photons", SelectedPhotons);
-        eventSelection.addCollection("Fatjets", SelectedFatjets);
+	eventSelection.addCategories({"Pass", "Fail"});
 
-	/*
-        eventSelection.addCollection("AllElectrons", AllElectrons);
-        
-        eventSelection.addCollection("Electrons", SelectedElectrons);
-        eventSelection.addCollection("Muons",     SelectedMuons);
-        eventSelection.addCollection("Jets",      SelectedJets);
-        
-        // * Jet-electron OR
-        Cut<Event> event_OR_je ("JetElectronOverlapRemoval");
-        event_OR_je.setFunction( [](const Event& e) {
-            / * Remove from 'Jets' if overlapping with 'AllElectrons'. * /
-            AnalysisTools::OverlapRemoval(e.collection("Jets"), e.collection("AllElectrons"), 0.2, [](PhysicsObject j, PhysicsObject e) { return 2. * e.Pt() > j.Pt(); });
-            return true;
-        });
-        eventSelection.addCut(event_OR_je);
-        
-        // * Electron-jet OR
-        Cut<Event> event_OR_ej ("ElectronJetOverlapRemoval");
-        event_OR_ej.setFunction( [](const Event& e) {
-            / * Remove from 'Electrons' if overlapping with 'Jets'. * /
-            AnalysisTools::OverlapRemoval(e.collection("Electrons"), e.collection("Jets"), 0.2, 0.4);
-            return true;
-        });
-        eventSelection.addCut(event_OR_ej);
-        */
+        //eventSelection.addCollection("Photons", SelectedPhotons);
+        //eventSelection.addCollection("Fatjets", SelectedFatjets);
+        eventSelection.addCollection("Photons", "Photons");
+        eventSelection.addCollection("Fatjets", "Fatjets");
+
+        // * Photon count
+        Cut<Event> cut_event_NumPhotons ("NumPhotons");
+        cut_event_NumPhotons.setFunction( [](const Event& e) { 
+	    //FCTINFO("      Number of photons: %d", e.collection("Photons")->size());
+	    return e.collection("Photons")->size(); 
+	  });
+        cut_event_NumPhotons.addRange(1);
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// Add plotting macros to this cut.
+        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
+        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_leadingPhoton_pt);
+	cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_leadingFatjetPhotonDeltaEta);
+        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_recoilPhotonDeltaEta);
+
+	// Actually add the cut.
+        eventSelection.addCut(cut_event_NumPhotons);
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         // * Fatjet count
         Cut<Event> cut_event_Njets ("NumFatjets");
-        cut_event_Njets.setFunction( [](const Event& e) { return e.collection("Fatjets")->size(); });
+        cut_event_Njets.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->size();
+	  });
         cut_event_Njets.addRange(1, inf);
         eventSelection.addCut(cut_event_Njets);
-        
-        // * Photon count
-        Cut<Event> cut_event_NumPhotons ("NumPhotons");
-        cut_event_NumPhotons.setFunction( [](const Event& e) { return e.collection("Photons")->size(); });
-        cut_event_NumPhotons.addRange(1);
+      
 
-	// * -- Plots
-	// Previously defined.
-        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_leadingFatjetPt);
+	// * Choose lowest-tau21DDT fat jet.
+	Operation<Event> operation_event_fatjetambiguity ("FatjetAmbiguity");
+	operation_event_fatjetambiguity.setFunction( [](Event& e) {
+	    if (e.collection("Fatjets")->size() > 1) {
+	      // Sort fat jets by ascending tau21DDT
+	      std::sort(e.collection("Fatjets")->begin(), e.collection("Fatjets")->end(), 
+			[](const PhysicsObject& p1, const PhysicsObject& p2) { 
+			  return p1.info("tau21DDT") < p2.info("tau21DDT"); 
+			});
 
-        PlotMacro1D<Event> plot_event_photonPt ("plot_event_photonPt", [](const Event& e) { return e.collection("Photons")->at(0).Pt() / 1000.; });
-        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_photonPt);
-
-        PlotMacro1D<Event> plot_event_leadingFatjetPhotonDeltaEta ("plot_event_leadingFatjetPhotonDeltaEta", [](const Event& e) { return std::fabs(e.collection("Fatjets")->at(0).Eta() - e.collection("Photons")->at(0).Eta()); });
-        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_leadingFatjetPhotonDeltaEta);
-
-        PlotMacro1D<Event> plot_event_recoilPhotonDeltaEta ("plot_event_recoilPhotonDeltaEta", [](const Event& e) {
-	    TLorentzVector recoil;
-	    for (unsigned int i = 0; i < e.collection("Fatjets")->size(); i++) {
-	      recoil += e.collection("Fatjets")->at(i);
+	      // Remove all but the first element.
+	      e.collection("Fatjets")->erase(e.collection("Fatjets")->begin() + 1, 
+					     e.collection("Fatjets")->end());
 	    }
-	    return std::fabs(recoil.Eta() - e.collection("Photons")->at(0).Eta()); });
-        cut_event_NumPhotons.addPlot(CutPosition::Post, plot_event_recoilPhotonDeltaEta);
-
-
-	 // Actually add the cut.
-        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        eventSelection.addCut(cut_event_NumPhotons);
-
-
-	// * Boosted regime
-	Cut<Event> cut_event_leadingFatjet_BoostedRegime ("BoostedRegime");
-	cut_event_leadingFatjet_BoostedRegime.setFunction( [](const Event& e) { 
-	    return e.collection("Fatjets")->at(0).M() < e.collection("Fatjets")->at(0).Pt() / 2.; 
+	    return true;
 	  });
-	eventSelection.addCut(cut_event_leadingFatjet_BoostedRegime);
+	eventSelection.addOperation(operation_event_fatjetambiguity);
 
-	// * rhoPrime
-	Cut<Event> cut_event_leadingFatjet_rhoPrime ("rhoPrime");
-	cut_event_leadingFatjet_rhoPrime.setFunction( [&rhoPrime](const Event& e) { 
-	    return rhoPrime(e.collection("Fatjets")->at(0)); 
-	  });
-	cut_event_leadingFatjet_rhoPrime.addRange(-1.5, inf);
-	eventSelection.addCut(cut_event_leadingFatjet_rhoPrime, "rhoPrime");
 
-	// * rhoDDT
-	Cut<Event> cut_event_leadingFatjet_rhoDDT ("rhoDDT");
-	cut_event_leadingFatjet_rhoDDT.setFunction( [&rhoDDT](const Event& e) { 
-	    return rhoDDT(e.collection("Fatjets")->at(0)); 
+	// * Blinding.
+	Cut<Event> cut_event_blinding ("Blinding");
+	cut_event_blinding.setFunction( [&blind](const Event& e){
+	    return (!blind or e.info("isMC"));
 	  });
-	cut_event_leadingFatjet_rhoDDT.addRange(1.0, inf);
-	eventSelection.addCut(cut_event_leadingFatjet_rhoDDT, "rhoDDT");
+	eventSelection.addCut(cut_event_blinding, "Pass");
+	
 
-	// *** Plots ***
-	PlotMacro1D<Event> plot_event_leadingFatjet_pt ("leadingfatjet_pt");
-	plot_event_leadingFatjet_pt.setFunction( [](const Event& e) { 
-	    return e.collection("Fatjets")->size() == 0 ? -1 : e.collection("Fatjets")->at(0).Pt() / 1000.; 
-	  });
-	PlotMacro1D<Event> plot_event_leadingFatjet_m ("leadingfatjet_m");
-	plot_event_leadingFatjet_m.setFunction( [](const Event& e) { 
-	    return e.collection("Fatjets")->size() == 0 ? -1 : e.collection("Fatjets")->at(0).M() / 1000.; 
-	  });
-
-	// * tau21
-	Cut<Event> cut_event_leadingFatjet_tau21 ("tau21");
-        cut_event_leadingFatjet_tau21.setFunction( [&rhoPrime](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21");
+	// * tau21DDT
+	Cut<Event> cut_event_leadingFatjet_tau21DDT ("tau21DDT");
+        cut_event_leadingFatjet_tau21DDT.setFunction( [](const Event& e) {
+	    //double rhoDDT_val = rhoDDT(e.collection("Fatjets")->at(0));
+	    //double p0 =  0.6887;
+	    //double p1 = -0.0941;
+	    //double tau21 = e.collection("Fatjets")->at(0).info("tau21");
+	    //auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
+	    //return tau21 + (mod(1.0) - mod(rhoDDT_val));
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
           });
-	cut_event_leadingFatjet_tau21.addRange(-inf, 0.6);
+	cut_event_leadingFatjet_tau21DDT.setRange(-inf, 0.5);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Pass");
 
+	cut_event_leadingFatjet_tau21DDT.setRange(0.5, inf);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Fail");
 
-	eventSelection.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_pt);
+	// Adding commin plotting macros.
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
-
-	eventSelection.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_m);
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_m);
-
-	eventSelection.addCut(cut_event_leadingFatjet_tau21, "Nominal");
-
-
-	// * tau21_mod_rhoPrime
-	Cut<Event> cut_event_leadingFatjet_tau21_mod_rhoPrime ("tau21_mod_rhoPrime");
-        cut_event_leadingFatjet_tau21_mod_rhoPrime.setFunction( [&rhoPrime](const Event& e) {
-	    double rhoPrime_val = rhoPrime(e.collection("Fatjets")->at(0));
-	    double p0 =  0.4877;
-	    double p1 = -0.0943;
-	    double tau21 = e.collection("Fatjets")->at(0).info("tau21");
-	    auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	    return tau21 + (mod(-1.5) - mod(rhoPrime_val));
-          });
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addRange(-inf, 0.6);
-
-	// --* Plot: rhoPrime
-	PlotMacro1D<Event> plot_event_leadingFatjet_rhoPrime ("rhoPrime");
-	plot_event_leadingFatjet_rhoPrime.setFunction( [&rhoPrime](const Event& e) { 
-	    return rhoPrime(e.collection("Fatjets")->at(0)); 
-	  });
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_rhoPrime);
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Post, plot_event_leadingFatjet_rhoPrime);
-
-       	// --* Plot: pt
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_pt);
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
-
-       	// --* Plot: m
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_m);
-	cut_event_leadingFatjet_tau21_mod_rhoPrime.addPlot(CutPosition::Post, plot_event_leadingFatjet_m);
-
-	// --* Actually add the cut
-	eventSelection.addCut(cut_event_leadingFatjet_tau21_mod_rhoPrime, "rhoPrime");
-
-	// * tau21_mod_rhoDDT
-	Cut<Event> cut_event_leadingFatjet_tau21_mod_rhoDDT ("tau21_mod_rhoDDT");
-        cut_event_leadingFatjet_tau21_mod_rhoDDT.setFunction( [&rhoDDT](const Event& e) {
-	    double rhoDDT_val = rhoDDT(e.collection("Fatjets")->at(0));
-	    double p0 =  0.6887;
-	    double p1 = -0.0941;
-	    double tau21 = e.collection("Fatjets")->at(0).info("tau21");
-	    auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	    return tau21 + (mod(1.0) - mod(rhoDDT_val));
-          });
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addRange(-inf, 0.6);
-
-	// --* Plot: rhoDDT
-	PlotMacro1D<Event> plot_event_leadingFatjet_rhoDDT ("rhoDDT");
-	plot_event_leadingFatjet_rhoDDT.setFunction( [&rhoDDT](const Event& e) { 
-	    return rhoDDT(e.collection("Fatjets")->at(0)); 
-	  });
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_rhoDDT);
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Post, plot_event_leadingFatjet_rhoDDT);
-
-       	// --* Plot: pt
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_pt);
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
-
-	// --* Plot: m
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_m);
-	cut_event_leadingFatjet_tau21_mod_rhoDDT.addPlot(CutPosition::Post, plot_event_leadingFatjet_m);
-
-	// --* Actually add the cut
-        eventSelection.addCut(cut_event_leadingFatjet_tau21_mod_rhoDDT, "rhoDDT");
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_eta);
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_phi);
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_rhoDDT);
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_tau21);
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_tau21DDT);
 
 
-
- 
         // Adding selections.
         // -------------------------------------------------------------------
         
-	// Pseudo objdefs
-        analysis.addSelection(&AllFatjetsObjdef);
-        analysis.addSelection(&AllPhotonsObjdef);
+	// Pseudo-object definitions.
+	ISRgammaAnalysis.addSelection(&AllFatjetsObjdef);
+	ISRgammaAnalysis.addSelection(&AllPhotonsObjdef);
 
-        analysis.addSelection(&preSelection);
+	ISRjetAnalysis.addSelection(&AllFatjetsObjdef);
 
-        analysis.addSelection(&PhotonObjdef);
-        analysis.addSelection(&FatjetObjdef);
 
-	/*
-        analysis.addSelection(&ElectronObjdef);
-        analysis.addSelection(&MuonObjdef);
-        analysis.addSelection(&JetObjdef);
+	// Preselection.
+	ISRgammaAnalysis.addSelection(&preSelection);
+	
+	for (const auto& cat : preSelection.categories()) {
+	  preSelection.cut("Trigger", cat)->setFunction( [](const Event& e) {
+	      return e.info("HLT_j380");
+	    });
+	}
+	ISRjetAnalysis.addSelection(&preSelection);
+
+	// Object definitions.
+	ISRgammaAnalysis.addSelection(&FatjetObjdef);
+	ISRgammaAnalysis.addSelection(&PhotonObjdef);
+
+	FatjetObjdef.cut("pT")->setRange(450, inf);
+	ISRjetAnalysis.addSelection(&FatjetObjdef);
+	
+	// Event selection.
+	ISRgammaAnalysis.addSelection(&eventSelection);
+
+	eventSelection.removeCut("NumPhotons");
+	for (const auto& cat : eventSelection.categories()) {
+	  eventSelection.cut("NumFatjets", cat)->setRange(2,inf);
+	}
+	ISRjetAnalysis.addSelection(&eventSelection);
+	  
         
-        analysis.addSelection(&AllElectronObjdef);
-	*/
+ 
+	// Duplicate event control.
+	// -------------------------------------------------------------------
+	map<unsigned, set<unsigned> > uniqueEvents;
 
-        analysis.addSelection(&eventSelection);
-        
-        
         
         // Event loop.
         // -------------------------------------------------------------------
+
+	//ISRgammaAnalysis.print();
+	//ISRjetAnalysis.print();
         
-        for (unsigned int iEvent = 0; iEvent < nEvents; iEvent++) {
+        for (unsigned iEvent = 0; iEvent < nEvents; iEvent++) {
             
             inputTree->GetEvent(iEvent);
+
+	    // Reject duplicate events.
+            auto ret = uniqueEvents[DSID].emplace(eventNumber);
+            if (!ret.second) { continue; }
 
 	    // Build input collections.
 	    // -- Photons.
 	    photons.clear();
 	    float current_pt = inf;
-	    for (unsigned int i = 0; i < ph_pt->size(); i++) {
+	    for (unsigned i = 0; i < ph_pt->size(); i++) {
 	      TLorentzVector photon;
 	      if (ph_pt->at(i) == 0.) { continue; }
 	      photon.SetPtEtaPhiM( ph_pt ->at(i),
@@ -771,7 +788,7 @@ int main (int argc, char* argv[]) {
 	    fatjets.clear();
 	    fj_dphiMinPhoton.clear();
 	    current_pt = inf;
-	    for (unsigned int i = 0; i < fj_pt->size(); i++) {
+	    for (unsigned i = 0; i < fj_pt->size(); i++) {
 	      TLorentzVector fatjet;
 	      if (fj_pt->at(i) == 0.) { continue; }
 	      fatjet.SetPtEtaPhiM( fj_pt ->at(i),
@@ -796,74 +813,41 @@ int main (int argc, char* argv[]) {
 	    }
             
             // Run AnalysisTools.
-            bool status = analysis.run(iEvent, nEvents, DSID);
-            
-            // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
-            if (!status) { continue; }
-            
-            // Fill output branches
-            // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-            
-            // -- Event-wide
-	    /*
-            SumET = 0;
-            for (const PhysicsObject& p : *SelectedElectrons) { SumET += p.Pt(); }
-            for (const PhysicsObject& p : *SelectedMuons)     { SumET += p.Pt(); }
-            for (const PhysicsObject& p : *SelectedJets)      { SumET += p.Pt(); }
-            */
-            
-            // -- Photons
-            signalPhotons.clear();            
-            for (const PhysicsObject& p : *SelectedPhotons) {
+	    for (auto* analysis : analyses) {
+
+	      bool status = analysis->run(iEvent, nEvents, DSID);
+
+	      // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
+	      if (!status) { continue; }
+	      
+	      // Fill output branches
+	      // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	      // -- Photons
+	      signalPhotons.clear();            
+	      for (const PhysicsObject& p : *SelectedPhotons) {
                 signalPhotons.push_back( (TLorentzVector) p );
-            }
-
-            // -- Jets
-            signalFatjets.clear();            
-            for (const PhysicsObject& p : *SelectedFatjets) {
+	      }
+	      
+	      // -- Jets
+	      signalFatjets.clear();            
+	      for (const PhysicsObject& p : *SelectedFatjets) {
                 signalFatjets.push_back( (TLorentzVector) p );
-            }
+	      }
 
+	      
+	      // Write to output tree.
+	      analysis->writeTree();
+	      
+	    }            
 
-            // -- Electrons
-	    /*
-            signalElectrons       .clear();
-            signalElectrons_charge.clear();
-            
-            for (const PhysicsObject& p : *SelectedElectrons) {
-                signalElectrons.push_back( (TLorentzVector) p );
-                int idx = getMatchIndex(signalElectrons.back(), electrons);
-                if (idx < 0) {
-                    cout << "Warning: Recieved negative match index (" << idx << " out of " << electrons->size() << ") for electrons." << endl;
-                    continue;
-                }
-                signalElectrons_charge.push_back( el_charge->at(idx) );
-            }
-	    */
-            
-            // -- Muons
-	    /*
-            signalMuons.clear();
-            signalMuons_charge.clear();
-            
-            for (const PhysicsObject& p : *SelectedMuons) {
-                signalMuons.push_back( (TLorentzVector) p );
-                int idx = getMatchIndex(signalMuons.back(), muons);
-                if (idx < 0) {
-                    cout << "Warning: Recieved negative match index (" << idx << " out of " << muons->size() << ") for muons." << endl;
-                    continue;
-                }
-                signalMuons_charge.push_back( mu_charge->at(idx) );
-            }
-	    */
-            
-            // Write to output tree.
-            analysis.writeTree();
-            
         }
-        
-        analysis.save();
-        
+
+
+	//for (auto* analysis : analyses) {
+	analyses[0]->save();
+	//}
+
     }
     
     cout << "---------------------------------------------------------------------" << endl;

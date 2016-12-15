@@ -60,18 +60,75 @@ int main (int argc, char* argv[]) {
     TFile outfile ((outdir + "plotting.root").c_str(), "RECREATE");
 
     { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/Photons/Nominal/Cutflow", inputs);
+      ph.setOutfile(&outfile);
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines({"HLT_j380"});
+      ph.draw();
+    } // end: restricted scope 
 
-      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Nominal/BoostedRegime/Postcut:leadingfatjet_pt", inputs);
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/Fatjets/Nominal/Cutflow", inputs);
+      ph.setOutfile(&outfile);
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines({"Trimmed anti-k_{t}^{R=1.0} jets", "HLT_j380", "Req. 1 #gamma, p_{T} > 155 GeV"});
+      ph.draw();
+    } // end: restricted scope 
+
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Pass/Cutflow", inputs);
+      ph.setOutfile(&outfile);
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines({"Trimmed anti-k_{t}^{R=1.0} jets", "HLT_j380", "Req. 1 #gamma, p_{T} > 155 GeV", "Req. #geq 1 jet, p_{T} > 400 GeV", "#Delta#phi(J,#gamma) > #pi/2"});
+      ph.draw();
+    } // end: restricted scope 
+
+    std::vector<std::string> lines = {"Trimmed anti-k_{t}^{R=1.0} jets", "HLT_j380", "Req. 1 #gamma, p_{T} > 155 GeV", "Req. #geq 1 jet, p_{T} > 400 GeV", "#Delta#phi(J,#gamma) > #pi/2", "Leading jet p_{T} > 2 M"};
+
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Pass/BoostedRegime/Postcut:leadingfatjet_pt", inputs);
       ph.setOutfile(&outfile);
       ph.setAxis(50, 0, 1500.);
       ph.setXaxisTitle("Leading jet p_{T} [GeV]");
       ph.setYaxisTitle("Events");
-      //ph.drawRatioPad(true);
-      //ph.setLuminosity(2.88);
-      ph.setLog(true);
-      ph.setPrintLines({"Trimmed anti-k_{t}^{R=1.0} jets", "HLT_j380", "Req. 1 #gamma, p_{T} > 155 GeV", "Req. #geq 1 jet, p_{T} > 400 GeV", "#Delta#phi(J,#gamma) > #pi/2"});
+      ph.setPrintLines(lines);
       ph.draw();
+    } // end: restricted scope 
 
+
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Pass/rhoDDT/Precut:CutVariable", inputs);
+      ph.setOutfile(&outfile);
+      ph.setAxis(50, -2., 8.);
+      ph.setXaxisTitle("Leading jet #rho^{DDT}");
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines(lines);
+      ph.draw();
+    } // end: restricted scope 
+
+    lines.push_back("#rho^{DDT} > 1");
+
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Fail/tau21_mod_rhoDDT/Precut:CutVariable", inputs);
+      ph.setOutfile(&outfile);
+      ph.setAxis(50, 0, 1.5);
+      ph.setXaxisTitle("Leading jet #tau_{21}^{DDT}");
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines(lines);
+      ph.draw();
+    } // end: restricted scope 
+
+    lines.push_back("#tau_{21}^{DDT} > 0.5 (fail)");
+
+    { // Restricted scope.
+      PlottingHelper<TH1F> ph ("BoostedJetISR/EventSelection/Fail/tau21_mod_rhoDDT/Postcut:leadingfatjet_m", inputs);
+      ph.setOutfile(&outfile);
+      ph.setAxis(50, 0, 300.);
+      ph.setXaxisTitle("Leading jet mass [GeV]");
+      ph.setYaxisTitle("Events");
+      ph.setPrintLines(lines);
+      ph.setPadding(2.6);
+      ph.draw();
     } // end: restricted scope 
 
     /*
