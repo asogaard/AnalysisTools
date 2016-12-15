@@ -1,8 +1,8 @@
 # ----------------------------------------------------------------------------------------
 # MC format:
-#   Dataset ID, cross section [fb], number of events, gen. filt. eff, physics name
+#   Dataset ID | cross section [fb] | number of events | gen. filt. eff | physics name
 # Data format:
-#   Dataset ID, luminosity [pb-1], "Data"
+#   Dataset ID | luminosity [pb-1] | "Data"
 # ----------------------------------------------------------------------------------------
 
 
