@@ -7,7 +7,6 @@ try:
 	import pyAMI.atlas.api as atlasAPI
 	import pyAMI.client
 	client = pyAMI.client.Client('atlas')
-	#atlasAPI.init()
 except:
 	print ""
 	print "Remember to setup AMI:"
@@ -75,6 +74,8 @@ def main ():
 			ancestors = atlasAPI.get_dataset_prov(client, DAOD['ldn'])
 			AODs = ancestors['node']
 
+			
+
 			for AOD in AODs:
 				
 				if AOD['dataType'] != 'AOD' or int(AOD['distance']) > 0:
@@ -97,6 +98,8 @@ def main ():
 				nEve = int  ( info['totalEvents']       ) 
 				if 'genFiltEff' in info:
 					fEff = float( info['genFiltEff'] )
+				elif 'physicsParameterVals' in info and 'genFiltEff' in info['physicsParameterVals']:
+					fEff = float( info['physicsParameterVals']['genFiltEff'] )
 				else:
 					fEff = 1.0
 					pass
@@ -104,7 +107,7 @@ def main ():
 				
 				break
 			
-			printline = "%6d, %20.10f, %8d, %0.4e, %s" % ( DSID,  xSec, nEve, fEff, Phys )
+			printline = "%6d, %1.7e, %8d, %0.4e, %s" % ( DSID,  xSec, nEve, fEff, Phys )
 			print printline
 
 			if write:
