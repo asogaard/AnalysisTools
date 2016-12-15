@@ -33,13 +33,12 @@ namespace AnalysisTools {
         // Constructor(s).
         ObjectDefinition (const string& name) :
             Selection<T,PhysicsObject>(name)
-        {};
-        
+        {};        
 
         // Destructor(s).
-        ~ObjectDefinition () {};
-
+	~ObjectDefinition () {};
         
+
     public:
         
         // Set method(s).
@@ -61,8 +60,10 @@ namespace AnalysisTools {
         // High-level management method(s).
         bool run ();
         
-        PhysicsObjects* result ();
-        PhysicsObjects* result (const string& category);
+        PhysicsObjects* const result ();
+        PhysicsObjects* const result (const string& category);
+
+	virtual void print () const;
      
         
     protected:

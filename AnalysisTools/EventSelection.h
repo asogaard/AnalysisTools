@@ -4,14 +4,16 @@
 /**
  * @file EventSelection.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
 #include <string>
 #include <vector>
 #include <map>
-#include <assert.h>
+#include <cassert>
 #include <algorithm> /* std::count_if */
+#include <typeinfo> /* std::bad_cast */
+#include <utility> /* std::make_pair */
 
 // ROOT include(s).
 // ..
@@ -34,16 +36,19 @@ namespace AnalysisTools {
         EventSelection (const string& name) :
             Selection<Event,Event>(name)
         {};
-        
 
         // Destructor(s).
-        ~EventSelection () {};
+	~EventSelection () {};
 
         
     public:
         
         // Set method(s).
-        void addCollection (const string& name, PhysicsObjects*         collection);
+        /*
+	  void addCollection (const string& name, PhysicsObjects* collection);
+	*/
+	void addCollection (const string& name, const string& selection, const string& category = "Nominal");
+
         //void addCollection (const string& name, vector<TLorentzVector>* collection);// @TODO: Add such a method?
         
         template <class U>
@@ -59,6 +64,8 @@ namespace AnalysisTools {
         
         bool result ();
         bool result (const string& category);
+
+	virtual void print () const;
         
         
     protected:
@@ -70,7 +77,10 @@ namespace AnalysisTools {
     private:
         
         map< string, Event >           m_events;
-        map< string, PhysicsObjects* > m_collections;
+        /*
+	  map< string, PhysicsObjects* > m_collections;
+	*/
+	map< string, std::pair<string, string> > m_collections;
         map< string, bool >            m_passes;
 
         map< string, const double* > m_infoDouble;

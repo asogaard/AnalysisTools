@@ -71,6 +71,7 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     bool ObjectDefinition<T>::run () {
+        DEBUG("Entering.");
         assert( this->m_input );
         /* *
          * Check that input- and info containers have same length.
@@ -96,7 +97,7 @@ namespace AnalysisTools {
                 for (const auto& name_val : this->m_infoBool) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                m_candidates[category].push_back(p);
+                m_candidates[category].emplace_back(p);
             }
         }
         
@@ -111,7 +112,7 @@ namespace AnalysisTools {
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
             unsigned int iCut = 0;
             this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size() * weight);
-            for (IOperation* iop : this->m_operations[category]) {
+            for (IOperation* iop : this->operations(category)) { 
                 // [Make use of branching?]
                 
                 // Loop candidates.
@@ -133,13 +134,18 @@ namespace AnalysisTools {
                 if (dynamic_cast< Cut<PhysicsObject>* >(iop) == nullptr) { continue; }
                 this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size() * weight);
             }
+
+	    DEBUG("Number of candidates in '%s' after full selection: %d", this->name().c_str(), this->m_candidates[category].size());
+	    //std::cout << " [" << &this->m_candidates[category] << "]" << std::endl;
+
         }
         this->m_hasRun = true;
+	DEBUG("Exiting.");
         return true; /* Always true for ObjectDefinition (i.e. cannot break the analysis pipeline). */
     }
   
     template <class T>
-    PhysicsObjects* ObjectDefinition<T>::result () {
+    PhysicsObjects* const ObjectDefinition<T>::result () {
         /* Make more general. */
         if (this->nCategories() == 0) {
             this->addCategory("Nominal");
@@ -150,12 +156,23 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    PhysicsObjects* ObjectDefinition<T>::result (const string& category) {
+    PhysicsObjects* const ObjectDefinition<T>::result (const string& category) {
         assert( this->hasCategory(category) );
         return &this->m_candidates[category];
     }
     
-    
+    template <class T>
+    void ObjectDefinition<T>::print () const {
+      INFO("  Configuration for object definition '%s':", this->name().c_str());
+      for (const auto& cat_ops : this->m_operations) {
+	INFO("    Category '%s':", cat_ops.first.c_str());
+	for (const auto& iop : cat_ops.second) {
+	  iop->print();
+	}
+      }
+      return;
+    }
+
     // Low-level management method(s).
     // ...
 
