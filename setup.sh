@@ -1,7 +1,7 @@
 #!/bin/bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/lib
 if hash lsetup 2>/dev/null; then
-    lsetup root
+    lsetup "root 6.08.02-x86_64-slc6-gcc49-opt"
 fi
 
 UNAME=`uname`
