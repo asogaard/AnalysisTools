@@ -191,7 +191,7 @@ def batchPredict (clf, data, batch_size = 100):
 
 # --------------------------------------------------------------------
 # Produce prediction using asynchronous processes.
-def asyncPredict (clf, data, num_processes = 10):
+def asyncPredict (clf, data, num_processes = 10, batch_size = 10000):
 
     # Create multiprocessing pool.
     pool = Pool()
@@ -200,20 +200,27 @@ def asyncPredict (clf, data, num_processes = 10):
     num_examples = data.shape[0]
 
     # Compute suitable batch size.
-    batch_size = int(num_examples/float(num_processes)) + 1
+    num_rounds = int(num_examples/float(num_processes * batch_size)) + 1
 
     # Loop batches.
-    results = list()
-    for indices in batch(np.arange(num_examples), batch_size):
-        
-        # Submit prediction as asynchronous process.
-        args = [clf, data[indices,:]]
-        results.append( pool.apply_async(predict, args) )
+    print "Total number of examples: %d (%d is maximal index)" % (num_examples, num_examples - 1)
+    predictions = list()
+    for iround, round_indices in enumerate(batch(np.arange(num_examples), num_processes * batch_size), start = 1):
+        results = list()
+        print "asyncPredict: Round %d of %d." % (iround, num_rounds)
+        for indices in batch(round_indices, batch_size):
+            #print "  Predicting indices [%d, %d]." % (indices[0], indices[-1])
+
+            # Submit prediction as asynchronous process.
+            args = [clf, data[indices,:]]
+            results.append( pool.apply_async(predict, args) )
+            pass
+
+        # Collect predictions.
+        predictions += [result.get(timeout = 99999999999) for result in results]
         pass
 
-    # Collect predictions.
-    predictions = [result.get(timeout = 99999999999) for result in results]
-
+    # Return predictions.
     return np.hstack(predictions)
 
 
@@ -369,13 +376,16 @@ def main ():
        
         # Get mean profile and error.
         print "---- Get mean profile and error."
-        mean, mean_err = computeProfileVec(x, y, z, bins, bins, w)
+        mean, mean_err  = computeProfileVec(x, y, z, bins, bins, w)
+        mean_entries, _ = computeHistVec   (x, y,    bins, bins)
                 
+        mean_err[np.where(mean_entries <= 5)] = 9999.
+
         # Initialising parameter grid(s) for scan.
         print "---- Initialise parameter grid(s) for scan."
         parameters = {
-            'alpha' : np.logspace(-1, 1, 2 * 1 + 1, True),
-            'gamma' : np.logspace( 1, 3, 2 * 1 + 1, True), # ... 8 * 1 + ...
+            'alpha' : np.logspace(-3, 3, 6 * 1 + 1, True),
+            'gamma' : np.logspace(-2, 6, 8 * 2 + 1, True), # ... 8 * 1 + ...
             }
 
         # Define 'test' and 'holdout' fraction for CV.
@@ -523,9 +533,9 @@ def main ():
 
 
         # Compute modified variable using asynchronous processes.
-        print "\nPredicting modified variable using asynchronous processes."
-        mvar = var + '_GDDT'
         num_processes = 10
+        mvar = var + '_GDDT'
+        print "\nPredicting modified variable '%s' using %d asynchronous processes." % (mvar, num_processes)
         values[mvar] = np.zeros((Njets,))
         for icl, cl in enumerate(ensemble, start = 1):
             print "-- Classifier %d." % icl
@@ -618,8 +628,8 @@ def main ():
         print "Residual pulls:"
     #msk_pull = np.where(zerr < 9999.)
         print zpull
-        print "-- Mean: %.03f" % np.mean(zpull)#[msk_pull])
-        print "-- RMS:  %.03f" % np.std (zpull)#[msk_pull])
+        print "-- Mean: %.03f" % np.mean(zpull.ravel())#[msk_pull])
+        print "-- RMS:  %.03f" % np.std (zpull.ravel())#[msk_pull])
         
         plt.show()
         
