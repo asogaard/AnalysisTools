@@ -1,4 +1,6 @@
-# Dear emacs, this is -*- python -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 ''' Script for computing generalised designed de-correlated taggers (GDDT).
 
 ...
@@ -342,6 +344,8 @@ def main ():
     yscaler = preprocessing.MinMaxScaler()
     values[varxscaled] = xscaler.fit_transform(values[varx][:, np.newaxis])
     values[varyscaled] = yscaler.fit_transform(values[vary][:, np.newaxis])
+
+    # @TODO: Save scalers.
     
     varx, vary = varxscaled, varyscaled
     
@@ -368,7 +372,7 @@ def main ():
     w = values['weight']
     X = np.column_stack((x,y))
 
-    for var in substructurevars:
+    for var in reversed(substructurevars):
         
         print "-- Fitting %d data points for %s vs. %s x %s." % (Njets, var, varx, vary)
  
@@ -381,11 +385,22 @@ def main ():
                 
         mean_err[np.where(mean_entries <= 5)] = 9999.
 
+
+        # ==================================================================
+        # Hyper-parameter optimisation.
+        # ------------------------------------------------------------------
+
+        # @TODO: - Make separate script for hyper-parameter optimisation
+        #        - Save summary file, listing used parameters etc.
+        #        - Include fitting, and saving, data scalers
+        #        - Save plot(s)
+        #        - Save optimal parameter configuration, possibly overwriting
+
         # Initialising parameter grid(s) for scan.
         print "---- Initialise parameter grid(s) for scan."
         parameters = {
             'alpha' : np.logspace(-1, 2, 3 * 1 + 1, True),
-            'gamma' : np.logspace( 0, 4, 4 * 5 + 1, True), # ... 8 * 1 + ...
+            'gamma' : np.logspace( 0, 4, 4 * 2 + 1, True), # ... 8 * 1 + ...
             }
 
         # Define 'test' and 'holdout' fraction for CV.
@@ -468,6 +483,9 @@ def main ():
         if len(keys) > 1:
             plt.legend()
             pass
+        if save:
+            plt.savefig('plot_hyperparameter_optimsation_%s.pdf' % var)
+            pass
         plt.show()
         
 
@@ -480,9 +498,16 @@ def main ():
 
 
 
-        # ======================================================================
+        # ==================================================================
         # Ensembling.
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------
+
+        # @TODO: - Make separate script for ensemble-fitting
+        #        - Save summary file, listing used parameters etc.
+        #        - Used saved scalers
+        #        - Read optimised configuration from file
+        #        - Save plot(s)
+        #        - Save ensemble regressor(s) to file
 
         Nensemble = 10
         print "\nEnsembling %d KKR classifiers with optimal parameters." % Nensemble
@@ -502,7 +527,6 @@ def main ():
             sample = np.random.choice(Njets, int( 0.667 * Njets ), True) #False)
             
             # Initialise easy-access arrays.
-        #Xsample = np.column_stack((values[varx][sample], values[vary][sample]))
             zsample = values[var][sample]
             wsample = values['weight'][sample]
             
@@ -512,21 +536,21 @@ def main ():
             profileerr[np.where(profileerr == 0.)]     = 9999.
             profileerr[np.where(profile_entries <= 5)] = 9999.
             wsample = np.power(profileerr, -1).ravel()
-            # For the ensemble classifier.
-            
-            #print Xsample.shape
-            #print profilesample.ravel().shape
-            #print wsample.shape
+
+            # Fit the current ensemble regressor.
             ensemble[-1].fit(meshX, profilesample.ravel(), wsample)
             
             pass
-    #'''
+
         print "Done!"
 
 
-        # ======================================================================
+        # ==================================================================
         # Compute modified variable using asynchronous processes.
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------
+
+        # @TODO: - Make separate script for computing modified variable(s)
+        #        - Read fitted ensemble regressor(s) from file
 
         num_processes = 10
         mvar = var + '_GDDT'
@@ -549,16 +573,16 @@ def main ():
         # -- Mesh
         nbins     = 50
         nbinsfine = 300
-        vmin, vmax = 0.25, 0.65
+        if var == 'tau21':
+            vmin, vmax = 0.25, 0.65
+        else:
+            vmin, vmax = 0.00, 4.00
+            pass
         
-    #meshx,     meshy     = np.meshgrid(np.linspace(0, 1, nbins,     True),
-    #                                   np.linspace(0, 1, nbins,     True))
         meshxfine, meshyfine = np.meshgrid(np.linspace(0, 1, nbinsfine, True),
                                            np.linspace(0, 1, nbinsfine, True))
         
         # -- (1)
-    #bins = np.linspace(0, 1, nbins + 1, True)
-    #z, zerr = computeProfileVec(values[varx], values[vary], values[var], bins, bins, values['weight'])
         mean = mean.reshape(meshx.shape)
         
         ax[0,0].pcolormesh(meshx, meshy, mean, vmin = vmin, vmax = vmax)
@@ -566,7 +590,7 @@ def main ():
         ax[0,0].set_xlim([0,1])
         ax[0,0].set_ylim([0,1])
         ax[0,0].set_ylabel(ylabel)
-        ax[0,0].set_title('Sampling points')
+        ax[0,0].set_title('Profile of %s measurements' % displayName(var, latex = True))
         
         # -- (2)
         print "Computing zpred."
@@ -574,7 +598,7 @@ def main ():
         zpredprofile,_ = computeProfileVec(X[:,0], X[:,1], zpred, bins, bins, w)
         
         ax[0,1].pcolormesh(meshx, meshy, zpredprofile, vmin = vmin, vmax = vmax)
-        ax[0,1].set_title(r'Profile of %s predictions' % displayName(var, latex = True))
+        ax[0,1].set_title(r'Profile of (%d) ensemble-\naveraged %s predictions' % (Nensemble, displayName(var, latex = True)))
         
         # -- (3)
         print "Duuuun."
@@ -607,16 +631,15 @@ def main ():
         fig.colorbar(im, cax=cbar_ax, label = displayNameUnit(var, True))
         
         print "Residual pulls:"
-    #msk_pull = np.where(zerr < 9999.)
         print zpull
-        print "-- Mean: %.03f" % np.mean(zpull.ravel())#[msk_pull])
-        print "-- RMS:  %.03f" % np.std (zpull.ravel())#[msk_pull])
+        print "-- Mean: %.03f" % np.mean(zpull.ravel())
+        print "-- RMS:  %.03f" % np.std (zpull.ravel())
         
-        plt.show()
-        
-        
-        
-        
+        if save:
+            plt.savefig('plot_%s_profiles.pdf' % var)
+            pass
+
+        plt.show()        
         
         print "Computing "
         
@@ -630,7 +653,7 @@ def main ():
     
 
 
-
+# Main function call.
 if __name__ == '__main__':
     main()
     pass
