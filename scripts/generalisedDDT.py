@@ -384,8 +384,8 @@ def main ():
         # Initialising parameter grid(s) for scan.
         print "---- Initialise parameter grid(s) for scan."
         parameters = {
-            'alpha' : np.logspace(-3, 3, 6 * 1 + 1, True),
-            'gamma' : np.logspace(-2, 6, 8 * 2 + 1, True), # ... 8 * 1 + ...
+            'alpha' : np.logspace(-1, 2, 3 * 1 + 1, True),
+            'gamma' : np.logspace( 0, 4, 4 * 5 + 1, True), # ... 8 * 1 + ...
             }
 
         # Define 'test' and 'holdout' fraction for CV.
@@ -394,7 +394,7 @@ def main ():
         
         # Scan parameter grid.
         base_clf = KernelRidge(kernel = 'rbf')
-        cv_folds = 5
+        cv_folds = 10
         cv_results = list()
         np.random.seed(21)
         pool = Pool()
@@ -478,22 +478,14 @@ def main ():
         print best_config
         print "Score for best config: %6.03f +/- %5.03f" % (np.mean(cv_results[best_config_index][1]), np.std(cv_results[best_config_index][1]))
 
-        # Initialise easy-access arrays.
-        '''
-        Xgrid   = np.column_stack((meshx.ravel(), meshy.ravel() ))
-        Xsample = X[sample,:]
-        
-        mean        = mean.ravel()
-        mean_sample = z[sample]
-        
-        zerr[np.where(zerr == 0)] = 9999.
-        w       = np.power(zerr, -1.).ravel()
-        wsample = w[sample]
-        '''
 
+
+        # ======================================================================
         # Ensembling.
-        print "\nEnsembling KKR classifiers with optimal parameters."
-        Nensemble = 2
+        # ----------------------------------------------------------------------
+
+        Nensemble = 10
+        print "\nEnsembling %d KKR classifiers with optimal parameters." % Nensemble
 
         clf = clone(base_clf)
         setConfig(clf, best_config)
@@ -532,7 +524,10 @@ def main ():
         print "Done!"
 
 
+        # ======================================================================
         # Compute modified variable using asynchronous processes.
+        # ----------------------------------------------------------------------
+
         num_processes = 10
         mvar = var + '_GDDT'
         print "\nPredicting modified variable '%s' using %d asynchronous processes." % (mvar, num_processes)
@@ -567,7 +562,7 @@ def main ():
         mean = mean.reshape(meshx.shape)
         
         ax[0,0].pcolormesh(meshx, meshy, mean, vmin = vmin, vmax = vmax)
-        ax[0,0].set_title('Profile of all data points')
+        ax[0,0].set_title(r'Profile of %s' % displayName(var, latex = True))
         ax[0,0].set_xlim([0,1])
         ax[0,0].set_ylim([0,1])
         ax[0,0].set_ylabel(ylabel)
@@ -575,26 +570,14 @@ def main ():
         
         # -- (2)
         print "Computing zpred."
-    #zpred = ensemble.predict(X)
-        '''
-
-        
-        zpred = np.zeros((Njets,1))
-        for i, cl in enumerate(ensemble):
-            print "-- Classifier %d." % (i + 1)
-            zpred += cl.predict(X).reshape(zpred.shape)
-            pass
-        zpred /= float(len(ensemble))
-    '''
         zpred = values[mvar]
         zpredprofile,_ = computeProfileVec(X[:,0], X[:,1], zpred, bins, bins, w)
         
         ax[0,1].pcolormesh(meshx, meshy, zpredprofile, vmin = vmin, vmax = vmax)
-        ax[0,1].set_title('Profile of predictions for data points')
+        ax[0,1].set_title(r'Profile of %s predictions' % displayName(var, latex = True))
         
         # -- (3)
         print "Duuuun."
-    #zdiff, _ = computeProfileVec(X[:,0], X[:,1], z.ravel() - zpred, bins, bins, w)
         zdiff = mean.ravel() - zpredprofile.ravel()
         mean_err[np.where(mean_err == 0)] = 9999.
         zpull = zdiff / mean_err.ravel()
@@ -606,20 +589,18 @@ def main ():
         # -- (4)
         print "Computing meshzfine."
         meshXfine = np.column_stack((meshxfine.ravel(), meshyfine.ravel()))
-    #meshzfine = ensemble.predict(meshXfine).reshape(meshxfine.shape)
-    #'''
         meshzfine = np.zeros(meshxfine.shape)
         for i, cl in enumerate(ensemble):
             print "-- Classifier %d." % (i + 1)
             meshzfine += cl.predict(meshXfine).reshape(meshxfine.shape)
             pass
         meshzfine /= float(len(ensemble))
-    #'''
+
         print "Done!"
         
         im = ax[1,1].pcolormesh(meshxfine, meshyfine, meshzfine, vmin = vmin, vmax = vmax)
         ax[1,1].set_xlabel(xlabel)
-        ax[1,1].set_title('Ensamble-averaged SVR estimator,\nbased on sampling')
+        ax[1,1].set_title('Ensamble-averaged KRR estimator')
         
         fig.subplots_adjust(right=0.85)
         cbar_ax = fig.add_axes([0.90, 0.15, 0.025, 0.7])
