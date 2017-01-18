@@ -38,8 +38,6 @@ except:
     pass
 
 # Utility function(s).
-
-
 # --------------------------------------------------------------------
 # Use classifier tp produce predictions (wrapper function)
 def predict (clf, data):
@@ -66,12 +64,10 @@ def asyncPredict (clf, data, num_processes = 10, batch_size = 10000):
         results = list()
         print "asyncPredict: Round %d of %d." % (iround, num_rounds)
         for indices in batch(round_indices, batch_size):
-            #print "  Predicting indices [%d, %d]." % (indices[0], indices[-1])
 
             # Submit prediction as asynchronous process.
             args = [clf, data[indices,:]]
-            results.append( pool.apply_async(predict, args) )
-            
+            results.append( pool.apply_async(predict, args) )            
             pass
 
         # Collect predictions.
@@ -105,9 +101,8 @@ def main ():
     data, Njets = getData(sys.argv)
     
     # Initialise substructure variables.
-    substructurevars = ['tau21'] # ['tau21', 'D2', 'logD2'] 
-    
-    types = ['mean', 'std'] # ['mean', 'std']
+    substructurevars = ['tau21', 'D2', 'logD2'] 
+    types = ['mean', 'std']
 
     # Initialise axis variable names.
     varx, vary = ('logm', 'logpt')
@@ -169,23 +164,17 @@ def main ():
         z = data[var]
 
         # Set axis min- and maximum
+        vmin = 0.00
         if t == 'mean':
-            if var == 'tau21':
-                vmin, vmax = 0.00, 0.65 # 0.25, ...
-            elif var == 'D2':
-                vmin, vmax = 0.00, 7.00
-            else:
-                vmin, vmax = 0.00, 3.00
-            pass
+            if   var == 'tau21': vmax = 0.65
+            elif var == 'D2':    vmax = 7.00
+            else:                vmax = 3.00
         else:
-            if var == 'tau21':
-                vmin, vmax = 0.00, 0.20
-            elif var == 'D2':
-                vmin, vmax = 0.00, 4.00
-            else:
-                vmin, vmax = 0.00, 1.00
+            if   var == 'tau21': vmax = 0.20
+            elif var == 'D2':    vmax = 4.00
+            else:                vmax = 1.00
             pass
-
+        
         if t == 'mean':
             zlabel = r'$\langle%s\rangle$' % displayNameUnit(var, latex = True).replace('$', '')
         else:
@@ -199,14 +188,12 @@ def main ():
         midpoints_pt = (bins_pt[1:] + bins_pt[:-1]) * 0.5
         mesh_m, mesh_pt = np.meshgrid(midpoints_m, midpoints_pt)
         profile_m_pt, _, _ = project(data['m'], data['pt'], z, w, bins_m, bins_pt, t)
-        #profile_m_pt, _  = computeProfileVec(data['m'], data['pt'], z, bins_m, bins_pt, w)
 
         plt.pcolormesh(mesh_m, mesh_pt, profile_m_pt, vmin = vmin, vmax = vmax)
         plt.xlim([bins_m [0], bins_m [-1]])
         plt.ylim([bins_pt[0], bins_pt[-1]])
         plt.xlabel(displayNameUnit('m',  latex = True))
         plt.ylabel(displayNameUnit('pt', latex = True))
-        #plt.title('Profile of %s' % displayName(var, latex = True), fontsize = 20)
         cb = plt.colorbar()
         cb.set_label(zlabel, labelpad=20)
         plt.savefig(output_dir + 'profile_%s_m_pt.pdf' % var)
@@ -219,14 +206,12 @@ def main ():
         midpoints_logpt = (bins_logpt[1:] + bins_logpt[:-1]) * 0.5
         mesh_logm, mesh_logpt = np.meshgrid(midpoints_logm, midpoints_logpt)
         profile_logm_logpt, _, _ = project(data['logm'], data['logpt'], z, w, bins_logm, bins_logpt, t)
-        #profile_logm_logpt, _  = computeProfileVec(data['logm'], data['logpt'], z, bins_logm, bins_logpt, w)
 
         plt.pcolormesh(mesh_logm, mesh_logpt, profile_logm_logpt, vmin = vmin, vmax = vmax)
         plt.xlim([bins_logm [0], bins_logm [-1]])
         plt.ylim([bins_logpt[0], bins_logpt[-1]])
         plt.xlabel(displayNameUnit('logm',  latex = True))
         plt.ylabel(displayNameUnit('logpt', latex = True))
-        #plt.title('Profile of %s' % displayName(var, latex = True), fontsize = 20)
         cb = plt.colorbar()
         cb.set_label(zlabel, labelpad=20)
         plt.savefig(output_dir + 'profile_%s_logm_logpt.pdf' % var)
@@ -234,14 +219,12 @@ def main ():
 
         # Draw profile for (logm_scaled, logpT_scaled).
         profile_logmscaled_logptscaled, _, _ = project(x, y, z, w, bins, bins, t)
-        #profile_logmscaled_logptscaled, _  = computeProfileVec(x, y, z, bins, bins, w)
 
         plt.pcolormesh(meshx, meshy, profile_logmscaled_logptscaled, vmin = vmin, vmax = vmax)
         plt.xlim([0, 1])
         plt.ylim([0, 1])
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        #plt.title('Profile of %s' % displayName(var, latex = True), fontsize = 20)
         cb = plt.colorbar()
         cb.set_label(zlabel, labelpad=20)
         plt.savefig(output_dir + 'profile_%s_%s_logmscaled_logptscaled.pdf' % (t, var))
@@ -250,9 +233,6 @@ def main ():
         # Get mean profile and error.
         print "---- Get mean profile and error."
         mean, mean_err, _ = project(x, y, z, w, bins, bins, t)
-        #mean, mean_err  = computeProfileVec(x, y, z, bins, bins, w)
-        #mean_entries, _ = computeHistVec   (x, y,    bins, bins)
-        #mean_err[np.where(mean_entries <= 5)] = 9999.
         
 
         # ==================================================================
@@ -260,7 +240,7 @@ def main ():
         # ------------------------------------------------------------------
 
         # Initialise ensemble settings.
-        Nensemble = 1
+        Nensemble = 10
         ensemble = list()
         fitting_dir = "./ensemblefitting/"
 
@@ -278,7 +258,7 @@ def main ():
 
         # Initialise asynchronous processing variables.
         num_processes = 10
-        mvar = t + '_' + var # _GDDT
+        mvar = t + '_' + var
         print "\nPredicting modified variable '%s' using %d asynchronous processes." % (mvar, num_processes)
 
         # Perform ensemble prediction.
@@ -320,7 +300,6 @@ def main ():
         zpred = data[mvar]
         zpredprofile, _, _ = project(x, y, zpred, w, bins, bins, 'mean') 
         # we either want to profile the predicted quantity, e.g. 'mean(D2)' or 'RMS(D2)', but in either case we want the _average_ of that value, even if the value itself in a measure of standard deviations
-        #zpredprofile,_ = computeProfileVec(X[:,0], X[:,1], zpred, bins, bins, w)
 
         ax[0,1].pcolormesh(meshx, meshy, zpredprofile, vmin = vmin, vmax = vmax)
         ax[0,1].set_title(r'Ensemble-averaged (%d) estimator' % Nensemble, fontsize = 16)
@@ -352,7 +331,6 @@ def main ():
         meshzfine /= float(len(ensemble))
 
         im = ax[1,1].pcolormesh(meshxfine, meshyfine, meshzfine, vmin = vmin, vmax = vmax, shading='gouraud')
-        #im = ax[1,1].contourf(meshxfine, meshyfine, meshzfine, vmin = vmin, vmax = vmax, origin = 'lower')
         ax[1,1].set_xlabel(xlabel)
         ax[1,1].set_title('Ensamble-averaged (%d) estimator,\nfunction' % Nensemble, fontsize = 16)
 
@@ -397,11 +375,6 @@ def main ():
                     profiles[v].append( TProfile("profile_%s_vs_m_slice_%d" % (v, i), "", 50, (-2 + i * 2) if rms else 0, (298 + i * 2) if rms else 300, ('S' if rms else '')) )
                     profiles[v][-1].GetXaxis().SetRangeUser(0, 300.)
                     msk = np.where((data['pt'] >= sl[0]) & (data['pt'] < sl[1]))
-                    #print len(msk)
-                    #print data['m'].shape
-                    #print data[v]  .shape
-                    #print data['m'][msk].shape
-                    #print data[v]  [msk].shape
                     arr = np.column_stack((data['m'].ravel()[msk], data[v].ravel()[msk]))
                     fill_profile(profiles[v][-1], arr, data['weight'].ravel()[msk])
                     pass
@@ -418,7 +391,7 @@ def main ():
                 legendOpts = LegendOptions(histograms = profiles[v],
                                            header = 'Jet p_{T} in:',
                                            names = names,
-                                           xmin = 0.59, # 0.59,
+                                           xmin = 0.59,
                                            ymax = 0.835)
                 
                 textOpts   = TextOptions(lines = lines)

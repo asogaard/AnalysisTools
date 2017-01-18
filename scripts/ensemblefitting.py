@@ -124,7 +124,6 @@ def main ():
     x = data[varx]
     y = data[vary]
     w = data['weight']
-    #X = np.column_stack((x,y))
 
     for var, t in itertools.product(substructurevars, reversed(types)):
         
@@ -179,64 +178,20 @@ def main ():
             # Generate new sample.
             sample = np.random.choice(Njets, int( frac * Njets ), True) # True: bagging
             
-            # Initialise easy-access arrays.
-            #zsample = data[var]     [sample]
-            #wsample = data['weight'][sample]
-          
             # Compute the mean profile for this subsample
-            sample_profile, sample_err, sample_weight = project(x[sample], y[sample], z[sample], w[sample], bins, bins, t)
-            #profilesample, profileerr = computeProfileVec(x[sample], y[sample], z[sample], bins, bins, w[sample])
-            #profile_entries, _        = computeHistVec   (x[sample], y[sample], bins, bins)
-            #
-            #profileerr[np.where(profileerr == 0)]                          = err_penalty
-            #profileerr[np.where(profile_entries < min_unweighted_entries)] = err_penalty
-            #wsample = np.power(profileerr, -1).ravel()
+            sample_profile, _, sample_weight = project(x[sample], y[sample], z[sample], w[sample], bins, bins, t)
 
             # Fit the current ensemble regressor.
-            #ensemble[-1].fit(meshX, profilesample.ravel(), wsample)
-            out_clf = ensemble[-1].fit(meshX, sample_profile.ravel(), sample_weight.ravel())
-
-            # @TEMP
-            '''
-            sample_pred = ensemble[-1].predict(meshX).reshape(sample_profile.shape)
-            
-            if t == 'mean':
-                label = r'$\langle {%s} \rangle$' % displayName(var, latex = True).replace('$', '')
-            else:
-                label = r'RMS(%s)' % displayName(var, latex = True)
-                pass
-
-            print np.mean(sample_profile)
-            print np.mean(sample_pred)
-            print "Mean of residual pulls: %.02f" % (np.mean((sample_profile - sample_pred) / sample_err))
-            print "RMS  of residual pulls: %.02f" % (np.std ((sample_profile - sample_pred) / sample_err))
-
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, sharex = True, sharey = True, figsize = (17,5))
-            im = ax1.imshow(sample_profile, vmin = 0, vmax = 0.20, origin = 'lower', interpolation = 'none')
-            ax2.imshow(sample_pred,    vmin = 0, vmax = 0.20, origin = 'lower', interpolation = 'none')
-            ax3.imshow(sample_weight,                         origin = 'lower', interpolation = 'none')
-            fig.subplots_adjust(right=0.85)
-            cbar_ax = fig.add_axes([0.90, 0.15, 0.025, 0.7])
-            fig.colorbar(im, cax=cbar_ax, label = '%s' % label)
-            plt.show()
-            '''
+            ensemble[-1].fit(meshX, sample_profile.ravel(), sample_weight.ravel())
 
             # Save classifier to file.
             clf_name = output_dir + "estimator_%s_%s_%02d.pkl" % (t, var, i)
             pickle.dump( ensemble[-1], open(clf_name, 'wb') )
 
-            #print out_clf.dual_coef_
-            #print ensemble[-1].dual_coef_
-            #print "vars of ensemble[-1]:"
-            #print " ", ', '.join([key for key,_ in vars(ensemble[-1]).items()])
-            #print "vars of out_clf:"
-            #print " ", ', '.join([key for key,_ in vars(out_clf).items()])
-
             pass
 
         print "Done."
 
-    # ...
     # README ...
     
     return        

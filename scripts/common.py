@@ -66,68 +66,44 @@ def project (x, y, z, w, binsx = None, binsy = None, t = 'mean'):
     # Fill histogram(s).
     if t == 'mean':
         profile, profile_err           = computeProfileVec(x, y, z, binsx, binsy, w)
-        profile_err[np.where(profile_err == 0)]                                    = err_penalty
-        profile_err[np.where(profile_unweighted_entries < min_unweighted_entries)] = err_penalty
 
     elif t == 'std':
         _, profile                    = computeProfileVec(x, y, z, binsx, binsy, w, option = 'S')
-        # (1) Brute-force
-        #'''
 
         # Sample 'Nsample' profile RMS'es, and compute the standard deviation directly.
         profiles_sample = list()
         N = x.size
-        Nsample = 10 # 100
+        Nsample = 10
         for _ in xrange(Nsample):
-            sample = np.random.choice(N, N/2, True) # int(N/np.sqrt(Nsample)), False)
+            sample = np.random.choice(N, N/2, True)
             xsample = x.ravel()[sample]
             ysample = y.ravel()[sample]
             zsample = z.ravel()[sample]
             wsample = w.ravel()[sample]
             _, tmp_profile = computeProfileVec(xsample, ysample, zsample, binsx, binsy, wsample, option = 'S')
 
-            # Mask out bins with insufficient entries
-            #n, _ = computeHistVec(xsample, ysample, binsx, binsy)
-            #tmp_profile[np.where(n < min_unweighted_entries)] = np.nan
-
             # Append to list
             profiles_sample.append(tmp_profile)
             pass
 
-        #msk_use = np.where(Nsample - np.sum(np.isnan(profiles_sample), axis = 0) >= min_unweighted_entries)
-        #profile_err = np.ones(profile.shape) * 9999.
-        #profile_err[msk_use] = np.nanstd(profiles_sample, axis = 0)[msk_use]
-
         profile_err = np.std(profiles_sample, axis = 0)
-        profile_err[np.where(profile_err == 0)]                                    = err_penalty
-        profile_err[np.where(profile_unweighted_entries < min_unweighted_entries)] = err_penalty
-        #'''
-
-        # (2) Analytical
-        '''
-        n, _ = computeHistVec(x, y, binsx, binsy)
-
-        profile_err = np.ones(profile.shape) * err_penalty
-        msk = np.where(n > 1)
-        profile_err[msk]  = profile[msk] / 2. 
-        profile_err[msk] *= np.sqrt(2. / (n[msk] - 1.)) 
-        profile_err[msk] *= (n[msk] - 1.) / n[msk]
-
-        profile_err[np.where(profile_err < 1.0E-04)]       = err_penalty
-        profile_err[np.where(n < min_unweighted_entries)] = err_penalty
-        '''
         pass
 
+    # Penalise bins with too few entries
+    profile_err[np.where(profile_err == 0)]                                    = err_penalty
+    profile_err[np.where(profile_unweighted_entries < min_unweighted_entries)] = err_penalty
+
+    # Compute weight as 1/sigma.
     profile_weight = np.power(profile_err, -1.)
 
-    # Outlier removal
+    # Outlier removal.
     kernel = np.array([[1,1,1],
                        [1,0,1],
                        [1,1,1]])
 
     kernel_expectation = ndimage.convolve(profile_weight, kernel) / np.sum(kernel)
     reldev = np.abs(profile_weight - kernel_expectation) / kernel_expectation
-    msk_outlier = np.where(reldev > 10.) # Number of 'sigma's away.
+    msk_outlier = np.where(reldev > 10.)
     profile_weight[msk_outlier] = 1./9999.
     profile_err   [msk_outlier] = 9999.
     

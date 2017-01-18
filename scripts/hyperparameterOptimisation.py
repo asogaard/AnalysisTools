@@ -50,11 +50,7 @@ except:
 
 # --------------------------------------------------------------------
 # Run CV fold, for parameter grid search.
-#def runCVfold (clf, X, z, w, binsx, binsy, frac_test, frac_holdout = 0., t = 'mean'):
 def runCVfold (clf, X, z, w, binsx, binsy, t, train, test):
-
-    #if seed is None:
-    #    raise ValueError("runCVfold: 'seed' cannot be 'None'.")
 
     if not t in ['mean', 'std']:
         raise ValueError("runCVfold: 't' not in ['mean', 'std'].")
@@ -66,50 +62,9 @@ def runCVfold (clf, X, z, w, binsx, binsy, t, train, test):
     meshX = np.column_stack((meshx.ravel(), meshy.ravel()))
 
     # Generate 'train' and 'test' splits.
-    '''
-    N = z.size
-    # -- Get list of all indices
-    indices = np.arange(N)
-    # -- Shuffle them _in the same order for each fold_.
-    np.random.seed(seed)
-    np.random.shuffle(indices)
-    # -- Compute the correct batch size.
-    #batch_size = int(N / num_folds) + (1 if N % num_folds > 0 else 0)
-    # -- Divide the shuffled indices into 'num_folds' batches
-    #batches = [indices[i*batch_size:(i+1)*batch_size] for i in range(num_folds)]
-    batches = np.array_split(indices, num_folds)
-    # -- Extract the test/validation indices for the current fold.
-    test_indices  = batches.pop(fold)
-    # -- Combine the remaining batches to form the training set.
-    train_indices = np.concatenate(batches)
-    '''
-
-    X_train = X[train,:]
-    X_test  = X[test,:]
-    z_train = z[train]
-    z_test  = z[test]
-    w_train = w[train]
-    w_test  = w[test]
-    #X_train, X_test, z_train, z_test, w_train, w_test = train_test_split(X, z, w, test_size=frac_test + frac_holdout) 
-
-    # Hold out samples, if requested.
-    '''
-    if frac_holdout > 0.:
-
-        # Define number of 'test-and-holdout', and actual 'test', examples.
-        num_test_and_holdout = len(w_test)
-        num_test = int(num_test_and_holdout * frac_test / (frac_test + frac_holdout))
-        
-        # Generate indices for _actual_ (reduced) 'test' set.
-        idx_test = np.random.choice(num_test_and_holdout, num_test, False)
-        
-        # Resize test arrays.
-        X_test = X_test[idx_test,:]
-        z_test = z_test[idx_test]
-        w_test = w_test[idx_test]
-        
-        pass
-        '''
+    X_train, X_test = X[train,:], X[test,:]
+    z_train, z_test = z[train], z[test]
+    w_train, w_test = w[train], w[test]
 
     # Fill the 'train' profile.
     train_mean, train_err, train_weight = project(X_train[:,0], X_train[:,1], z_train, w_train, binsx, binsy, t)
@@ -128,33 +83,6 @@ def runCVfold (clf, X, z, w, binsx, binsy, t, train, test):
     s_test = np.array(test_err)
     
     score = np.mean(np.power((z_pred - z_test) / s_test, 2.))
-
-    # @TEMP
-    '''
-    #kernel = np.array([[1,1,1],
-    #                   [1,0,1],
-    #                   [1,1,1]])
-
-    
-    #kernel_expectation = ndimage.convolve(test_weight, kernel, mode='constant', cval=0.0) / np.sum(kernel)
-    #deviation = np.abs(test_weight - kernel_expectation)
-    #relative_deviation = deviation / kernel_expectation
-
-    #print "------ Fold %d/%d | Batch size = %d | Score: %.02f" % (fold + 1, num_folds, z_test.size, score)
-    #print clf.dual_coef_
-    vmin, vmax = 0.00, 4.00
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, sharex = True, sharey = True, figsize = (21,5))
-    #fig.suptitle(str(fold + 1))
-    im = ax1.imshow(train_mean,                  vmin = vmin, vmax = vmax, origin = 'lower', interpolation = 'none')
-    ax2.imshow(z_pred.reshape(train_mean.shape), vmin = vmin, vmax = vmax, origin = 'lower', interpolation = 'none')
-    ax3.imshow(test_mean,                        vmin = vmin, vmax = vmax, origin = 'lower', interpolation = 'none')
-    ax4.imshow(test_weight,                                                origin = 'lower', interpolation = 'none')
-
-    #fig.subplots_adjust(right=0.85)
-    cbar_ax = fig.add_axes([0.92, 0.15, 0.025, 0.7])
-    fig.colorbar(im, cax=cbar_ax, label = 'coloours!')
-    plt.show()
-    '''
 
     # Return CV score.
     return score
@@ -195,9 +123,7 @@ def main ():
         pass
 
     # Initalise substructure variables to use
-    #substructure_variables = ['tau21'] # ['tau21', 'D2', 'logD2']
-    substructure_variables = ['logD2'] 
-    #types = ['mean'] # ['mean', 'std' ]
+    substructure_variables = ['tau21', 'D2', 'logD2']
     types = ['std', 'mean'] 
     
     summary += "\nOptimising hyperparameters for substructure variables:\n"
@@ -271,22 +197,15 @@ def main ():
     print "Initialise parameter grid(s) for scan."
     parameters = {
         'mean' : {
-            'alpha' : np.logspace( -9, -3, 2 * 1 + 1, True), # [1.0E-09], # np.logspace( -1, -1, 0 * 1 + 1, True),
-            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True), # ... 8 * 1 + ...
-            #'alpha' : np.logspace(-1, 1, 2 * 1 + 1, True),
-            #'gamma' : np.logspace( 0, 4, 4 * 5 + 1, True), # ... 8 * 1 + ...
-            #'alpha' : [31., 100.],
-            #'gamma' : [10., 100., 1000.],
-        },
+            'alpha' : np.logspace( -9, -3, 2 * 1 + 1, True),
+            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True),
+            },
         'std' : {
             'alpha' : np.logspace( -9, -3, 2 * 1 + 1, True),
-            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True), # ... 8 * 1 + ...
-            #'alpha' : np.logspace(  0, 4, 4 * 1 + 1, True),
-            #'gamma' : np.logspace(  1, 4, 3 * 3 + 1, True), # ... 8 * 1 + ...
-       
+            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True),
+            }
         }
-    }
-
+    
     summary += "\nScanning the following parameter grid:\n"
     for t in types:
         summary += "  %s\n" % t
@@ -295,17 +214,6 @@ def main ():
             pass
         pass
 
-    # Define 'test' and 'holdout' fraction for CV.
-    '''
-    frac_test    = 1/3.
-    frac_holdout = 1/3.
-    
-    summary += "\n Using the following CV splitting fractions:\n"
-    summary += "  Train:    %.02e\n" % (1. - frac_test - frac_holdout)
-    summary += "  Test:     %.02e\n" % (frac_test)
-    summary += "  Hold-out: %.02e\n" % (frac_holdout)
-    '''
-    
     # Initialise CV setting.
     cv_folds = 10
     summary += "\nRunning %d CV folds for each parameter configuration.\n" % cv_folds
@@ -327,7 +235,6 @@ def main ():
         # Compute the number of jobs to be run in total.
         num_jobs = np.prod([len(l) for l in parameters[t].itervalues()]) * cv_folds
         job_digits = int(np.log10(num_jobs)) + 1
-        #seed = 21 # Has to be the same for all CV folds in order to ensure that all examples are used for validation exactly once.
 
         # Loop parameter configurations in grid.
         for i_config, config in enumerate(dict_product(parameters[t]), start = 1):
@@ -338,13 +245,10 @@ def main ():
 
             # Run 'cv_fold' folds in parallel.
             start = time.time()
-            #args = [clf, X, z, w, bins, bins, frac_test, frac_holdout]
             args = [clf, X, z, w, bins, bins, t]
             results = list()
-            #for fold in xrange(cv_folds):
             cv = KFold(z.shape[0], n_folds = cv_folds, shuffle = True)
             for train, test in cv:
-                #results.append( pool.apply_async(runCVfold, args) )
                 results.append( pool.apply_async(runCVfold, args + [train, test]) )
                 pass
             cv_scores = [result.get(timeout = timeout) for result in results]
@@ -389,7 +293,6 @@ def main ():
             pass
 
         fig = plt.figure()
-        #fig.suptitle('Hyperparameter optimisation for %s of %s' % (t, displayName(var, latex = True)), fontsize = 18)
         fig.suptitle(title, fontsize = 18)
         for ikey, key in enumerate(keys):
             plt.plot(xvals[key], yvals[key], color = colours[ikey % len(colours)], linewidth = 2.0, label = key)
@@ -401,7 +304,6 @@ def main ():
         plt.ylabel("Cross-validation scores (mean squared error)")
         plt.xscale('log')
         plt.yscale('log')
-        #plt.ylim([1.0E-01, 1.0E+02 if t == 'mean' else 1.0E+01])
         plt.ylim([0.2, 20.])
         if len(keys) > 1:
             plt.legend(prop = {'size':16})
@@ -409,7 +311,6 @@ def main ():
         plt.savefig(output_dir + 'plot_cv_curves__%s_%s__vs__%s__%s.pdf' % (t, var, varx, vary))
         plt.show()
         
-
         # Get optimal config.
         best_config_index = cv_results.index( min(cv_results, key = lambda pair : np.mean(pair[1])) )
         best_config = cv_results[best_config_index][0]
