@@ -7,9 +7,14 @@ import sys
 
 try:
     import numpy as np
+    from numpy.lib.recfunctions import append_fields
+
     from root_numpy import tree2array
 except:
-    print "Make numpy and root_numpy available in order to use e.g. 'loadDataFast'."
+    print "ERROR: Scientific python packages were not set up properly."
+    print " $ source ~/pythonenv.sh"
+    print "or see e.g. [http://rootpy.github.io/root_numpy/start.html]."
+    raise
     pass
 
 
@@ -23,6 +28,13 @@ def wait ():
     raw_input('...')
     return
 
+
+def validateArguments(args):
+    if len(args) == 1:
+        msg  = "Please specify at least one target ROOT file. Run as:\n"
+        msg += " $ python %s path/to/file.root" % args[0]
+        raise IOError(msg)
+    return
 
 
 def loadXsec (path):
@@ -165,7 +177,7 @@ def drawLegend (histograms, names, types = None, c = None,
     legend = TLegend(xmin, ymin, xmax, ymax)
 
     if header != None:
-        legend.AddEntry(None, header, opt)
+        legend.AddEntry(None, header, '')
         pass
 
     for (h,n,t) in zip(histograms, names, types):
@@ -207,8 +219,7 @@ def getPlotMinMax (histograms, log, padding = None, ymin = None):
 
 
 
-LegendOptions = namedtuple('LegendOptions', ['histograms', 'names', 'types', 'c', 'xmin', 'xmax', 'ymin', 'ymax', \
-'header', 'categories', 'horisontal', 'vertical','width'])
+LegendOptions = namedtuple('LegendOptions', ['histograms', 'names', 'types', 'c', 'xmin', 'xmax', 'ymin', 'ymax', 'header', 'categories', 'horisontal', 'vertical','width'])
 LegendOptions.__new__.__defaults__ = ('LP', None, None, None,  None,  None, None, None, 'R', 'T', 0.30)
 
 TextOptions = namedtuple('TextOptions', ['lines', 'c', 'pos', 'qualifier'])
@@ -442,6 +453,10 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
     print ""
     print "loadDataFast: Reading data from %d files." % len(paths)
 
+    if len(paths) == 0:
+        print "loadDataFast: Exiting."
+        return dict()
+
     ievent = 0
 
     # Initialise data array.
@@ -462,7 +477,8 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
         f = TFile(path, 'READ')
 
         # Get DSID.
-        for event in f.Get('outputTree'):
+        outputTree = f.Get(treename.split('/')[0] + '/outputTree')
+        for event in outputTree:
             DSID = eval('event.%s' % DSIDvar)
             isMC = eval('event.%s' % isMCvar)
             break
@@ -501,6 +517,9 @@ def loadDataFast (paths, treename, branches, prefix = '', xsec = None, ignore = 
 
             # Scale weight by cross section.
             arr['weight'] *= xsec[DSID]
+
+            # Add DSID array.
+            arr = append_fields(arr, 'DSID', np.ones(arr['weight'].shape) * DSID)
 
             pass
 
@@ -628,3 +647,44 @@ def loadData (paths, treename, variables, prefix = '', xsec = None, ignore = Non
     print ""
 
     return values
+
+def displayName (var, latex = False):
+    output = var
+
+    # tau21
+    if   var == "tau21":                output = "#tau_{21}"
+    elif var == "tau21_ut":             output = "#tau_{21,untrimmed}"
+    elif var == "tau21_mod_rhoPrime":   output = "#tilde{#tau}_{21} "
+    elif var == "tau21_mod_rhoDDT":     output = "#tau_{21}^{DDT}"
+    elif var == "tau21_SDDT":           output = "#tilde{#tau}_{21}^{(S)DDT}"
+    # D2
+    elif var == "D2":                   output = "D_{2}"
+    elif var == "D2mod":                output = "#tilde{D}_{2}"
+    elif var == "D2_SDDT":              output = "#tilde{D}_{2}^{(S)DDT}"
+    # Kinematic variables
+    elif var.lower() == "pt":           output = "p_{T} "
+    elif var.lower() == "m":            output = "M"
+    # rho
+    elif var == "rho":                  output = "#rho"
+    elif var == "rho_ut":               output = "#rho_{untrimmed}"
+    elif var == "rhoPrime":             output = "#rho'"
+    elif var == "rhoPrime_ut":          output = "#rho'_{untrimmed}"
+    elif var == "rhoDDT":               output = "#rho^{DDT}"
+    elif var == "rhoDDT_ut":            output = "#rho^{DDT}_{untrimmed}"
+    # log(...)
+    elif var.lower().startswith('log'): output = "#log(%s)" % displayName(var[3:])
+
+
+    return r'$%s$' % output.replace('#', '\\') if latex else output
+
+def displayUnit (var):
+    if   var.lower() == 'pt':    return 'GeV'
+    elif var.lower() == 'm':     return 'GeV'
+    elif var.lower() == "logm":  return "log(%s)" % displayUnit("m")
+    elif var.lower() == "logpt": return "log(%s)" % displayUnit("pt")
+    return ''
+
+def displayNameUnit (var, latex = False):
+    name = displayName(var, latex)
+    unit = displayUnit(var)
+    return name + (r" [%s]" % unit if unit else unit)
