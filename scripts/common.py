@@ -96,6 +96,15 @@ def project (x, y, z, w, binsx = None, binsy = None, t = 'mean'):
     # Compute weight as 1/sigma.
     profile_weight = np.power(profile_err, -1.)
 
+    # @TEMP
+    '''
+    vmin, vmax = 0, 5.00
+    fig, (ax1, ax2) = plt.subplots(1,2, sharex = True, sharey = True, figsize = (11,5))
+    ax1.imshow     (profile,        vmin = vmin, vmax = vmax, origin = 'lower', interpolation = 'none')
+    im = ax2.imshow(profile_weight,                           origin = 'lower', interpolation = 'none')
+    plt.colorbar(im)
+    plt.show()
+    '''
     # Outlier removal.
     kernel = np.array([[1,1,1],
                        [1,0,1],
@@ -103,10 +112,10 @@ def project (x, y, z, w, binsx = None, binsy = None, t = 'mean'):
 
     kernel_expectation = ndimage.convolve(profile_weight, kernel) / np.sum(kernel)
     reldev = np.abs(profile_weight - kernel_expectation) / kernel_expectation
-    msk_outlier = np.where(reldev > 10.)
+    msk_outlier = np.where(reldev > 20.)
     profile_weight[msk_outlier] = 1./9999.
     profile_err   [msk_outlier] = 9999.
-    
+
     return profile, profile_err, profile_weight
 
 

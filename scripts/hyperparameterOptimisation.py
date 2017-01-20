@@ -78,11 +78,14 @@ def runCVfold (clf, X, z, w, binsx, binsy, t, train, test):
     # Get 'test' prediction for the coordinate mesh.
     z_pred = clf.predict(meshX).reshape(test_mean.shape)
 
+    # Get (non-zero- indices for which to compute score.
+    msk = np.where(test_err < 9999.)
+
     # Compute the CV score: mean squared errors.
     z_test = np.array(test_mean)
     s_test = np.array(test_err)
     
-    score = np.mean(np.power((z_pred - z_test) / s_test, 2.))
+    score = np.mean(np.power((z_pred[msk] - z_test[msk]) / s_test[msk], 2.))
 
     # Return CV score.
     return score
@@ -123,8 +126,8 @@ def main ():
         pass
 
     # Initalise substructure variables to use
-    substructure_variables = ['tau21', 'D2', 'logD2']
-    types = ['std', 'mean'] 
+    substructure_variables = ['D2'] # ['tau21', 'D2', 'logD2']
+    types = ['mean', 'std']
     
     summary += "\nOptimising hyperparameters for substructure variables:\n"
     for subvar in substructure_variables:
@@ -197,12 +200,12 @@ def main ():
     print "Initialise parameter grid(s) for scan."
     parameters = {
         'mean' : {
-            'alpha' : np.logspace( -9, -3, 2 * 1 + 1, True),
-            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True),
+            'alpha' : [1.0E-9], # np.logspace( -1,  2, 5 * 1 + 1, True),
+            'gamma' : np.logspace(  -1,  4, 5 * 10 + 1, True),
             },
         'std' : {
-            'alpha' : np.logspace( -9, -3, 2 * 1 + 1, True),
-            'gamma' : np.logspace( -2,  4, 6 * 2 + 1, True),
+            'alpha' : [1.0E-9], # np.logspace(-10,  0, 5 * 1 + 1, True),
+            'gamma' : np.logspace(  -1,  4, 5 * 10 + 1, True),
             }
         }
     
@@ -222,7 +225,7 @@ def main ():
     pool = Pool()
     timeout = 999999999999
 
-    for var, t in itertools.product(substructure_variables, reversed(types)):
+    for var, t in itertools.product(substructure_variables, types):
         
         print "\nPerforming hyperparameter optimisation for %s of %s." % (t, var)
 
@@ -231,6 +234,9 @@ def main ():
         
         # Initialise easy-to-access value array for the current substructure variable.
         z = data[var]
+
+        # @TEMP
+        project(x, y, z, w, bins, bins, t)
 
         # Compute the number of jobs to be run in total.
         num_jobs = np.prod([len(l) for l in parameters[t].itervalues()]) * cv_folds
@@ -291,6 +297,11 @@ def main ():
         else:
             title += "RMS(%s)" % displayName(var, latex = True)
             pass
+        
+        # Re-scaling errors from RMS to error in mean
+        for key in keys:
+            yerrs[key] /= np.sqrt(cv_folds)
+            pass
 
         fig = plt.figure()
         fig.suptitle(title, fontsize = 18)
@@ -303,11 +314,11 @@ def main ():
         plt.xlabel(displayName(xpar, latex = True))
         plt.ylabel("Cross-validation scores (mean squared error)")
         plt.xscale('log')
-        plt.yscale('log')
-        plt.ylim([0.2, 20.])
-        if len(keys) > 1:
-            plt.legend(prop = {'size':16})
-            pass
+        #plt.yscale('log')
+        plt.ylim([0., 10.])
+        #if len(keys) > 1:
+        plt.legend(prop = {'size':16})
+        #    pass
         plt.savefig(output_dir + 'plot_cv_curves__%s_%s__vs__%s__%s.pdf' % (t, var, varx, vary))
         plt.show()
         

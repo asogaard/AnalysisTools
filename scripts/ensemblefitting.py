@@ -69,7 +69,7 @@ def main ():
     data, Njets = getData(sys.argv)
     
     # Initialise substructure variables.
-    substructurevars = ['tau21'] # ['tau21', 'D2', 'logD2']
+    substructurevars = ['D2'] # ['tau21', 'D2', 'logD2']
     types = ['mean', 'std']
     
     # Initialise axis variable names.

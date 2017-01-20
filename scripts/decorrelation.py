@@ -101,7 +101,7 @@ def main ():
     data, Njets = getData(sys.argv)
     
     # Initialise substructure variables.
-    substructurevars = ['tau21', 'D2', 'logD2'] 
+    substructurevars = ['D2'] # ['tau21', 'D2', 'logD2'] 
     types = ['mean', 'std']
 
     # Initialise axis variable names.
@@ -252,7 +252,7 @@ def main ():
                 print "WARNING: Classifier '%s' was not found. Continuing." % clf_name
                 continue
             ensemble.append(pickle.load( open(clf_name, 'rb') ))
-            print ensemble[-1].dual_coef_
+            #print ensemble[-1].dual_coef_
             pass
 
 
@@ -340,7 +340,7 @@ def main ():
 
         print "(Non-zero) residual pulls:"
         msk = np.where(zpull != 0)
-        print zpull[msk]
+        #print zpull[msk]
         print "-- Mean: %.03f" % np.mean(zpull[msk])
         print "-- RMS:  %.03f" % np.std (zpull[msk])
 
@@ -352,12 +352,20 @@ def main ():
 
     
     # Perform _actual_ decorrelation
+    lines = [ "#sqrt{s} = 13 TeV",
+              "Inclusive #gamma MC",
+              "Trimmed anti-k_{t}^{R=1.0}",
+              "Req. 1 #gamma with p_{T} > 155 GeV",
+              "Jet p_{T} > 150 GeV",
+              "Jet p_{T} > 2 M (boosted)",
+              ]
+
     for rms in [True, False]:
         for var in substructurevars:
             
             mvar = var + '_GDDT'
             
-        # Plot correlation with jet mass
+            # Plot correlation with jet mass
             data[mvar] = (data[var].ravel() - data['mean_' + var].ravel()) / data['std_' + var].ravel() * 0.2 + 1.
             
             
@@ -378,14 +386,6 @@ def main ():
                     arr = np.column_stack((data['m'].ravel()[msk], data[v].ravel()[msk]))
                     fill_profile(profiles[v][-1], arr, data['weight'].ravel()[msk])
                     pass
-                
-                lines = [ "#sqrt{s} = 13 TeV",
-                          "Inclusive #gamma MC",
-                          "Trimmed anti-k_{t}^{R=1.0}",
-                          "Req. 1 #gamma with p_{T} > 155 GeV",
-                          "Jet p_{T} > 150 GeV",
-                          "Jet p_{T} > 2 M (boosted)",
-                          ]
                 
                 names = ['[%d, %d] GeV' % (sl[0], sl[1]) for sl in slices]
                 legendOpts = LegendOptions(histograms = profiles[v],
@@ -416,7 +416,65 @@ def main ():
             pass
 
         pass
-        
+
+
+    # Compare jet mass spectra
+    for var in substructurevars:
+
+        mvar = var + '_GDDT'
+
+        perc = [1, 10, 20, 40, 60, 80, 99]
+        slices = { v : 
+                   zip(np.percentile(data[v], perc[:-1]), 
+                       np.percentile(data[v], perc[1:] ))
+                   for v in [var, mvar]
+                   }
+
+        spectra = dict()
+        for v, log in itertools.product([var, mvar], [True, False]):
+            
+            spectra[v] = list()
+            for i, sl in enumerate(slices[v]):
+                spectra[v].append( TH1F("jetmassspectrum_%s_slice_%d" % (v, i), "", 50, 0, 300) )
+                spectra[v][-1].Sumw2()
+                msk = np.where((data[v] >= sl[0]) & (data[v] < sl[1]))
+                fill_hist(spectra[v][-1], data['m'].ravel()[msk], data['weight'].ravel()[msk])
+                
+                spectra[v][-1].Scale(1./spectra[v][-1].Integral())
+                pass
+            
+            print "Integrals:"
+            for spectrum in spectra[v]:
+                print " ", spectrum.Integral()
+                pass
+            
+            names = ['[%.2f, %.2f]' % (sl[0], sl[1]) for sl in slices[v]]
+            legendOpts = LegendOptions(histograms = spectra[v],
+                                       header = 'Jet %s in:' % displayName(v),
+                                       names = names,
+                                       xmin = 0.59,
+                                       ymax = 0.835,
+                                       types = 'L')
+            
+            textOpts   = TextOptions(lines = lines)
+            
+            c = makePlot( spectra[v],
+                          legendOpts,
+                          textOpts,
+                          padding = 1.2,
+                          xtitle = "%s" % (displayNameUnit('m')),
+                          ytitle = "Jets (a.u.)",
+                          drawOpts = 'HIST',
+                          logy = log,
+                          #normalise = True,
+                          )
+            
+            c.SaveAs(output_dir + 'jetmassspectrum_%s_%sy.pdf' % (v, 'log' if log else 'lin'))
+            raw_input('...')
+            pass
+
+        pass
+    
     return        
     
 
