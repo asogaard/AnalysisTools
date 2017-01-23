@@ -14,7 +14,7 @@ from root_numpy import fill_hist, array2tree
 import numpy as np
 
 # Local include(s)
-from AFunctions import *
+from snippets.functions import *
 
 # Main function.
 def main ():

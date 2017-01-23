@@ -1,36 +1,14 @@
 # Dear emacs, this is -*- python -*-
 import sys
 
-from AStyle     import *
-from AFunctions import *
+from snippets.style     import *
+from snippets.functions import *
 
 from ROOT  import *
 from array import array
 
 import math
 import itertools
-
-def displayName (var):
-    if   var == "tau21":              return "#tau_{21}"
-    if   var == "tau21_ut":           return "#tau_{21,untrimmed}"
-    elif var == "D2":                 return "D_{2}"
-    elif var == "D2mod":              return "#tilde{D}_{2}"
-    elif var == "pt":                 return "p_{T}"
-    elif var == "m":                  return "M"
-    elif var == "rho":                return "#rho"
-    elif var == "rho_ut":             return "#rho_{untrimmed}"
-    elif var == "rhoPrime":           return "#rho'"
-    elif var == "rhoPrime_ut":        return "#rho'_{untrimmed}"
-    elif var == "rhoDDT":             return "#rho^{DDT}"
-    elif var == "rhoDDT_ut":          return "#rho^{DDT}_{untrimmed}"
-    elif var == "tau21_mod_rhoPrime": return "#tilde{#tau}_{21}" # '
-    elif var == "tau21_mod_rhoDDT":   return "#tau_{21}^{DDT}"
-    return var
-
-def displayUnit (var):
-    if   var == 'pt': return 'GeV'
-    elif var == 'm':  return 'GeV'
-    return ''
 
 def rho (m, pt):
     if   m  <= 0: return -1E+10
@@ -61,12 +39,17 @@ def main ():
     paths = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
     # Specify which variables to get. 
-    treename = 'BoostedJetISR/Fatjets/Nominal/dPhi/Postcut'
-    prefix   = 'plot_fatjet_'
-    getvars  = ['m', 'pt', 'pt_ut', 'tau21', 'tau21_ut']
+    #treename = 'BoostedJetISR/Fatjets/Nominal/dPhi/Postcut'
+    treename = 'BoostedJet+ISRgamma/EventSelection/Pass/NumFatjets/Postcut'
+    prefix   = ''
+    #getvars  = ['m', 'pt', 'pt_ut', 'tau21', 'tau21_ut']
+    getvars  = ['leadingfatjet_m', 'leadingfatjet_pt', 'tau21DDT']
 
     # Load data.
-    values = loadData(paths, treename, getvars, prefix, xsec, ignore = (lambda DSID: 305367 <= DSID <= 305374 ))
+    values = loadDataFast(paths, treename, getvars, prefix, xsec, 
+                          #ignore = (lambda DSID: 305367 <= DSID <= 305374 )
+                          keepOnly = (lambda DSID: 361039 <= DSID <= 361062 )
+                          )
 
     if not values: 
         print "WARNING: No value were loaded."
@@ -75,7 +58,11 @@ def main ():
     Nevents = len(values[getvars[0]])
 
 
+    values['m']  = values.pop('leadingfatjet_m')
+    values['pt'] = values.pop('leadingfatjet_pt')
+
     # -- Compute trimmed rho variables
+    '''
     print "Computing trimmed rho variables"
     values['rho']         = map(lambda (m,pt): rho     (m,pt), zip(values['m'], values['pt']))
     values['rhoPrime']    = map(lambda (m,pt): rhoPrime(m,pt), zip(values['m'], values['pt']))
@@ -88,13 +75,13 @@ def main ():
     values['rhoDDT_ut']   = map(lambda (m,pt): rhoDDT  (m,pt), zip(values['m'], values['pt_ut']))
 
     print "Done computing new variables"
-    
+    '''    
     
     # ==============================================================
     # Performing linear corrections
     # --------------------------------------------------------------
 
-    if True:
+    if False: #True:
 
         # Definitions
         pTcut = 150.
@@ -112,8 +99,9 @@ def main ():
             }
                 
         # Variables to correct
-        xvars   = ['rho',    'rhoPrime',    'rhoDDT']
-        yvars   = ['tau21']
+        #xvars   = ['rho',    'rhoPrime',    'rhoDDT']
+        xvars   = ['m']
+        yvars   = ['tau21DDT']
 
         # Standard profiles
         profiles = {
@@ -130,8 +118,8 @@ def main ():
         # Loop events, fill standard profiles
         for ievent in xrange(Nevents):
             for yvar, xvar in itertools.product(yvars, xvars):
-                if values['pt'][ievent] < pTcut: continue
-                if values['m'][ievent] > values['pt'][ievent] / 2.: continue # Boosted regime
+                #if values['pt'][ievent] < pTcut: continue
+                #if values['m'][ievent] > values['pt'][ievent] / 2.: continue # Boosted regime
                 profiles[yvar][xvar].Fill( values[xvar][ievent],
                                            values[yvar][ievent],
                                            values['weight'][ievent]
@@ -270,7 +258,7 @@ y in zip(values[xvar], values[yvar])])
         xvars = ['m']
         #yvars = ['tau21', 'tau21_ut']
         #yvars = ['tau21_mod_rhoDDT', 'tau21_mod_rhoPrime']
-        yvars = ['tau21']
+        yvars = ['tau21DDT']
 
         cutvars = [p[0] for p in cutsdict.items()]
 
@@ -305,7 +293,7 @@ y in zip(values[xvar], values[yvar])])
         for ievent in xrange(Nevents):
 
             # Require boosted regime
-            if boosted and values['m'][ievent] > values['pt'][ievent] / 2.: continue
+            #if boosted and values['m'][ievent] > values['pt'][ievent] / 2.: continue
 
             # Loop variables
             for yvar, xvar, cutvar in itertools.product(yvars, xvars, cutvars):

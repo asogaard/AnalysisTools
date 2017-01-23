@@ -1,8 +1,8 @@
 # Dear emacs, this is -*- python -*-
 import sys
 
-from AStyle     import *
-from AFunctions import *
+from snippets.style     import *
+from snippets.functions import *
 
 from ROOT  import *
 from array import array
@@ -55,7 +55,8 @@ def main ():
     gROOT.ProcessLine(".L ../share/Loader.C+");
    
     # Initial setup.
-    xsec = loadXsec('../share/weightsMC.csv')
+    #xsec = loadXsec('../share/weightsMC.csv')
+    xsec = loadXsec('../share/sampleInfo.csv')
     
     # Get list of file paths to plot from commandline arguments.
     paths = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
@@ -68,7 +69,10 @@ def main ():
     getvars  = ['m', 'pt', 'pt_ut', 'tau21', 'tau21_ut']
 
     # Load data.
-    values = loadData(paths, treename, getvars, prefix, xsec, ignore = (lambda DSID: 305367 <= DSID <= 305374 ))
+    values = loadData(paths, treename, getvars, prefix, xsec, 
+                      #ignore = (lambda DSID: 305367 <= DSID <= 305374 )
+                      keeponly= (lambda DSID: 361039 <= DSID <= 361062 )
+                      )
 
     if not values: 
         print "WARNING: No value were loaded."

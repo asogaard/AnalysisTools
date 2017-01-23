@@ -1,8 +1,8 @@
 # Dear emacs, this is -*- python -*-
 import sys
 
-from AStyle     import *
-from AFunctions import *
+from snippets.style     import *
+from snippets.functions import *
 
 from ROOT  import *
 from array import array
@@ -10,17 +10,6 @@ from array import array
 import math
 import itertools
 import time
-
-def displayName (var):
-    if   var == "pt": return "p_{T}"
-    elif var == "m":  return "M"
-    elif var == "rhoDDT":  return "#rho^{DDT}"
-    return var
-
-def displayUnit (var):
-    if   var == 'pt': return 'GeV'
-    elif var == 'm':  return 'GeV'
-    return ''
 
 # 2D interpolation
 from scipy import interpolate

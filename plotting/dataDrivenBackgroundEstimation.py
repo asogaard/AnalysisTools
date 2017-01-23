@@ -1,8 +1,8 @@
 # Dear emacs, this is -*- python -*-
 import sys
 
-from AStyle     import *
-from AFunctions import *
+from snippets.style     import *
+from snippets.functions import *
 
 from ROOT  import *
 from array import array
