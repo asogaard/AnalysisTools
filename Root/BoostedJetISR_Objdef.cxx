@@ -5,7 +5,7 @@
 #include <memory> /* shared_ptr */
 #include <cmath> /* log, pow */
 #include <cassert> /* assert */
-#include <algorithm> /* std::sort */
+#include <algorithm> /* std::sort, std::min */
 
 // ROOT include(s).
 #include "TROOT.h"
@@ -43,36 +43,12 @@ int main (int argc, char* argv[]) {
 
     // Load dictionaries and stuff.
     gROOT->ProcessLine(".L share/Loader.C+");
-    //gROOT->ProcessLine( "#include <vector>" );
-    //gROOT->LoadMacro( "share/TLorentzVectorDict.h+" );
     
-    
-    // Get input files.
-    vector<string> inputs;
-    
-    if (argc == 2) {
-        string path = string(argv[1]);
-        if (endsWith(path, ".root")) {
-            inputs.push_back(path);
-        } else {
-            /* Assuming list of file names */
-            ifstream file ( path.c_str() );
-            if (!file.is_open()) {
-                cout << "ERROR: Input file list not found. Exiting." << endl;
-                return 0;
-            }
-            string filename = "";
-            while ( file.good() ) {
-                std::getline ( file, filename );
-                if (filename == "") { continue; }
-                inputs.push_back(filename);
-            }
-            file.close();
-        }
-    } else {
-        for (unsigned i = 1; i < argc; i++) {
-            inputs.push_back( string(argv[i]) );
-        }
+    std::vector< std::string > inputs = getDatasetsFromCommandlineArguments(argc, argv);
+
+    if (inputs.size() == 0) {
+      FCTINFO("Found 0 input files. Exiting.");
+      return 0;
     }
     
     // Loop input files.
@@ -84,16 +60,14 @@ int main (int argc, char* argv[]) {
             cerr << "Unable to open file." << endl;
             return 0;
         }
-        
-        
+                
         // Get input tree.
         TTree* inputTree = (TTree*) inputFile.Get("nominal"); /* "outputTree" */
         if (!inputTree) {
             cerr << "Unable to retrieve tree." << endl;
             continue;
         }
-        
-        
+                
         // Get number of events.
         const unsigned nEvents = inputTree->GetEntries();
         if (nEvents == 0) {
@@ -101,86 +75,47 @@ int main (int argc, char* argv[]) {
             continue;
         }
         
-        
-        // Set up addresses for reading.
-        unsigned runNumber = 0;
-        unsigned lumiBlock = 0;
-        unsigned long long eventNumber = 0;
-        unsigned mcChannelNumber = 0;
-        float    weight_mc = 0;
-
-	vector< float > *ph_pt  = 0;
-	vector< float > *ph_eta = 0;
-	vector< float > *ph_phi = 0;
-
-	vector< float > *fj_pt  = 0;
-	vector< float > *fj_eta = 0;
-	vector< float > *fj_phi = 0;
-	vector< float > *fj_m   = 0;
-
-	vector< float > *fj_tau21 = 0;
-	vector< float > *fj_D2    = 0;
-
-	vector< float > *fjut_tau21 = 0;
-	vector< float > *fjut_pt    = 0;
-
-	bool HLT_g140_loose = false;
-	bool HLT_j380 = false;
-	bool HLT_j400 = false;
-
-	// -- Manually built.
+	// Manually built vectors.
 	vector<TLorentzVector> photons;
 	vector<TLorentzVector> fatjets;
 
-	vector< float > fj_dphiMinPhoton;
 	vector< float > fj_tau21DDT;
-	
-        // Set up branches for reading.
-	TBranch *runNumberBranch, *lumiBlockBranch, *eventNumberBranch;
 
-	TBranch *mcChannelNumberBranch, *weight_mcBranch;
-
-	TBranch *ph_ptBranch,    *ph_etaBranch,    *ph_phiBranch;
-	TBranch *fj_ptBranch, *fj_etaBranch, *fj_phiBranch, *fj_mBranch;
-	TBranch *fj_tau21Branch, *fj_D2Branch;
-	TBranch *fjut_tau21Branch, *fjut_ptBranch;
-
-	TBranch *HLT_g140_looseBranch;
-	TBranch *HLT_j380Branch;
-	TBranch *HLT_j400Branch;
-        
-        
-        // Connect branches to addresses.
-        inputTree->SetBranchAddress( "runNumber",         &runNumber,           &runNumberBranch );
-        //inputTree->SetBranchAddress( "lumiBlock",         &lumiBlock,           &lumiBlockBranch ); // @TODO: insert
-        inputTree->SetBranchAddress( "eventNumber",       &eventNumber,         &eventNumberBranch );
-        inputTree->SetBranchAddress( "mcChannelNumber",   &mcChannelNumber,     &mcChannelNumberBranch );
-        inputTree->SetBranchAddress( "weight_mc",         &weight_mc,           &weight_mcBranch );
+        // General, event-level information
+	auto runNumber       = readBranch< unsigned >          (inputTree, "runNumber");
+        auto lumiBlock       = readBranch< unsigned >          (inputTree, "lumiBlock");
+        auto eventNumber     = readBranch< unsigned long long >(inputTree, "eventNumber");
+        auto mcChannelNumber = readBranch< unsigned >          (inputTree, "mcChannelNumber");
+        auto weight_mc       = readBranch< float >             (inputTree, "weight_mc");
 	/* @TODO: Pile-up reweighting? */
 
 	// Photon kinematic quantities
-        inputTree->SetBranchAddress( "ph_pt",  &ph_pt , &ph_ptBranch );
-        inputTree->SetBranchAddress( "ph_eta", &ph_eta, &ph_etaBranch );
-        inputTree->SetBranchAddress( "ph_phi", &ph_phi, &ph_phiBranch );
+	auto ph_pt  = readBranchVector< float >(inputTree, "ph_pt");
+	auto ph_eta = readBranchVector< float >(inputTree, "ph_eta");
+	auto ph_phi = readBranchVector< float >(inputTree, "ph_phi");
 
 	// Trimmed jet kinematic quantities
-        inputTree->SetBranchAddress( "rljet_pt",  &fj_pt , &fj_ptBranch );
-        inputTree->SetBranchAddress( "rljet_eta", &fj_eta, &fj_etaBranch );
-        inputTree->SetBranchAddress( "rljet_phi", &fj_phi, &fj_phiBranch );
-        inputTree->SetBranchAddress( "rljet_m",   &fj_m,   &fj_mBranch );
+        auto fj_pt  = readBranchVector< float >(inputTree, "rljet_pt");
+        auto fj_eta = readBranchVector< float >(inputTree, "rljet_eta");
+        auto fj_phi = readBranchVector< float >(inputTree, "rljet_phi");
+        auto fj_m   = readBranchVector< float >(inputTree, "rljet_m");
 
 	// Trimmed jet substructure quantities
-        inputTree->SetBranchAddress( "rljet_Tau21_wta", &fj_tau21, &fj_tau21Branch );
-        inputTree->SetBranchAddress( "rljet_D2",        &fj_D2,    &fj_D2Branch );
+        auto fj_tau21 = readBranchVector< float >(inputTree, "rljet_Tau21_wta");
+        auto fj_D2    = readBranchVector< float >(inputTree, "rljet_D2");
 
 	// Untrimmed jet quantities
-        inputTree->SetBranchAddress( "utrljet_Tau21_wta", &fjut_tau21, &fjut_tau21Branch );
-        inputTree->SetBranchAddress( "utrljet_pt",        &fjut_pt,    &fjut_ptBranch );
+        auto fjut_tau21 = readBranchVector< float >(inputTree, "utrljet_Tau21_wta");
+        auto fjut_pt    = readBranchVector< float >(inputTree, "utrljet_pt");
 
 	// Trigger information
-        inputTree->SetBranchAddress( "HLT_g140_loose", &HLT_g140_loose, &HLT_g140_looseBranch );
-        inputTree->SetBranchAddress( "HLT_j380",       &HLT_j380,       &HLT_j380Branch );
-        inputTree->SetBranchAddress( "HLT_j400",       &HLT_j400,       &HLT_j400Branch );
+        auto HLT_g140_loose = readBranch< bool >(inputTree, "HLT_g140_loose");
+        auto HLT_j380       = readBranch< bool >(inputTree, "HLT_j380");
+        auto HLT_j400       = readBranch< bool >(inputTree, "HLT_j400");
+
+	// Pre-pre-selection
+	auto ISRgamma = readBranch< int >(inputTree, "ISRgamma");
+	auto ISRjet   = readBranch< int >(inputTree, "ISRjet");
 
         
          // Get GRL.
@@ -193,8 +128,8 @@ int main (int argc, char* argv[]) {
         // -------------------------------------------------------------------
         inputTree->GetEvent(0);
         
-        bool     isMC = (mcChannelNumber > 0);
-        unsigned DSID = (isMC ? mcChannelNumber : runNumber);
+        bool     isMC = (*mcChannelNumber > 0);
+        unsigned DSID = (isMC ? *mcChannelNumber : *runNumber);
 
         const string filedir  = "outputObjdef";
         const string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
@@ -205,13 +140,13 @@ int main (int argc, char* argv[]) {
         float weightDefault = 1.;
         float* weight = nullptr;
         if (isMC) {
-	  weight = &weight_mc; //->front();
+	  weight = weight_mc.get(); //->front();
         } else {
 	  weight = &weightDefault;
         }
 
-        
-         // Set up AnalysisTools
+
+	 // Set up AnalysisTools
         // -------------------------------------------------------------------       
 	Analysis ISRgammaAnalysis ("BoostedJet+ISRgamma");
 	Analysis ISRjetAnalysis   ("BoostedJet+ISRjet");
@@ -249,17 +184,7 @@ int main (int argc, char* argv[]) {
 	
 	  analysis->tree()->Branch("isMC",   &isMC);
 	  analysis->tree()->Branch("DSID",   &DSID);
-	}
-       
-        
-         // Copy histograms.
-        // -------------------------------------------------------------------
-	/*
-        TH1F* h_rawWeight = (TH1F*) inputFile.Get("h_rawWeight");
-        analysis.file()->cd();
-        h_rawWeight->Write();
-	*/
-        
+	}        
 
 
  	 // Plotting macros.
@@ -335,6 +260,20 @@ int main (int argc, char* argv[]) {
 	    return e.collection("Fatjets")->at(0).info("tau21"); 
 	  });
 
+	// Leading fatjet tau21 (mod rhoDDT)
+	PlotMacro1D<Event> plot_event_leadingFatjet_tau21DDT ("leadingfatjet_tau21DDT", [&rhoDDT](const Event& e) {
+	  if (e.collection("Fatjets")->size() == 0) { return -9999.; }	  
+	  return e.collection("Fatjets")->at(0).info("tau21DDT");
+	});
+
+	// Leading fatjet D2
+	PlotMacro1D<Event> plot_event_leadingFatjet_D2 ("leadingfatjet_D2");
+	plot_event_leadingFatjet_D2.setFunction( [](const Event& e) { 
+	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
+	    return e.collection("Fatjets")->at(0).info("D2"); 
+	  });
+
+
 	// Photon pt.
         PlotMacro1D<Event> plot_event_leadingPhoton_pt ("leadingphoton_pt");
 	plot_event_leadingPhoton_pt.setFunction([](const Event& e) { 
@@ -387,6 +326,12 @@ int main (int argc, char* argv[]) {
 	    return p.M() / 1000.; 
 	  });
 
+	// Physics object rhoDDT
+	PlotMacro1D<PhysicsObject> plot_object_rhoDDT ("rhoDDT");
+	plot_object_rhoDDT.setFunction([&rhoDDT](const PhysicsObject& p) { 
+	    return rhoDDT(p);
+	  });
+
 	// Physics object eta.
 	PlotMacro1D<PhysicsObject> plot_object_eta ("eta");
 	plot_object_eta.setFunction([](const PhysicsObject& p) { 
@@ -400,52 +345,36 @@ int main (int argc, char* argv[]) {
 	  });
 
 	// Physics object (jet) tau21.
-	PlotMacro1D<PhysicsObject> plot_object_tau21 ("plot_object_tau21");
+	PlotMacro1D<PhysicsObject> plot_object_tau21 ("tau21");
 	plot_object_tau21.setFunction([](const PhysicsObject& p) { 
 	    return p.info("tau21"); 
 	  });
 
 	// Physics object (jet) untrimmed tau21.
-	PlotMacro1D<PhysicsObject> plot_object_tau21_ut ("plot_object_tau21_ut", [](const PhysicsObject& p) { 
+	PlotMacro1D<PhysicsObject> plot_object_tau21_ut ("tau21_ut", [](const PhysicsObject& p) { 
 	    return p.info("tau21_ut"); 
 	  });
 
 	// Physics object (jet) untrimmed pT.
-	PlotMacro1D<PhysicsObject> plot_object_pt_ut ("plot_object_pt_ut");
+	PlotMacro1D<PhysicsObject> plot_object_pt_ut ("pt_ut");
 	plot_object_pt_ut.setFunction([](const PhysicsObject& p) { 
 	    return p.info("pt_ut") / 1000.; 
 	  });
 
 	// Physics object (jet) D2.
-	PlotMacro1D<PhysicsObject> plot_object_D2 ("plot_object_D2");
+	PlotMacro1D<PhysicsObject> plot_object_D2 ("D2");
 	plot_object_D2.setFunction([](const PhysicsObject& p) { 
 	    return p.info("D2"); 
 	  });
 
-	// Leading fatjet tau21 (mod rhoDDT)
-	PlotMacro1D<Event> plot_event_leadingFatjet_tau21DDT ("tau21DDT", [&rhoDDT](const Event& e) {
-	  if (e.collection("Fatjets")->size() == 0) { return -9999.; }	  
-	  //double rhoDDT_val = rhoDDT(e.collection("Fatjets")->at(0));
-	  //double p0 =  0.6887;
-	  //double p1 = -0.0941;
-	  //double tau21 = e.collection("Fatjets")->at(0).info("tau21");
-	  //auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	  //return tau21 + (mod(1.0) - mod(rhoDDT_val));
-	  return e.collection("Fatjets")->at(0).info("tau21DDT");
-	});
         
-
-
-        // Pseudo-objdefs (for creating collections).
+         // Pseudo-objdefs (for creating collections).
         // -------------------------------------------------------------------
-
 	// * All fatjets.
         ObjectDefinition<TLorentzVector> AllFatjetsObjdef ("AllFatjets");
 
 	AllFatjetsObjdef.setInput(&fatjets);
 	AllFatjetsObjdef.addCut(Cut<PhysicsObject>("nop", [](const PhysicsObject& p) { return true; }));
-
-        PhysicsObjects* AllFatjets = AllFatjetsObjdef.result();
         
 	// * All photons.
         ObjectDefinition<TLorentzVector> AllPhotonsObjdef ("AllPhotons");
@@ -453,27 +382,32 @@ int main (int argc, char* argv[]) {
 	AllPhotonsObjdef.setInput(&photons);
 	AllPhotonsObjdef.addCut(Cut<PhysicsObject>("nop", [](const PhysicsObject& p) { return true; }));
 
-        PhysicsObjects* AllPhotons = AllPhotonsObjdef.result();
         
-        
-        // Pre-selection
+         // Pre-selection
         // -------------------------------------------------------------------
-
         EventSelection preSelection ("PreSelection");
 	preSelection.setDebug(debug);	
-        preSelection.addInfo("HLT_j380", &HLT_j380);
-        preSelection.addInfo("HLT_j400", &HLT_j400);
-        preSelection.addInfo("HLT_g140_loose", &HLT_g140_loose);
+        preSelection.addInfo("HLT_j380",       HLT_j380.get());
+        preSelection.addInfo("HLT_j400",       HLT_j400.get());
+        preSelection.addInfo("HLT_g140_loose", HLT_g140_loose.get());
 
-        //preSelection.addCollection("Fatjets", AllFatjets);
-        //preSelection.addCollection("Photons", AllPhotons);
+        preSelection.addInfo("ISRgamma", ISRgamma.get());
+        preSelection.addInfo("ISRjet",   ISRjet.get());
+
 	preSelection.addCollection("Fatjets", "AllFatjets");
 	preSelection.addCollection("Photons", "AllPhotons");
+
+	// * Initial
+        Cut<Event> cut_event_initial ("Initial");
+        cut_event_initial.setFunction( [](const Event& e) { 
+	    return e.info("ISRgamma");
+	  });
+        preSelection.addCut(cut_event_initial);
 
         // * GRL
 	Cut<Event> event_grl ("GRL");
         event_grl.setFunction( [&grl2015, &grl2016, &isMC, &runNumber, &lumiBlock](const Event& e) { 
-	    return isMC || grl2015.contains(runNumber, lumiBlock) || grl2016.contains(runNumber, lumiBlock);
+	    return isMC || grl2015.contains(*runNumber, *lumiBlock) || grl2016.contains(*runNumber, *lumiBlock);
 	  });
 	preSelection.addCut(event_grl);
 
@@ -491,17 +425,9 @@ int main (int argc, char* argv[]) {
 	  });
         preSelection.addCut(cut_event_trigger);
 
-        //cut_event_trigger.setFunction( [](const Event& e) { 
-	//   return e.info("HLT_j380") || e.info("HLT_g140_loose"); 
-	//  });
-        //preSelection.addCut(cut_event_trigger);
-
 	// * Trigger efficiency turn-on vs. leading jet pt.
         preSelection.addPlot(CutPosition::Pre,  plot_event_leadingFatjet_pt);
         preSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
-
-        //preSelection.addPlot(CutPosition::Pre,  plot_event_leadingPhoton_pt);
-        //preSelection.addPlot(CutPosition::Post, plot_event_leadingPhoton_pt);
 
         preSelection.addPlot(CutPosition::Pre,  plot_event_HLT_j380);
         preSelection.addPlot(CutPosition::Post, plot_event_HLT_j380);
@@ -512,12 +438,11 @@ int main (int argc, char* argv[]) {
         preSelection.addPlot(CutPosition::Pre,  plot_event_HLT_g140_loose);
         preSelection.addPlot(CutPosition::Post, plot_event_HLT_g140_loose);
 
-        
-
-        // Object definitions
+       
+         // Object definitions
         // -------------------------------------------------------------------
 
-        // Photons.
+         // Photons.
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ObjectDefinition<TLorentzVector> PhotonObjdef ("Photons");
 
@@ -533,9 +458,9 @@ int main (int argc, char* argv[]) {
         PhotonObjdef.addPlot(CutPosition::Post, plot_object_pt);
         PhotonObjdef.addPlot(CutPosition::Post, plot_object_eta);
         PhotonObjdef.addPlot(CutPosition::Post, plot_object_phi);
-        
 
-        // Jets.
+	
+         // Jets.
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ObjectDefinition<TLorentzVector> FatjetObjdef ("Fatjets");
 
@@ -543,11 +468,10 @@ int main (int argc, char* argv[]) {
 
         FatjetObjdef.setInput(&fatjets);
    
-        FatjetObjdef.addInfo("tau21",       fj_tau21);
-	FatjetObjdef.addInfo("tau21_ut",    fjut_tau21);
-	FatjetObjdef.addInfo("pt_ut",       fjut_pt);
-        FatjetObjdef.addInfo("D2",          fj_D2);
-        FatjetObjdef.addInfo("dPhiPhoton", &fj_dphiMinPhoton);
+        FatjetObjdef.addInfo("tau21",    fj_tau21);
+	FatjetObjdef.addInfo("tau21_ut", fjut_tau21);
+	FatjetObjdef.addInfo("pt_ut",    fjut_pt);
+        FatjetObjdef.addInfo("D2",       fj_D2);
 
         // * eta
         Cut<PhysicsObject> cut_fatjet_eta ("Eta");
@@ -561,32 +485,26 @@ int main (int argc, char* argv[]) {
         Cut<PhysicsObject> cut_fatjet_pt ("pT");
         cut_fatjet_pt.setFunction( [](const PhysicsObject& p) { return p.Pt() / 1000.; } );
         cut_fatjet_pt.setRange(150., inf);	
-	//cut_fatjet_pt.setRange(400., inf);
         FatjetObjdef.addCut(cut_fatjet_pt);
-
-        // * dPhi(photon)
-        Cut<PhysicsObject> cut_fatjet_dphi ("dPhi");
-        cut_fatjet_dphi.setFunction( [](const PhysicsObject& p) { return p.info("dPhiPhoton"); } );
-        cut_fatjet_dphi.setRange(pi/2., inf);
-        FatjetObjdef.addCut(cut_fatjet_dphi);
 
 	// * Boosted regime
 	Cut<PhysicsObject> cut_fatjet_BoostedRegime ("BoostedRegime");
 	cut_fatjet_BoostedRegime.setFunction( [](const PhysicsObject& p) { 
-	    return p.Pt() > 2 * p.M();
+	    return p.Pt() / (2. * p.M());
 	  });
+	cut_fatjet_BoostedRegime.addRange(1., inf);
 	FatjetObjdef.addCut(cut_fatjet_BoostedRegime);
 
 	// * rhoDDT
 	Cut<PhysicsObject> cut_fatjet_rhoDDT ("rhoDDT");
 	cut_fatjet_rhoDDT.setFunction( [&rhoDDT](const PhysicsObject& p) { 
-	    return rhoDDT(p);
-	  });
-	cut_fatjet_rhoDDT.addRange(1.0, inf);
+	   return rhoDDT(p);
+	});
+	cut_fatjet_rhoDDT.addRange(1.5, inf);
 	FatjetObjdef.addCut(cut_fatjet_rhoDDT);
 
 	// * computing tau21DDT value
-	Operation<PhysicsObject> operation_fatjet_tau21DDT ("tau21DDT");
+	Operation<PhysicsObject> operation_fatjet_tau21DDT ("compute_tau21DDT");
 	operation_fatjet_tau21DDT.setFunction( [&tau21DDT](PhysicsObject& p) { 
 	    p.addInfo("tau21DDT", tau21DDT(p));
 	    return true;
@@ -596,6 +514,7 @@ int main (int argc, char* argv[]) {
         // * Check distributions.
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_pt);
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_m);
+        FatjetObjdef.addPlot(CutPosition::Post, plot_object_rhoDDT);
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_eta);
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_phi);
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_tau21);
@@ -603,18 +522,15 @@ int main (int argc, char* argv[]) {
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_pt_ut);
         FatjetObjdef.addPlot(CutPosition::Post, plot_object_D2);
 
-
         
-        // Stuff for binding selections together.
+         // Stuff for binding selections together.
         // -------------------------------------------------------------------
-
 	PhysicsObjects* SelectedPhotons = PhotonObjdef.result(); //"Nominal");
         PhysicsObjects* SelectedFatjets = FatjetObjdef.result("Nominal");
 
                 
-        // Event selection
+         // Event selection
         // -------------------------------------------------------------------
-
         EventSelection eventSelection ("EventSelection");
 	eventSelection.setDebug(debug);
 
@@ -622,15 +538,12 @@ int main (int argc, char* argv[]) {
 
 	eventSelection.addCategories({"Pass", "Fail"});
 
-        //eventSelection.addCollection("Photons", SelectedPhotons);
-        //eventSelection.addCollection("Fatjets", SelectedFatjets);
         eventSelection.addCollection("Photons", "Photons");
         eventSelection.addCollection("Fatjets", "Fatjets");
 
         // * Photon count
         Cut<Event> cut_event_NumPhotons ("NumPhotons");
         cut_event_NumPhotons.setFunction( [](const Event& e) { 
-	    //FCTINFO("      Number of photons: %d", e.collection("Photons")->size());
 	    return e.collection("Photons")->size(); 
 	  });
         cut_event_NumPhotons.addRange(1);
@@ -653,7 +566,32 @@ int main (int argc, char* argv[]) {
 	  });
         cut_event_Njets.addRange(1, inf);
         eventSelection.addCut(cut_event_Njets);
-      
+
+	// * Fatjet dPhi
+        Operation<Event> operation_event_fatjet_photon_dPhi ("dPhiFatjetPhoton");
+        operation_event_fatjet_photon_dPhi.setFunction( [](const Event& e) {
+	    // Since we're removing jets from the container, this function needs
+	    // to be run only once. Therefore, it is implemented as an Operation
+	    // rather than as a Cut.
+	    for (unsigned i = e.collection("Fatjets")->size(); i --> 0; ) {
+	      float dPhiMin = pi;
+	      for (const auto& photon : *e.collection("Photons")) {
+		float dPhi = fabs(e.collection("Fatjets")->at(i).DeltaPhi(photon));
+		dPhiMin = std::min(dPhiMin, dPhi);
+	      }
+	      // Discared jets within |dphi| < pi/2 of _the_ signal photon
+	      if (dPhiMin < pi/2.) {
+		e.collection("Fatjets")->erase(e.collection("Fatjets")->begin() + i);
+	      }
+	    }
+	    return true;
+	  });
+        eventSelection.addOperation(operation_event_fatjet_photon_dPhi);
+
+        // * Fatjet count (after dPhi-cut)
+        Cut<Event> cut_event_NjetsAfterDphi (cut_event_Njets);
+	cut_event_NjetsAfterDphi.setName("NumFatjetsAfterDphi");
+        eventSelection.addCut(cut_event_NjetsAfterDphi);      
 
 	// * Choose lowest-tau21DDT fat jet.
 	Operation<Event> operation_event_fatjetambiguity ("FatjetAmbiguity");
@@ -672,7 +610,7 @@ int main (int argc, char* argv[]) {
 	    return true;
 	  });
 	eventSelection.addOperation(operation_event_fatjetambiguity);
-
+	/* @TODO: Apply only for ISRjet */
 
 	// * Blinding.
 	Cut<Event> cut_event_blinding ("Blinding");
@@ -680,24 +618,74 @@ int main (int argc, char* argv[]) {
 	    return (!blind or e.info("isMC"));
 	  });
 	eventSelection.addCut(cut_event_blinding, "Pass");
-	
-
+       
 	// * tau21DDT
-	Cut<Event> cut_event_leadingFatjet_tau21DDT ("tau21DDT");
+	Cut<Event> cut_event_leadingFatjet_tau21DDT ("tau21DDT_0p50");
         cut_event_leadingFatjet_tau21DDT.setFunction( [](const Event& e) {
-	    //double rhoDDT_val = rhoDDT(e.collection("Fatjets")->at(0));
-	    //double p0 =  0.6887;
-	    //double p1 = -0.0941;
-	    //double tau21 = e.collection("Fatjets")->at(0).info("tau21");
-	    //auto mod = [&p0, &p1] (const double& x) { return p0 + p1 * x; };
-	    //return tau21 + (mod(1.0) - mod(rhoDDT_val));
 	    return e.collection("Fatjets")->at(0).info("tau21DDT");
           });
+	cut_event_leadingFatjet_tau21DDT.setRange(0.5, inf);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Fail");
+
 	cut_event_leadingFatjet_tau21DDT.setRange(-inf, 0.5);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Pass");
 
-	cut_event_leadingFatjet_tau21DDT.setRange(0.5, inf);
-	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Fail");
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p45 ("tau21DDT_0p45");
+        cut_event_leadingFatjet_tau21DDT_0p45.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p45.setRange(-inf, 0.45);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p45, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p40 ("tau21DDT_0p40");
+        cut_event_leadingFatjet_tau21DDT_0p40.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p40.setRange(-inf, 0.4);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p40, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p35 ("tau21DDT_0p35");
+        cut_event_leadingFatjet_tau21DDT_0p35.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p35.setRange(-inf, 0.35);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p35, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p30 ("tau21DDT_0p30");
+        cut_event_leadingFatjet_tau21DDT_0p30.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p30.setRange(-inf, 0.3);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p30, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p25 ("tau21DDT_0p25");
+        cut_event_leadingFatjet_tau21DDT_0p25.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p25.setRange(-inf, 0.25);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p25, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p20 ("tau21DDT_0p20");
+        cut_event_leadingFatjet_tau21DDT_0p20.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p20.setRange(-inf, 0.2);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p20, "Pass");
+
+	// - - -
+	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p10 ("tau21DDT_0p10");
+        cut_event_leadingFatjet_tau21DDT_0p10.setFunction( [](const Event& e) {
+	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+          });
+	cut_event_leadingFatjet_tau21DDT_0p10.setRange(-inf, 0.1);
+	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p10, "Pass");
+
 
 	// Adding commin plotting macros.
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_pt);
@@ -705,19 +693,19 @@ int main (int argc, char* argv[]) {
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_eta);
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_phi);
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_rhoDDT);
+	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_D2);
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_tau21);
 	eventSelection.addPlot(CutPosition::Post, plot_event_leadingFatjet_tau21DDT);
 
 
-        // Adding selections.
+         // Adding selections.
         // -------------------------------------------------------------------
-        
+       
 	// Pseudo-object definitions.
 	ISRgammaAnalysis.addSelection(&AllFatjetsObjdef);
 	ISRgammaAnalysis.addSelection(&AllPhotonsObjdef);
 
 	ISRjetAnalysis.addSelection(&AllFatjetsObjdef);
-
 
 	// Preselection.
 	ISRgammaAnalysis.addSelection(&preSelection);
@@ -725,6 +713,9 @@ int main (int argc, char* argv[]) {
 	for (const auto& cat : preSelection.categories()) {
 	  preSelection.cut("Trigger", cat)->setFunction( [](const Event& e) {
 	      return e.info("HLT_j380");
+	    });
+	  preSelection.cut("Initial", cat)->setFunction( [](const Event& e) {
+	      return e.info("ISRjet");
 	    });
 	}
 	ISRjetAnalysis.addSelection(&preSelection);
@@ -739,78 +730,41 @@ int main (int argc, char* argv[]) {
 	// Event selection.
 	ISRgammaAnalysis.addSelection(&eventSelection);
 
-	eventSelection.removeCut("NumPhotons");
+	eventSelection.removeCut      ("NumPhotons");
+	eventSelection.removeCut      ("NumFatjetsAfterDphi");
+	eventSelection.removeOperation("dPhiFatjetPhoton");
 	for (const auto& cat : eventSelection.categories()) {
 	  eventSelection.cut("NumFatjets", cat)->setRange(2,inf);
 	}
 	ISRjetAnalysis.addSelection(&eventSelection);
-	  
         
  
-	// Duplicate event control.
+	 // Duplicate event control.
 	// -------------------------------------------------------------------
 	map<unsigned, set<unsigned> > uniqueEvents;
 
         
-        // Event loop.
+         // Event loop.
         // -------------------------------------------------------------------
 
 	//ISRgammaAnalysis.print();
-	//ISRjetAnalysis.print();
-        
+	//ISRjetAnalysis.print();        
+
         for (unsigned iEvent = 0; iEvent < nEvents; iEvent++) {
             
             inputTree->GetEvent(iEvent);
 
 	    // Reject duplicate events.
-            auto ret = uniqueEvents[DSID].emplace(eventNumber);
+            auto ret = uniqueEvents[DSID].emplace(*eventNumber);
             if (!ret.second) { continue; }
 
 	    // Build input collections.
 	    // -- Photons.
-	    photons.clear();
-	    float current_pt = inf;
-	    for (unsigned i = 0; i < ph_pt->size(); i++) {
-	      TLorentzVector photon;
-	      if (ph_pt->at(i) == 0.) { continue; }
-	      photon.SetPtEtaPhiM( ph_pt ->at(i),
-				   ph_eta->at(i),
-				   ph_phi->at(i),
-				   0 );
-	      if (ph_pt->at(i) > current_pt) {
-		std::cout << "WARNING: Photon " << i + 1 << "has greater pT (" << ph_pt->at(i) << ") than the previous one (" << current_pt <<  ")." << std::endl;
-	      }
-	      current_pt = ph_pt->at(i);
-	      photons.push_back( photon );
-	    }
+	    std::vector<float> ph_m (ph_pt->size(), 0);
+	    photons = createFourVectors(*ph_pt, *ph_eta, *ph_phi, ph_m);
             
 	    // -- Large radius (fat) jets
-	    fatjets.clear();
-	    fj_dphiMinPhoton.clear();
-	    current_pt = inf;
-	    for (unsigned i = 0; i < fj_pt->size(); i++) {
-	      TLorentzVector fatjet;
-	      if (fj_pt->at(i) == 0.) { continue; }
-	      fatjet.SetPtEtaPhiM( fj_pt ->at(i),
-				   fj_eta->at(i),
-				   fj_phi->at(i),
-				   fj_m  ->at(i) );
-	      if (fj_pt->at(i) > current_pt) {
-		std::cout << "WARNING: Fatjet " << i + 1 << "has greater pT (" << fj_pt->at(i) << ") than the previous one (" << current_pt <<  ")." << std::endl;
-	      }
-	      current_pt = fj_pt->at(i);
-	      fatjets.push_back( fatjet );
-
-	      // ---- Minimum dphi to a photon.
-	      float dPhiMin = pi;
-	      for (const TLorentzVector& photon : photons) {
-		float dPhi = fatjet.Phi() - photon.Phi();
-		while (dPhi < 0) { dPhi += 2 * pi; }
-		if (dPhi > pi) { dPhi = 2 * pi - dPhi; }
-		dPhiMin = (dPhi < dPhiMin ? dPhi : dPhiMin);
-	      }
-	      fj_dphiMinPhoton.push_back(dPhiMin);
-	    }
+	    fatjets = createFourVectors(*fj_pt, *fj_eta, *fj_phi, *fj_m);
             
             // Run AnalysisTools.
 	    for (auto* analysis : analyses) {
@@ -820,21 +774,20 @@ int main (int argc, char* argv[]) {
 	      // If event doesn't pass selection, do not proceed (e.g. to write objects to file).
 	      if (!status) { continue; }
 	      
-	      // Fill output branches
+	       // Fill output branches
 	      // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	      // -- Photons
+	      // Photons
 	      signalPhotons.clear();            
 	      for (const PhysicsObject& p : *SelectedPhotons) {
                 signalPhotons.push_back( (TLorentzVector) p );
 	      }
 	      
-	      // -- Jets
+	      // Jets
 	      signalFatjets.clear();            
 	      for (const PhysicsObject& p : *SelectedFatjets) {
                 signalFatjets.push_back( (TLorentzVector) p );
 	      }
-
 	      
 	      // Write to output tree.
 	      analysis->writeTree();
@@ -844,6 +797,7 @@ int main (int argc, char* argv[]) {
         }
 
 
+	// @TODO: Improve?
 	//for (auto* analysis : analyses) {
 	analyses[0]->save();
 	//}
