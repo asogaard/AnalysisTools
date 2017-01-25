@@ -23,6 +23,7 @@
 #include "AnalysisTools/Event.h"
 #include "AnalysisTools/Selection.h"
 #include "AnalysisTools/Cut.h"
+#include "AnalysisTools/Info.h"
 
 using namespace std;
 
@@ -52,7 +53,10 @@ namespace AnalysisTools {
         //void addCollection (const string& name, vector<TLorentzVector>* collection);// @TODO: Add such a method?
         
         template <class U>
-        void addInfo (const string& name, const U* info);
+	void addInfo (const string& name, const U* info) {
+	  m_info.add(name, info);
+	  return;
+	}
   
         
         // Get method(s).
@@ -83,11 +87,7 @@ namespace AnalysisTools {
 	map< string, std::pair<string, string> > m_collections;
         map< string, bool >            m_passes;
 
-        map< string, const double* > m_infoDouble;
-        map< string, const float* >  m_infoFloat;
-        map< string, const int* >    m_infoInt;
-        map< string, const bool* >   m_infoBool;
-
+	BasicInfo m_info;
         
     };
 

@@ -20,6 +20,7 @@
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Selection.h"
 #include "AnalysisTools/Cut.h"
+#include "AnalysisTools/Info.h"
 
 using namespace std;
 
@@ -44,17 +45,20 @@ namespace AnalysisTools {
         // Set method(s).
         void setInput  (const vector<T>* candidates);
         
-        //template<class W>
-        void addInfo (const string& name, const vector<double>* info);
-        void addInfo (const string& name, const vector<float> * info);
-        void addInfo (const string& name, const vector<int>   * info);
-        void addInfo (const string& name, const vector<bool>  * info);
-        /* @TODO: Do proper templating? */
+        template<class W>
+	inline void addInfo (const string& name, const vector<W>* info) {
+	  // Fully tempalted functions need to be visible to compiler, hence implementation in header.
+	  m_info.add<W>(name, info);
+	  return;
+	}
         
         
         // Get method(s).
         template <class W>
-        const vector<W>* info (const string& name);
+	inline const vector<W>* info (const string& name) {
+	  // Fully tempalted functions need to be visible to compiler, hence implementation in header.
+	  return m_info.get<W>(name);
+	}
 
         
         // High-level management method(s).
@@ -80,11 +84,7 @@ namespace AnalysisTools {
         
         const vector<T>* m_input = nullptr; /* Universal; not category-specific. */
         
-        map<string, const vector<double>* > m_infoDouble;
-        map<string, const vector<float>* >  m_infoFloat;
-        map<string, const vector<int>* >    m_infoInt;
-        map<string, const vector<bool>* >   m_infoBool;
-        
+	VectorInfo m_info;
         
     };
 

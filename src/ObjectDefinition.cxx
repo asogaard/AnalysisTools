@@ -9,64 +9,10 @@ namespace AnalysisTools {
         return;
     }
     
-    template <class T>
-    void ObjectDefinition<T>::addInfo (const string& name, const vector<double>* info) {
-        assert( m_infoDouble.count(name) == 0);
-        assert( m_infoFloat .count(name) == 0);
-        assert( m_infoInt   .count(name) == 0);
-        assert( m_infoBool  .count(name) == 0);
-        m_infoDouble[name] = info;
-        return;
-    }
-    
-    template <class T>
-    void ObjectDefinition<T>::addInfo (const string& name, const vector<float>* info) {
-        assert( m_infoDouble.count(name) == 0);
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoFloat[name] = info;
-        return;
-    }
-    
-    template <class T>
-    void ObjectDefinition<T>::addInfo (const string& name, const vector<int>* info) {
-        assert( m_infoDouble.count(name) == 0);
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoInt[name] = info;
-        return;
-    }
-    
-    template <class T>
-    void ObjectDefinition<T>::addInfo (const string& name, const vector<bool>* info) {
-        assert( m_infoDouble.count(name) == 0);
-        assert( m_infoFloat.count(name) == 0);
-        assert( m_infoInt  .count(name) == 0);
-        assert( m_infoBool .count(name) == 0);
-        m_infoBool[name] = info;
-        return;
-    }
-    
     
     // Get method(s).
-    template <class T>
-    template <class W>
-    const vector<W>* ObjectDefinition<T>::info (const string& name) {
-        if (m_infoDouble.count(name) > 0) {
-            return m_infoDouble(name);
-        }
-        if (m_infoInt.count(name) > 0) {
-            return m_infoInt(name);
-        }
-        if (m_infoBool.count(name) > 0) {
-            return m_infoBool(name);
-        }
-        return nullptr;
-    }
+    // ...
 
-    
     
     // High-level management method(s).
     template <class T>
@@ -85,18 +31,19 @@ namespace AnalysisTools {
         for (unsigned i = 0; i < this->m_input->size(); i++) {
             for (const auto& category : this->m_categories) {
                 PhysicsObject p ((T) this->m_input->at(i));
-                for (const auto& name_val : this->m_infoDouble) {
+                for (const auto& name_val : m_info.container<double>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : this->m_infoFloat) {
+                for (const auto& name_val : m_info.container<float>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : this->m_infoInt) {
+                for (const auto& name_val : m_info.container<bool>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : this->m_infoBool) {
+                for (const auto& name_val : m_info.container<int>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
+
                 m_candidates[category].emplace_back(p);
             }
         }
@@ -179,4 +126,3 @@ namespace AnalysisTools {
 }
 
 template class AnalysisTools::ObjectDefinition<TLorentzVector>;
-//template class AnalysisTools::ObjectDefinition<AnalysisTools::PhysicsObject>;
