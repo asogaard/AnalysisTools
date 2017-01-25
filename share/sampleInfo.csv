@@ -1,4 +1,4 @@
-# ----------------------------------------------------------------------------------------
+0;95;0c# ----------------------------------------------------------------------------------------
 # MC format:
 #   Dataset ID | cross section [fb] | number of events | gen. filt. eff | physics name
 # Data format:
@@ -68,13 +68,11 @@
 306115, 4.5898000e+06,    48000, 1.0981e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp050_gSp5
 306116, 4.2893000e+06,    49000, 1.1446e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp060_gSp5
 306117, 3.7709000e+06,    50000, 1.2190e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp080_gSp5
-306118, 3.4021000e+06,    49000, 1.2439e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp100_gSp5
 306118, 3.4021000e+06,    50000, 1.2439e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp100_gSp5
 306119, 3.0899000e+06,    50000, 1.1743e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp130_gSp5
 306120, 3.1420000e+06,    50000, 1.0410e-02, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp160_gSp5
 306121, 3.5859000e+06,    50000, 8.4511e-03, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp190_gSp5
 306122, 3.3632000e+06,    50000, 8.4067e-03, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp220_gSp5
-306122, 3.3632000e+06,    49000, 8.4067e-03, MGPy8EG_N30LO_A14N23LO_dmA_jjj_Jet350P100_mRp220_gSp5
 
 
 # ========================================================================================
@@ -101,7 +99,7 @@
 361021, 7.8420000e+13,  1999000, 6.7075e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ1W
 361022, 2.4332000e+12,  1994600, 3.3264e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2W
 361023, 2.6454000e+10,  7884500, 3.1963e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ3W
-361024, 2.5463000e+08,  7979800, 5.3015e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ4W
+#361024, 2.5463000e+08,  7979800, 5.3015e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ4W
 361025, 4.5535000e+06,  7977600, 9.2196e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ5W
 361026, 2.5753000e+05,  1893400, 9.4016e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ6W
 361027, 1.6215000e+04,  1770200, 3.9216e-04, Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ7W
