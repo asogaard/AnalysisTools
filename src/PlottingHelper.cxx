@@ -2,13 +2,6 @@
 
 namespace AnalysisTools {
 
-  /// Utility function for creating and moving unique pointer.
-  /*template<typename T>
-  std::unique_ptr<T> makeUniqueMove (T* p) {
-    return std::move(std::unique_ptr<T>(p));
-    }*/
-
-
   /// Set method(s).
   // ---------------------------------------------------------------------------
 
@@ -171,6 +164,12 @@ namespace AnalysisTools {
     m_normalised = normalised;
     return;
   }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::setSortBackgrounds (const bool& sortBackgrounds) {
+    m_sortBackgrounds = sortBackgrounds;
+    return;
+  }
   
   
   /// Get method(s). 
@@ -251,23 +250,49 @@ namespace AnalysisTools {
     
     // Sort backgrounds by integral.
     m_backgroundsSorted.clear();
-    for (const auto& p : m_backgrounds) {
-      m_backgroundsSorted.push_back(std::pair<std::string, HistType*>(p.first, p.second.get()));
+
+    if (m_sortBackgrounds) {
+      // Sort by area, large at bottom.
+      for (const auto& p : m_backgrounds) {
+	m_backgroundsSorted.push_back(std::pair<std::string, HistType*>(p.first, p.second.get()));
+      }
+      std::sort(m_backgroundsSorted.begin(), m_backgroundsSorted.end(),
+		[](const pair<string, HistType*> & p1, const pair<string, HistType*> & p2) -> bool
+		{
+		  return p1.second->Integral() < p2.second->Integral();
+		});
+    } else {
+      // Try to order, top-to-bottom, and then order the remainder by alphabetic order.
+      std::vector< std::string > tryOrder = {};
+      for (const std::string& name : tryOrder) {
+	if (m_backgrounds.count(name) > 0) {
+	  m_backgroundsSorted.push_back(std::pair<std::string, HistType*>(name, m_backgrounds.at(name).get()));
+	}
+      }
+      for (const auto& p : m_backgrounds) {
+	if (std::find(tryOrder.begin(), tryOrder.end(), p.first) == tryOrder.end()) {
+	  // Name 'p.first' is not in 'tryOrder' and thus hasn't been added yet.
+	  m_backgroundsSorted.push_back(std::pair<std::string, HistType*>(p.first, p.second.get()));
+	}
+      }
+      // Reverse.
+      std::reverse(m_backgroundsSorted.begin(), m_backgroundsSorted.end()); 
     }
-    std::sort(m_backgroundsSorted.begin(), m_backgroundsSorted.end(),
-	      [](const pair<string, HistType*> & p1, const pair<string, HistType*> & p2) -> bool
-	      {
-		return p1.second->Integral() < p2.second->Integral();
-	      });
-    
+
     std::unique_ptr<THStack> background (new THStack("StackedBackgrounds", ""));
     for (const auto& p : m_backgroundsSorted) {
+      INFO(" -- Adding background '%s'.", p.first.c_str());
       background->Add(p.second);
     }
     
     // Drawing (main pad).
     DEBUG("Going to first pad.");
     m_pads.first->cd();
+
+    DEBUG("Drawing stacked background histogram...");
+    background->Draw("HIST");
+    gPad->Update();
+    DEBUG("... Done!");
     
     // Get plot maximum.
     DEBUG("Getting plot maximum");
@@ -299,7 +324,7 @@ namespace AnalysisTools {
     DEBUG("Drawing background.");
     m_sum->DrawCopy("AXIS");
     background->Draw("HIST same");
-    m_sum->DrawCopy("E3 same"); // E2
+    m_sum->DrawCopy("E2 same"); // E2
     
     // -- Signal
     DEBUG("Drawing signal.");
@@ -660,6 +685,7 @@ namespace AnalysisTools {
     DEBUG("Writing canvas.");
     m_canvas->Write();
     string savename = replaceAll(m_input + "/" + m_branch + (m_improvementDirection != -1 ? "_improvement" : ""), "/", "__");
+    INFO("Saving '%s'.", savename.c_str());
     m_canvas->SaveAs((m_outdir + savename + ".pdf").c_str());
     /*
       if (m_branch != "") {
@@ -670,7 +696,7 @@ namespace AnalysisTools {
     */
 
     INFO("Exiting.");
-
+    INFO("");
     return true;
   }
   
@@ -717,13 +743,13 @@ namespace AnalysisTools {
 
   template<class HistType>
   std::unique_ptr<HistType> PlottingHelper<HistType>::getHistogram_ (TFile* file, 
-						     const std::string& path) {
+								     const std::string& path) {
 
     // Try to the object specified by the input name.
     TObject* obj = (TObject*) file->Get(path.c_str());
       
     if (obj == nullptr) {
-      WARNING("Requested input '%s' could not be retrieved from file '%s'.", m_input.c_str(), file->GetName());
+      DEBUG("Requested input '%s' could not be retrieved from file '%s'.", m_input.c_str(), file->GetName());
       return nullptr;
     }
     
@@ -743,10 +769,21 @@ namespace AnalysisTools {
       
     } else if (TTree* tree = dynamic_cast<TTree*>(obj)) {
       
+      /**
+       * Assuming that the DSID information is store in the TTree: "<analysisname>/outputTree"
+       */
+
+      // Get analysis name.
+      std::string analysisname = split(path, '/')[0];
+      std::string treename     = analysisname + "/outputTree";
       // Reading tree.
       /* @TODO: Distinguish between the number of ':' in the input name, to allow for TH2/TProfile as well. */
       unsigned DSID = 0;
-      TTree* t = (TTree*) file->Get("outputTree");
+      TTree* t = (TTree*) file->Get(treename.c_str());
+      if (!tree) {
+	DEBUG("Unable to retrieve TTree (%s) from which to read DSID information.", treename.c_str());
+	return nullptr;
+      }
       t->SetBranchAddress("DSID", &DSID);
       t->GetEntry(0);
       delete t;
@@ -775,7 +812,7 @@ namespace AnalysisTools {
       unsigned nEntries = tree->GetEntries();
       for (unsigned iEntry = 0; iEntry < nEntries; iEntry++) {
 	tree->GetEntry(iEntry);
-	hist->Fill(min(max(value, m_xmin + 1E-06), m_xmax - 1E-06), weight);
+	hist->Fill(min(max(value, m_xmin + 1E-06), m_xmax - 1E-06), weight); //(weight > 1000. ? 1. : weight));
 	/**
 	 * @TODO: Depending on HistType, call 'Fill()' with more argument (e.g. for HistType == TProfile).
 	 */
@@ -811,6 +848,7 @@ namespace AnalysisTools {
    
     INFO("Looping %d input files.", m_filenames.size());
     unsigned it = 0;
+    bool success = false;
     for (const string& filename : m_filenames) {
    
       // Make sure that the current file exists.
@@ -823,6 +861,9 @@ namespace AnalysisTools {
       TFile file (filename.c_str(), "READ");
 
       std::unique_ptr<HistType> hist (getHistogram_ (&file, m_input));
+
+      if (!hist) { continue; }
+      else { success = true; }
 
       // Get DSID from filename.
       /**
@@ -919,6 +960,12 @@ namespace AnalysisTools {
       }
             
     } // end: loop file names.
+
+    // If no histograms were loaded, exit.
+    if (!success) { 
+      WARNING("No histograms were loaded. Exiting.");
+      return false; 
+    }
     
     // If no data is present, scale MC to 1 fb-1.
     if (m_lumi == 0.) { m_lumi = 1.; }
@@ -996,7 +1043,11 @@ namespace AnalysisTools {
       
       // Get dataset ID/run number.
       DSID = (unsigned) stoi(fields.at(0));
-      assert (m_info.count(DSID) == 0);
+      //assert (m_info.count(DSID) == 0);
+      if (m_info.count(DSID) > 0) {
+	WARNING("Sample information for DSID %d has already been stored.", DSID);
+	continue;
+      }
       info.DSID = DSID;
       
       // Get cross section/luminosity.
@@ -1028,24 +1079,60 @@ namespace AnalysisTools {
 	double eff = stod(fields.at(3));
 	
 	// Get physics name.
-	string name = (string) fields.at(4);
-	name = trim(name);
+	string name = "NA";
+	string ldn = (string) fields.at(4);
+	ldn = trim(ldn);
 	
-	// Determine MC type from physics name.
+	// Determine MC type from physics ldn.
 	bool signal = false;
-	std::regex re_singlePhoton1("Sherpa_CT10_SinglePhotonPt([0-9]+).*");
-	std::regex re_singlePhoton2("Sherpa_CT10_SinglePhotonPt([0-9]+)_([0-9]+).*");
-	std::regex re_signal(".*dmA_jja_Ph([0-9]+)_mRp0([0-9]+).*");
+
+	std::regex re_sherpaInclGamma1("Sherpa_CT10_SinglePhotonPt([0-9]+).*");
+	std::regex re_sherpaInclGamma2("Sherpa_CT10_SinglePhotonPt([0-9]+)_([0-9]+).*");
+
+	std::regex re_sherpaMultijets("Sherpa_CT10_jets_JZ([0-9]+)");
+	std::regex re_pythiaMultijets("Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ([0-9]+)W");
+
+	std::regex re_sherpaInclW("Sherpa_CT10_Wqq_Pt.*");
+	std::regex re_sherpaInclZ("Sherpa_CT10_Zqq_Pt.*");
+	std::regex re_pythiaInclW("Pythia8EvtGen_A14NNPDF23LO_WHad_.*");
+	std::regex re_pythiaInclZ("Pythia8EvtGen_A14NNPDF23LO_ZHad_.*");
+
+	std::regex re_sherpaGammaW("Sherpa_CT10_WqqGammaPt.*");
+	std::regex re_sherpaGammaZ("Sherpa_CT10_ZqqGammaPt.*");
+
+	std::regex re_powhegTtbar("PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad");
+
+	std::regex re_ISRgammaSignal(".*dmA_jja_Ph([0-9]+)_mRp0([0-9]+).*");
+	std::regex re_ISRjetSignal(".*dmA_jjj_Jet([0-9]+).*_mRp([0-9]+).*");
+
 	std::smatch re_match_name;
-	if        (std::regex_match(name, re_match_name, re_singlePhoton2)) {
+	if        (std::regex_match(ldn, re_match_name, re_sherpaInclGamma2)) {
 	  name = "Incl. #gamma";
 	  // p_{T} #in [" + string(re_match_name[1]) + ", " + string(re_match_name[2]) + "] GeV";
-	} else if (std::regex_match(name, re_match_name, re_singlePhoton1)) {
+	} else if (std::regex_match(ldn, re_match_name, re_sherpaInclGamma1)) {
 	  name = "Incl. #gamma";
 	  // p_{T} > " + string(re_match_name[1]) + " GeV";
-	} else if (std::regex_match(name, re_match_name, re_signal)) {
+	} 
+	else if (std::regex_match(ldn, re_match_name, re_sherpaMultijets)) { name = "QCD multijets"; }
+	else if (std::regex_match(ldn, re_match_name, re_pythiaMultijets)) { name = "QCD multijets (pythia)"; }
+	else if (std::regex_match(ldn, re_match_name, re_sherpaInclW))     { name = "Incl. W"; }
+	else if (std::regex_match(ldn, re_match_name, re_sherpaInclZ))     { name = "Incl. Z"; }
+	else if (std::regex_match(ldn, re_match_name, re_pythiaInclW))     { name = "Incl. W (pythia)"; }
+	else if (std::regex_match(ldn, re_match_name, re_pythiaInclZ))     { name = "Incl. Z (pythia)";	}
+	else if (std::regex_match(ldn, re_match_name, re_sherpaGammaW))    { name = "#gamma + W"; } 
+	else if (std::regex_match(ldn, re_match_name, re_sherpaGammaZ))    { name = "#gamma + Z"; }
+	else if (std::regex_match(ldn, re_match_name, re_powhegTtbar))     { name = "t#bar{t}"; }
+	else if (std::regex_match(ldn, re_match_name, re_ISRgammaSignal)) {
 	  name = "Z' (" + string(re_match_name[2]) + " GeV)";
 	  signal = true;
+	}
+	else if (std::regex_match(ldn, re_match_name, re_ISRjetSignal)) {
+	  name = "Z' (" + string(re_match_name[2]) + " GeV)";
+	  signal = true;
+	}
+
+	if (name == "") {
+	  DEBUG("Dataset name '%s' was not recognised.", ldn.c_str());
 	}
 	
 	// Set remaining sample info fields, and we're done.
@@ -1093,6 +1180,7 @@ namespace AnalysisTools {
     hist->GetXaxis()->SetNdivisions(505);
     hist->GetYaxis()->SetNdivisions(505);
     
+    hist->SetFillColor(kRed); // Default.
     
     if (name == "StatsError") {
       hist->SetFillColor(kGray + 3);
@@ -1139,13 +1227,27 @@ namespace AnalysisTools {
 	hist->SetFillStyle(1001);
 	
       }
-      
+     
       /* Incl. gamma */
       std::regex re_inclGamma("Incl. #gamma.*");
       std::smatch re_match_inclGamma;
       if      (std::regex_match(name, re_match_inclGamma, re_inclGamma)) { 
 	//hist->SetFillColor (kAzure + m_backgrounds.size() + 1);
 	hist->SetFillColor (kAzure + 7);
+      }
+
+      if      (name == "#gamma + W") { hist->SetFillColor(kAzure + 2); }
+      else if (name == "#gamma + Z") { hist->SetFillColor(kAzure + 3); }
+
+
+      if (name == "QCD multijets" || name == "QCD multijets (pythia)") {
+	hist->SetFillColor(kOrange - 3);
+      }
+      if      (name == "Incl. W" || name == "Incl. W (pythia)") { hist->SetFillColor(kOrange + 8); }
+      else if (name == "Incl. Z" || name == "Incl. Z (pythia)") { hist->SetFillColor(kOrange + 9); }
+
+      if (name == "t#bar{t}") {
+	hist->SetFillColor(kSpring - 2);
       }
       
       /* V (-> ll/lv) + X */
@@ -1169,6 +1271,7 @@ namespace AnalysisTools {
       
     } else {
       
+      // Data.
       hist->SetMarkerStyle(8);
       hist->SetMarkerSize (0.8); // 0.5
       hist->SetMarkerColor(kBlack);

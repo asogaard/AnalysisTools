@@ -17,10 +17,11 @@
 #include <fstream> /* ifsteam */
 #include <sstream> /* stringstream */
 #include <iomanip> /* std::setprecision */
-#include <algorithm> /* std::max */
+#include <algorithm> /* std::max, std::sort, std::reverse, std::find */
 #include <regex> /* std::regex */
 #include <cmath> /* log */
 #include <memory> /* std::unique_ptr, std::shared_ptr */
+#include <exception> /* std::exception */
 
 // ROOT include(s).
 #include "TCanvas.h"
@@ -144,6 +145,7 @@ namespace AnalysisTools {
     void setPadding     (const double& padding);
     
     void setNormalised (const bool& normalised);
+    void setSortBackgrounds (const bool& sortBackgrounds);
     
 
     /// Get method(s).
@@ -198,13 +200,14 @@ namespace AnalysisTools {
     
     bool m_log = true;
     bool m_1D  = true; /* make accessor */
-    
+   
     double m_padding = 2.3;
     
     bool m_print = false;
     
     bool m_normalised = false;
-    
+    bool m_sortBackgrounds = true;
+ 
     // Completely internal.
     upTCanvas m_canvas;
     pair< upTPad, upTPad > m_pads = {nullptr, nullptr};
