@@ -46,6 +46,8 @@ namespace AnalysisTools {
         void               setParticle   (const string& name, const PhysicsObject& particle);
         
         // Get method(s).
+        bool                       hasCollection (const string& name) const;
+
         double                     info       (const string& name) const;
         PhysicsObjects*            collection (const string& name) const;
         const PhysicsObject&       particle   (const string& name) const;

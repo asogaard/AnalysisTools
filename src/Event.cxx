@@ -33,6 +33,11 @@ namespace AnalysisTools {
     
     
     // Get method(s).
+    bool Event::hasCollection (const string& name) const {
+      //INFO("Looking for '%s'", name.c_str());
+        return m_collections.count(name) > 0;
+    }
+
     double Event::info (const string& name) const {
       //INFO("Looking for '%s'", name.c_str());
         assert( m_info.count(name) > 0 );
