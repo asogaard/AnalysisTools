@@ -1,0 +1,9 @@
+*~
+*.pyc
+*.root
+lib/*
+build/*
+bin/*
+*REF*
+share/Loader_C*
+plotting/201*
