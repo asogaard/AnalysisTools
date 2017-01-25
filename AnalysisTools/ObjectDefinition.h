@@ -45,7 +45,7 @@ namespace AnalysisTools {
         void setInput  (const vector<T>* candidates);
         
         //template<class W>
-        void addInfo (const string& name, const vector<double> * info);
+        void addInfo (const string& name, const vector<double>* info);
         void addInfo (const string& name, const vector<float> * info);
         void addInfo (const string& name, const vector<int>   * info);
         void addInfo (const string& name, const vector<bool>  * info);

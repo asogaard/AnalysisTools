@@ -115,7 +115,6 @@ namespace AnalysisTools {
     // Low-level management method(s).
     template <class T>
     void Operation<T>::init () {
-        INFO("Trying to initialise %s.", this->name().c_str()); 
         assert ( this->dir() );
         
         this->dir()->cd();

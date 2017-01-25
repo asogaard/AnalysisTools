@@ -207,7 +207,6 @@ namespace AnalysisTools {
     
     template <class T, class U>
     void Selection<T,U>::addOperation (const Operation<U>& operation, const string& pattern, const bool& common) {
-      INFO("Adding operation '%s' to category '%s' in '%s'.", operation.name().c_str(), pattern.c_str(), this->name().c_str());
       /*
         assert( !locked() );
         assert( hasCategory(category) );

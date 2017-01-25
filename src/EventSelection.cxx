@@ -162,7 +162,7 @@ namespace AnalysisTools {
             // * Run selection.
             unsigned iCut = 0;
             this->m_cutflow[category]->Fill(iCut++, weight);
-            for (IOperation* iop : this->operations(category)) { // IOperation*
+	    for (IOperation* iop : this->operations(category)) { // IOperation*
 	        DEBUG("    Cut %d/%d", iCut, this->m_operations[category].size());
                 //bool branch = (this->m_branch >= 0) && (iCut > this->m_branch); // iCut in [1, N]
                 //if (!branch) { continue; }
