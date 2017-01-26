@@ -3,15 +3,15 @@
 namespace AnalysisTools {
     
   /// Explicit implementations.
-  template<> std::map< std::string, const double* >& BasicInfo::container_() { return m_doubles; }
-  template<> std::map< std::string, const float* >&  BasicInfo::container_() { return m_floats; }
-  template<> std::map< std::string, const bool* >&   BasicInfo::container_() { return m_bools; }
-  template<> std::map< std::string, const int* >&    BasicInfo::container_() { return m_ints; }
+  template<> basicContainer_t<double>& BasicInfo::infoContainer_() { return m_doubles; }
+  template<> basicContainer_t<float>&  BasicInfo::infoContainer_() { return m_floats; }
+  template<> basicContainer_t<bool>&   BasicInfo::infoContainer_() { return m_bools; }
+  template<> basicContainer_t<int>&    BasicInfo::infoContainer_() { return m_ints; }
 
-  template<> std::map< std::string, const std::vector<double>* >& VectorInfo::container_() { return m_doubles; }
-  template<> std::map< std::string, const std::vector<float>* >&  VectorInfo::container_() { return m_floats; }
-  template<> std::map< std::string, const std::vector<bool>* >&   VectorInfo::container_() { return m_bools; }
-  template<> std::map< std::string, const std::vector<int>* >&    VectorInfo::container_() { return m_ints; }
+  template<> vectorContainer_t<double>& VectorInfo::infoContainer_() { return m_doubles; }
+  template<> vectorContainer_t<float>&  VectorInfo::infoContainer_() { return m_floats; }
+  template<> vectorContainer_t<bool>&   VectorInfo::infoContainer_() { return m_bools; }
+  template<> vectorContainer_t<int>&    VectorInfo::infoContainer_() { return m_ints; }
 
 
 } // namespace
