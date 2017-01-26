@@ -274,6 +274,10 @@ namespace AnalysisTools {
     
     template <class T, class U>
     vector<string> Selection<T,U>::categories () {
+      if (nCategories() == 0) {
+	assert( !locked() );
+	addCategory("Nominal");
+      }
         return this->m_categories;
     }
     

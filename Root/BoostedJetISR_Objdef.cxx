@@ -214,86 +214,86 @@ int main (int argc, char* argv[]) {
 	// Leading fatjet pt.
 	PlotMacro1D<Event> plot_event_leadingFatjet_pt ("leadingfatjet_pt");
 	plot_event_leadingFatjet_pt.setFunction( [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return e.collection("Fatjets")->at(0).Pt() / 1000.; 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return e.collection("Fatjets").at(0)->Pt() / 1000.; 
 	  });
 
 	// Leading fatjet mass.
 	PlotMacro1D<Event> plot_event_leadingFatjet_m ("leadingfatjet_m");
 	plot_event_leadingFatjet_m.setFunction( [](const Event& e) {
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; } 
-	    return e.collection("Fatjets")->at(0).M() / 1000.; 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; } 
+	    return e.collection("Fatjets").at(0)->M() / 1000.; 
 	  });
 
 	// Leading fatjet phi.
 	PlotMacro1D<Event> plot_event_leadingFatjet_phi ("leadingfatjet_phi");
 	plot_event_leadingFatjet_phi.setFunction( [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return e.collection("Fatjets")->at(0).Phi(); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return e.collection("Fatjets").at(0)->Phi(); 
 	  });
 
 	// Leading fatjet eta.
 	PlotMacro1D<Event> plot_event_leadingFatjet_eta ("leadingfatjet_eta");
 	plot_event_leadingFatjet_eta.setFunction( [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return e.collection("Fatjets")->at(0).Eta(); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return e.collection("Fatjets").at(0)->Eta(); 
 	  });
 
 	// Leading fatjet rhoPrime.
 	PlotMacro1D<Event> plot_event_leadingFatjet_rhoPrime ("leadingfatjet_rhoPrime");
 	plot_event_leadingFatjet_rhoPrime.setFunction( [&rhoPrime](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return rhoPrime(e.collection("Fatjets")->at(0)); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return rhoPrime(*e.collection("Fatjets").at(0)); 
 	  });
 
 	// Leading fatjet rhoDDT.
 	PlotMacro1D<Event> plot_event_leadingFatjet_rhoDDT ("leadingfatjet_rhoDDT");
 	plot_event_leadingFatjet_rhoDDT.setFunction( [&rhoDDT](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return rhoDDT(e.collection("Fatjets")->at(0)); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return rhoDDT(*e.collection("Fatjets").at(0)); 
 	  });
 
 	// Leading fatjet tau21
 	PlotMacro1D<Event> plot_event_leadingFatjet_tau21 ("leadingfatjet_tau21");
 	plot_event_leadingFatjet_tau21.setFunction( [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return e.collection("Fatjets")->at(0).info("tau21"); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return e.collection("Fatjets").at(0)->info("tau21"); 
 	  });
 
 	// Leading fatjet tau21 (mod rhoDDT)
 	PlotMacro1D<Event> plot_event_leadingFatjet_tau21DDT ("leadingfatjet_tau21DDT", [&rhoDDT](const Event& e) {
-	  if (e.collection("Fatjets")->size() == 0) { return -9999.; }	  
-	  return e.collection("Fatjets")->at(0).info("tau21DDT");
+	  if (e.collection("Fatjets").size() == 0) { return -9999.; }	  
+	  return e.collection("Fatjets").at(0)->info("tau21DDT");
 	});
 
 	// Leading fatjet D2
 	PlotMacro1D<Event> plot_event_leadingFatjet_D2 ("leadingfatjet_D2");
 	plot_event_leadingFatjet_D2.setFunction( [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return e.collection("Fatjets")->at(0).info("D2"); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return e.collection("Fatjets").at(0)->info("D2"); 
 	  });
 
 
 	// Photon pt.
         PlotMacro1D<Event> plot_event_leadingPhoton_pt ("leadingphoton_pt");
 	plot_event_leadingPhoton_pt.setFunction([](const Event& e) { 
-	    if (e.collection("Photons")->size() == 0) { return -9999.; }
-	    return e.collection("Photons")->at(0).Pt() / 1000.; 
+	    if (e.collection("Photons").size() == 0) { return -9999.; }
+	    return e.collection("Photons").at(0)->Pt() / 1000.; 
 	  });
 
 	// Delta-eta separation between photon and leading fatjet.
 	PlotMacro1D<Event> plot_event_leadingFatjetPhotonDeltaEta ("leadingFatjetPhotonDeltaEta", [](const Event& e) { 
-	    if (e.collection("Fatjets")->size() == 0) { return -9999.; }
-	    return std::fabs(e.collection("Fatjets")->at(0).Eta() - e.collection("Photons")->at(0).Eta()); 
+	    if (e.collection("Fatjets").size() == 0) { return -9999.; }
+	    return std::fabs(e.collection("Fatjets").at(0)->Eta() - e.collection("Photons").at(0)->Eta()); 
 	  });
 
 	// Delta-eta separation between photon and recoil system (all fat jets).
 	PlotMacro1D<Event> plot_event_recoilPhotonDeltaEta ("recoilPhotonDeltaEta", [](const Event& e) {
 	    TLorentzVector recoil;
-	    for (unsigned i = 0; i < e.collection("Fatjets")->size(); i++) {
-	      recoil += e.collection("Fatjets")->at(i);
+	    for (unsigned i = 0; i < e.collection("Fatjets").size(); i++) {
+	      recoil += *e.collection("Fatjets").at(i);
 	    }
-	    return std::fabs(recoil.Eta() - e.collection("Photons")->at(0).Eta());
+	    return std::fabs(recoil.Eta() - e.collection("Photons").at(0)->Eta());
 	  });
 
 	// HLT_j380 trigger decision
@@ -544,7 +544,7 @@ int main (int argc, char* argv[]) {
         // * Photon count
         Cut<Event> cut_event_NumPhotons ("NumPhotons");
         cut_event_NumPhotons.setFunction( [](const Event& e) { 
-	    return e.collection("Photons")->size(); 
+	    return e.collection("Photons").size(); 
 	  });
         cut_event_NumPhotons.addRange(1);
 
@@ -562,26 +562,26 @@ int main (int argc, char* argv[]) {
         // * Fatjet count
         Cut<Event> cut_event_Njets ("NumFatjets");
         cut_event_Njets.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->size();
+	    return e.collection("Fatjets").size();
 	  });
         cut_event_Njets.addRange(1, inf);
         eventSelection.addCut(cut_event_Njets);
 
 	// * Fatjet dPhi
         Operation<Event> operation_event_fatjet_photon_dPhi ("dPhiFatjetPhoton");
-        operation_event_fatjet_photon_dPhi.setFunction( [](const Event& e) {
+        operation_event_fatjet_photon_dPhi.setFunction( [](Event& e) {
 	    // Since we're removing jets from the container, this function needs
 	    // to be run only once. Therefore, it is implemented as an Operation
 	    // rather than as a Cut.
-	    for (unsigned i = e.collection("Fatjets")->size(); i --> 0; ) {
+	    for (unsigned i = e.mutableCollection("Fatjets").size(); i --> 0; ) {
 	      float dPhiMin = pi;
-	      for (const auto& photon : *e.collection("Photons")) {
-		float dPhi = fabs(e.collection("Fatjets")->at(i).DeltaPhi(photon));
+	      for (const auto& photon : e.collection("Photons")) {
+		float dPhi = fabs(e.mutableCollection("Fatjets").at(i)->DeltaPhi(*photon));
 		dPhiMin = std::min(dPhiMin, dPhi);
 	      }
 	      // Discared jets within |dphi| < pi/2 of _the_ signal photon
 	      if (dPhiMin < pi/2.) {
-		e.collection("Fatjets")->erase(e.collection("Fatjets")->begin() + i);
+		e.mutableCollection("Fatjets").erase(e.mutableCollection("Fatjets").begin() + i);
 	      }
 	    }
 	    return true;
@@ -596,16 +596,16 @@ int main (int argc, char* argv[]) {
 	// * Choose lowest-tau21DDT fat jet.
 	Operation<Event> operation_event_fatjetambiguity ("FatjetAmbiguity");
 	operation_event_fatjetambiguity.setFunction( [](Event& e) {
-	    if (e.collection("Fatjets")->size() > 1) {
+	    if (e.mutableCollection("Fatjets").size() > 1) {
 	      // Sort fat jets by ascending tau21DDT
-	      std::sort(e.collection("Fatjets")->begin(), e.collection("Fatjets")->end(), 
-			[](const PhysicsObject& p1, const PhysicsObject& p2) { 
-			  return p1.info("tau21DDT") < p2.info("tau21DDT"); 
+	      std::sort(e.mutableCollection("Fatjets").begin(), e.mutableCollection("Fatjets").end(), 
+			[](const PhysicsObject* p1, const PhysicsObject* p2) { 
+			  return p1->info("tau21DDT") < p2->info("tau21DDT"); 
 			});
 
 	      // Remove all but the first element.
-	      e.collection("Fatjets")->erase(e.collection("Fatjets")->begin() + 1, 
-					     e.collection("Fatjets")->end());
+	      e.mutableCollection("Fatjets").erase(e.mutableCollection("Fatjets").begin() + 1, 
+						   e.mutableCollection("Fatjets").end());
 	    }
 	    return true;
 	  });
@@ -622,7 +622,7 @@ int main (int argc, char* argv[]) {
 	// * tau21DDT
 	Cut<Event> cut_event_leadingFatjet_tau21DDT ("tau21DDT_0p50");
         cut_event_leadingFatjet_tau21DDT.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT.setRange(0.5, inf);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT, "Fail");
@@ -633,7 +633,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p45 ("tau21DDT_0p45");
         cut_event_leadingFatjet_tau21DDT_0p45.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p45.setRange(-inf, 0.45);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p45, "Pass");
@@ -641,7 +641,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p40 ("tau21DDT_0p40");
         cut_event_leadingFatjet_tau21DDT_0p40.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p40.setRange(-inf, 0.4);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p40, "Pass");
@@ -649,7 +649,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p35 ("tau21DDT_0p35");
         cut_event_leadingFatjet_tau21DDT_0p35.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p35.setRange(-inf, 0.35);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p35, "Pass");
@@ -657,7 +657,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p30 ("tau21DDT_0p30");
         cut_event_leadingFatjet_tau21DDT_0p30.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p30.setRange(-inf, 0.3);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p30, "Pass");
@@ -665,7 +665,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p25 ("tau21DDT_0p25");
         cut_event_leadingFatjet_tau21DDT_0p25.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p25.setRange(-inf, 0.25);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p25, "Pass");
@@ -673,7 +673,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p20 ("tau21DDT_0p20");
         cut_event_leadingFatjet_tau21DDT_0p20.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p20.setRange(-inf, 0.2);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p20, "Pass");
@@ -681,7 +681,7 @@ int main (int argc, char* argv[]) {
 	// - - -
 	Cut<Event> cut_event_leadingFatjet_tau21DDT_0p10 ("tau21DDT_0p10");
         cut_event_leadingFatjet_tau21DDT_0p10.setFunction( [](const Event& e) {
-	    return e.collection("Fatjets")->at(0).info("tau21DDT");
+	    return e.collection("Fatjets").at(0)->info("tau21DDT");
           });
 	cut_event_leadingFatjet_tau21DDT_0p10.setRange(-inf, 0.1);
 	eventSelection.addCut(cut_event_leadingFatjet_tau21DDT_0p10, "Pass");

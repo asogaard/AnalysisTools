@@ -61,7 +61,8 @@ namespace AnalysisTools {
         
     };
 
-    using PhysicsObjects = vector<PhysicsObject>;
+    using PhysicsObjects    = std::vector<PhysicsObject>;
+    using PhysicsObjectPtrs = std::vector<const PhysicsObject*>;
     
     
      // PhysicsObject-specific utility functions.

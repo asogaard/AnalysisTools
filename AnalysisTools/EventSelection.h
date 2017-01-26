@@ -11,6 +11,8 @@
 #include <vector>
 #include <map>
 #include <cassert>
+//#include <array> /* std::array */
+#include <tuple> /* std::tie */
 #include <algorithm> /* std::count_if */
 #include <typeinfo> /* std::bad_cast */
 #include <utility> /* std::make_pair */
@@ -45,14 +47,20 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        /*
-	  void addCollection (const string& name, PhysicsObjects* collection);
-	*/
-	void addCollection (const string& name, const string& selection, const string& category = "Nominal");
+	/**
+	 * Add a physics collection to the given event selection category.
+	 *
+	 * The collections is added by name, rather than by pointer, since this allows for easier copying when the event selection is added to multiple analyses.
+	 * 
+	 * \param name The name of the physics object collection.
+	 * \param objdef Name of the ObjectDefinition from which to acquire the collection.
+	 * \param objdefCategory The ObjectDefinition category from which to acquire the collection. If left empty, will try to access 'Nominal'.
+	 * \param category The category for which to add the collection. If left empty, added to all categories.
+	 */
+	//void addCollection (const string& name, const string& selection, const string& category = "");
+	void addCollection (const string& name, const string& objdef, const string& objdefCategory = "Nominal", const string& category = "");
 
-        //void addCollection (const string& name, vector<TLorentzVector>* collection);// @TODO: Add such a method?
-        
-        
+                
         // Get method(s).
         // ...
         
@@ -66,20 +74,23 @@ namespace AnalysisTools {
 	virtual void print () const;
         
         
-    protected:
+  private:
         
-        // Low-level management method(s).
-        // ...
+        // Internal methods(s)
+	void cacheCollections_ ();
         
 
-    private:
+  private:
         
-        map< string, Event >           m_events;
-        /*
-	  map< string, PhysicsObjects* > m_collections;
-	*/
-	map< string, std::pair<string, string> > m_collections;
-        map< string, bool >            m_passes;
+        map< string, Event > m_events;
+        map< string, bool >  m_passes;
+	map< string, std::vector<std::tuple<string, string, string> > > m_collectionNames;
+	map< string, map< string, PhysicsObjects* > >     m_collectionLinks;
+
+	// Structure of m_collectionNamses:
+	// vector[ (name-of-collection, name-of-objdef-from-which-to-get-collection, objdef-category) ]
+
+	bool m_hasCachedCollections = false;
 
     };
 

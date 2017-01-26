@@ -16,7 +16,10 @@ namespace AnalysisTools {
     void Event::addCollection (const string& name, PhysicsObjects* collection) {
       //INFO("Adding collection '%s'", name.c_str());
         assert( m_collections.count(name) == 0 );
-        m_collections[name] = collection;
+	m_collections[name] = {};
+	for (const PhysicsObject& p : *collection) {
+	  m_collections[name].push_back(&p);
+	}
         return;
     }
     
@@ -38,16 +41,23 @@ namespace AnalysisTools {
         return m_collections.count(name) > 0;
     }
 
+  //PhysicsObjects* Event::collection (const string& name) const {
+  const PhysicsObjectPtrs& Event::collection (const string& name) const {
+      //INFO("Trying to access collection '%s'", name.c_str());
+        assert( m_collections.count(name) > 0 );
+        return m_collections.at(name);
+    }
+    
+  PhysicsObjectPtrs& Event::mutableCollection (const string& name) {
+      //INFO("Trying to access collection '%s'", name.c_str());
+        assert( m_collections.count(name) > 0 );
+        return m_collections.at(name);
+    }
+    
     double Event::info (const string& name) const {
       //INFO("Looking for '%s'", name.c_str());
         assert( m_info.count(name) > 0 );
         return m_info.at(name);
-    }
-    
-    PhysicsObjects* Event::collection (const string& name) const {
-      //INFO("Trying to access collection '%s'", name.c_str());
-        assert( m_collections.count(name) > 0 );
-        return m_collections.at(name);
     }
     
     const PhysicsObject& Event::particle (const string& name) const {
