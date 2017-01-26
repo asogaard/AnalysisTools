@@ -60,7 +60,8 @@ namespace AnalysisTools {
         virtual std::vector< IPlotMacro* > plots ()                       const = 0;
         
 	virtual void print () const = 0;
-        
+	
+
     public:
         
         // Low-level management method(s).

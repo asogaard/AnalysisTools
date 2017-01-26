@@ -22,11 +22,10 @@ using namespace std;
 
 namespace AnalysisTools {
 
-    class ILocalised {
-        
         /**
          * Interface for wrapper class around ROOT's TDirectory, to allow for easily creating hierarchical folder structures in the output file.
          */
+  class ILocalised {
         
         friend class Localised;
         

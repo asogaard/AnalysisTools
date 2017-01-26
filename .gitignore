@@ -4,6 +4,10 @@
 lib/*
 build/*
 bin/*
+logs/*
+output*
 *REF*
 share/Loader_C*
+share/datasets*
 plotting/201*
+scripts/plots/*
