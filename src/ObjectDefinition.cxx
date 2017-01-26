@@ -31,16 +31,16 @@ namespace AnalysisTools {
         for (unsigned i = 0; i < this->m_input->size(); i++) {
             for (const auto& category : this->m_categories) {
                 PhysicsObject p ((T) this->m_input->at(i));
-                for (const auto& name_val : m_info.container<double>()) {
+                for (const auto& name_val : this->infoContainer<double>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : m_info.container<float>()) {
+                for (const auto& name_val : this->infoContainer<float>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : m_info.container<bool>()) {
+                for (const auto& name_val : this->infoContainer<bool>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
-                for (const auto& name_val : m_info.container<int>()) {
+                for (const auto& name_val : this->infoContainer<int>()) {
                     p.addInfo(name_val.first, (double) name_val.second->at(i));
                 }
 

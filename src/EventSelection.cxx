@@ -94,16 +94,16 @@ namespace AnalysisTools {
             m_events[category] = Event();
             m_passes[category] = true;
 
-            for (const auto& name_val : m_info.container<double>()) {
+            for (const auto& name_val : this->infoContainer<double>()) {
                 m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
-            for (const auto& name_val : m_info.container<float>()) {
+            for (const auto& name_val : this->infoContainer<float>()) {
                 m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
-            for (const auto& name_val : m_info.container<bool>()) {
+            for (const auto& name_val : this->infoContainer<bool>()) {
                 m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }            
-            for (const auto& name_val : m_info.container<int>()) {
+            for (const auto& name_val : this->infoContainer<int>()) {
                 m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
 

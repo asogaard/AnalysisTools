@@ -29,7 +29,7 @@ using namespace std;
 
 namespace AnalysisTools {
 
-    class EventSelection : public Selection<Event, Event> {
+  class EventSelection : public Selection<Event, Event>, public BasicInfo {
 
     public:
 
@@ -52,12 +52,6 @@ namespace AnalysisTools {
 
         //void addCollection (const string& name, vector<TLorentzVector>* collection);// @TODO: Add such a method?
         
-        template <class U>
-	void addInfo (const string& name, const U* info) {
-	  m_info.add(name, info);
-	  return;
-	}
-  
         
         // Get method(s).
         // ...
@@ -87,8 +81,6 @@ namespace AnalysisTools {
 	map< string, std::pair<string, string> > m_collections;
         map< string, bool >            m_passes;
 
-	BasicInfo m_info;
-        
     };
 
 }

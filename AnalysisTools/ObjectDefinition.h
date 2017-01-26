@@ -27,7 +27,7 @@ using namespace std;
 namespace AnalysisTools {
 
     template<class T>
-    class ObjectDefinition : public Selection<T, PhysicsObject> {
+      class ObjectDefinition : public Selection<T, PhysicsObject>, public VectorInfo {
 
     public:
 
@@ -44,22 +44,6 @@ namespace AnalysisTools {
         
         // Set method(s).
         void setInput  (const vector<T>* candidates);
-        
-        template<class W>
-	inline void addInfo (const string& name, const vector<W>* info) {
-	  // Fully tempalted functions need to be visible to compiler, hence implementation in header.
-	  m_info.add<W>(name, info);
-	  return;
-	}
-        
-        
-        // Get method(s).
-        template <class W>
-	inline const vector<W>* info (const string& name) {
-	  // Fully tempalted functions need to be visible to compiler, hence implementation in header.
-	  return m_info.get<W>(name);
-	}
-
         
         // High-level management method(s).
         bool run ();
@@ -83,8 +67,6 @@ namespace AnalysisTools {
         bool m_hasRun = false;
         
         const vector<T>* m_input = nullptr; /* Universal; not category-specific. */
-        
-	VectorInfo m_info;
         
     };
 
