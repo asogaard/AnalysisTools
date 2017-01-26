@@ -30,16 +30,20 @@ using namespace std;
 namespace AnalysisTools {
     
     enum class CutPosition { Pre, Post };
+    enum class OperationType { Interface, Cut, Operation };
     
+    /**
+     * Base interface (mix-in) class for all operation-type objects.
+     */
     class IOperation : virtual public ILocalised {
-        
-        /**
-         * Base interface class for all operation-type objects.
-        **/
-        
+                
         friend class ISelection;
         
     public:
+
+	IOperation (const OperationType& operationType) :
+	  m_operationType(operationType) 
+	{}
         
         //IOperation () {};
         virtual ~IOperation () {};
@@ -53,6 +57,7 @@ namespace AnalysisTools {
         
         // Get method(s).
         // ...
+	inline const OperationType& operationType () const { return m_operationType; }
         
         
         // High-level management method(s).
@@ -82,6 +87,8 @@ namespace AnalysisTools {
 	    };*/
         
         bool m_initialised = false;
+
+	OperationType m_operationType = OperationType::Interface;
         
     };
     

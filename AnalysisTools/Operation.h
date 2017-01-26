@@ -59,7 +59,8 @@ namespace AnalysisTools {
         {};
         
         Operation (const string& name) :
-            Localised(name)
+            Localised(name),
+	    IOperation(OperationType::Operation)
         {
 	  // Can't use initialiser lists with unique_ptr.
 	  this->m_plots.clear();
