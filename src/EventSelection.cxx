@@ -102,13 +102,15 @@ namespace AnalysisTools {
 		DEBUG("      Casting IOperation '%s'", iop->name().c_str());
 
                 bool passes = false;
-                if        (Operation<Event>* op  = dynamic_cast< Operation<Event>* >(iop)) {
-                    passes = op ->apply(this->m_events[category], weight);
-                } else if (Cut<Event>*       cut = dynamic_cast< Cut<Event>* >(iop)) {
-                    passes = cut->apply(this->m_events[category], weight);
-                } else {
+		if        (iop->operationType() == OperationType::Operation) {
+		  Operation<Event>* op  = static_cast< Operation<Event>* >(iop);
+		  passes = op->apply(this->m_events[category], weight);
+		} else if (iop->operationType() == OperationType::Cut) {
+		  Cut<Event>*       cut = static_cast< Cut<Event>* >      (iop);
+		  passes = cut->apply(this->m_events[category], weight);
+		} else {
 		  WARNING("Operation could not be cast to any known type.");
-                }
+		}
 
 		// Store whether event passed the current operation.
 		DEBUG("      Storing whether the cut was passed (%s).", (passes ? "Yes" : "No"));
@@ -117,9 +119,9 @@ namespace AnalysisTools {
 		// If event didn't pass, stop or this category.
                 if (!m_passes[category]) { break; }
 
-		// Fill thie cutflow, and increment cut counter, but only if the
+		// Fill the cutflow, and increment cut counter, but only if the
 		// current operation was in fact a cut.
-                if (dynamic_cast< Cut<Event>* >(iop) == nullptr) { continue; }
+		if (iop->operationType() != OperationType::Cut) { continue; }
                 this->m_cutflow[category]->Fill(iCut++, weight);
             }
             

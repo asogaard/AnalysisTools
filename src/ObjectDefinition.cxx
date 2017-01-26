@@ -65,12 +65,14 @@ namespace AnalysisTools {
                 // Loop candidates.
                 for (unsigned i = this->m_candidates[category].size(); i --> 0; ) {
                     bool passes = false;
-                    if        (Operation<PhysicsObject>* op  = dynamic_cast< Operation<PhysicsObject>* >(iop)) {
-                        passes = op->apply(this->m_candidates[category].at(i), weight);
-                    } else if (Cut<PhysicsObject>*       cut = dynamic_cast< Cut<PhysicsObject>* >(iop)) {
-                        passes = cut->apply(this->m_candidates[category].at(i), weight);
+		    if        (iop->operationType() == OperationType::Operation) {
+		      Operation<PhysicsObject>* op  = static_cast< Operation<PhysicsObject>* >(iop);
+		      passes = op->apply(this->m_candidates[category].at(i), weight);
+                    } else if (iop->operationType() == OperationType::Cut) {
+		      Cut<PhysicsObject>*       cut = static_cast< Cut<PhysicsObject>* >(iop);
+		      passes = cut->apply(this->m_candidates[category].at(i), weight);
                     } else {
-                        cout << "<ObjectDefinition::run> Operation could not be cast to any known type." << endl;
+		      WARNING("Operation could not be cast to any known type.");
                     }
                     
                     if (!passes) {
@@ -78,7 +80,7 @@ namespace AnalysisTools {
                     }
                 }
 
-                if (dynamic_cast< Cut<PhysicsObject>* >(iop) == nullptr) { continue; }
+                if (iop->operationType() != OperationType::Cut) { continue; }
                 this->m_cutflow[category]->Fill(iCut++, this->m_candidates[category].size() * weight);
             }
 
@@ -86,8 +88,11 @@ namespace AnalysisTools {
 	    //std::cout << " [" << &this->m_candidates[category] << "]" << std::endl;
 
         }
+
         this->m_hasRun = true;
+
 	DEBUG("Exiting.");
+
         return true; /* Always true for ObjectDefinition (i.e. cannot break the analysis pipeline). */
     }
   
