@@ -11,8 +11,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set> /* std::set */
 #include <cassert>
 #include <memory> /* std::unique_ptr */
+#include <functional> /* std::function */
 
 // ROOT include(s).
 #include "TDirectory.h"
@@ -76,12 +78,12 @@ namespace AnalysisTools {
     protected:
         
         /// Data members.
-        map< CutPosition, std::vector< std::unique_ptr<IPlotMacro> > > m_plots;/* = {
+	std::map< CutPosition, std::vector< std::unique_ptr<IPlotMacro> > > m_plots;/* = {
 	  {CutPosition::Pre,  std::vector< std::unique_ptr<IPlotMacro> >()},
 	  {CutPosition::Post, std::vector< std::unique_ptr<IPlotMacro> >()}
 	  };*/
         
-        map< CutPosition, std::unique_ptr<TTree> > m_trees;/* = {
+	std::map< CutPosition, std::unique_ptr<TTree> > m_trees;/* = {
             {CutPosition::Pre,  nullptr},
             {CutPosition::Post, nullptr}
 	    };*/
@@ -94,7 +96,7 @@ namespace AnalysisTools {
     
     //using OperationsPtr = std::vector< IOperation* >;
     using OperationPtrs = std::vector< std::unique_ptr<IOperation> >;
- 
+
 }
 
 #endif

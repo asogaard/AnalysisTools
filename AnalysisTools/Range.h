@@ -4,21 +4,18 @@
 /**
  * @file Range.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
 #include <vector>
-#include <limits> /* std::numeric_limits<double>::infinity */
 #include <utility> /* std::pair */
-#include <assert.h> /* assert */
+#include <cassert> /* assert */
 
 // ROOT include(s).
 // ...
 
 // AnalysisTools include(s).
 #include "AnalysisTools/Utilities.h"
-
-using namespace std;
 
 namespace AnalysisTools {
 
@@ -28,13 +25,8 @@ namespace AnalysisTools {
 
         // Constructor(s).
         Range () {};
-        Range (const pair<double, double>& limits);
-        Range (const double& down, const double& up);
-        /*
-        Range (const AnalysisTools::Range& other) :
-            m_limits(other.m_limits)
-        {};
-         */
+        Range (const std::pair<float, float>& limits);
+        Range (const float& down, const float& up);
         
         // Destructor(s).
         ~Range () {};
@@ -43,36 +35,36 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setLimits (const pair<double, double>& limits);
-        void setLimits (const double& down, const double& up);
+        void setLimits (const std::pair<float, float>& limits);
+        void setLimits (const float& down, const float& up);
 
-        void setLowerLimit (const double& down);
-        void setUpperLimit (const double& up);
+        void setLowerLimit (const float& down);
+        void setUpperLimit (const float& up);
 
         
         // Get method(s).
-        pair<double, double> limits () const;
+        const std::pair<float, float>& limits () const;
         
-        double lowerLimit () const;
-        double upperLimit () const;
+        const float& lowerLimit () const;
+        const float& upperLimit () const;
 
-        double down () const;
-        double up   () const;
+        const float& down () const;
+        const float& up   () const;
         
         
         // High-level management method(s).
-        bool contains     (const double& val) const;
-        bool containsIncl (const double& val) const;
-        bool containsExcl (const double& val) const;
+	bool contains     (const float& val) const;
+        bool containsIncl (const float& val) const;
+        bool containsExcl (const float& val) const;
         
         
     private:
         
-        pair<double, double> m_limits = pair<double, double>(-inf, inf);
+	std::pair<float, float> m_limits = std::pair<float, float>(-inf, inf);
         
     };
 
-    using Ranges = vector<Range>;
+    using Ranges = std::vector<Range>;
     
 }
 

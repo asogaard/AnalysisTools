@@ -21,14 +21,14 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::setRange (const pair<double, double>& limits) {
+    void Cut<T>::setRange (const std::pair<float, float>& limits) {
         clearRanges();
         addRange(limits);
         return;
     }
     
     template <class T>
-    void Cut<T>::setRange (const double& down, const double& up) {
+    void Cut<T>::setRange (const float& down, const float& up) {
         clearRanges();
         addRange(down, up);
         return;
@@ -41,7 +41,7 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::setRanges (const vector< pair<double, double> >& vec_limits) {
+    void Cut<T>::setRanges (const std::vector< std::pair<float, float> >& vec_limits) {
         clearRanges();
         addRanges(vec_limits);
         return;
@@ -54,19 +54,19 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::addRange (const pair<double, double>& limits) {
+    void Cut<T>::addRange (const std::pair<float, float>& limits) {
         m_ranges.emplace_back(Range(limits));
         return;
     }
     
     template <class T>
-    void Cut<T>::addRange (const double& down, const double& up) {
+    void Cut<T>::addRange (const float& down, const float& up) {
         m_ranges.emplace_back(Range(down, up));
         return;
     }
     
     template <class T>
-    void Cut<T>::addRange (const double& value) {
+    void Cut<T>::addRange (const float& value) {
         m_ranges.emplace_back(Range(value - eps, value + eps));
         return;
     }
@@ -80,15 +80,22 @@ namespace AnalysisTools {
     }
     
     template <class T>
-    void Cut<T>::addRanges (const vector< pair<double, double> >& vec_limits) {
+    void Cut<T>::addRanges (const std::vector< std::pair<float, float> >& vec_limits) {
         for (const auto& limits : vec_limits) {
             addRange(Range(limits));
         }
         return;
     }
+
+    template <class T>
+    Cut<T> Cut<T>::withRange (const float& down, const float& up) {
+        Cut<T> output(*this);
+	output.setRange(down, up);
+	return output;
+    }
     
     template <class T>
-    void Cut<T>::setFunction (const function< double(const T&) >& f) {
+    void Cut<T>::setFunction (const std::function< float(const T&) >& f) {
         m_function = f;
         return;
     }
@@ -152,11 +159,17 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     bool Cut<T>::apply (const T& obj, const float& w) {
+      /**
+       * Performace bottleneck. 
+       * - Is called ca. 20 times per event and;
+       * - accounts for ca. 85% of all instructions/time spend in AnalysisTools.
+       */
         DEBUG("Entering.");
         assert(m_function);
         if (!this->m_initialised) { init(); }
         
         // * Pre-cut distributions.
+	/*
 	DEBUG("  Pre-cut distributions.");
         for (IPlotMacro* plot : plots(CutPosition::Pre)) {
 	  DEBUG("    -- %s", plot->name().c_str());
@@ -166,11 +179,55 @@ namespace AnalysisTools {
 	      ((PlotMacro1D<T>*) plot)->fill(obj);
             }
         }
+	*/
+
+	// Get pointer to parent Selection-type instance.
+	ISelection* parent = dynamic_cast<ISelection*>(this->parent());
+	ValuesCache* pcache = parent->valuesCache();
+
+	// Perform caching.
+	if (parent->performCaching()) {
+	  // Pre-cut plots
+	  for (IPlotMacro* plot : plots(CutPosition::Pre)) {
+	    if (plot->name() == "weight") {
+              pcache->add(plot->name(), w);
+            } else {
+              pcache->add(plot->name(), obj, ((PlotMacro1D<T>*) plot)->function());
+            }
+	  }
+	  // Post-cut plots
+	  for (IPlotMacro* plot : plots(CutPosition::Post)) {
+	    if (plot->name() == "weight" || plot->name() == "CutVariable") { continue; }
+	    pcache->add(plot->name(), obj, ((PlotMacro1D<T>*) plot)->function());
+	  }
+	}
+
+	if (parent->performCaching()) {
+	  DEBUG("  Pre-cut distributions.");
+	  for (IPlotMacro* plot : plots(CutPosition::Pre)) {
+	    plot->fillDirectly(pcache->get(plot->name()));
+	  }
+	} else {
+	  DEBUG("  Pre-cut distributions.");
+	  for (IPlotMacro* plot : plots(CutPosition::Pre)) {
+	    DEBUG("    -- %s", plot->name().c_str());
+            if (plot->name() == "weight") {
+              ((PlotMacro1D<float>*) plot)->fill(w);
+            } else {
+              ((PlotMacro1D<T>*) plot)->fill(obj);
+            }
+	  }
+	}
         
         // * Selection.
 	DEBUG("  Selection.");
         bool passes = false;
-        double val = m_function(obj);
+        float val;
+	if (parent->performCaching()) {
+	  val = pcache->get("CutVariable");
+	} else {
+	  val = m_function(obj);
+	}
         if (m_ranges.size()) {
             for (const Range& range : m_ranges) {
                 passes |= range.contains(val);
@@ -181,7 +238,8 @@ namespace AnalysisTools {
         }
         
         // * Post-cut distributions.
-        if (passes) {
+	/*
+	  if (passes) {
 	    DEBUG("  Post-cut distributions.");
             for (IPlotMacro* plot : plots(CutPosition::Post)) {
                 if (plot->name() == "weight") {
@@ -191,7 +249,28 @@ namespace AnalysisTools {
                 }
             }
         }
-        
+	*/
+
+	if (parent->performCaching()) {
+	  if (passes) {
+	    DEBUG("  Post-cut distributions.");
+	    for (IPlotMacro* plot : plots(CutPosition::Post)) {
+	      plot->fillDirectly(pcache->get(plot->name()));
+	    }
+	  }
+	} else {
+	  if (passes) {
+	    DEBUG("  Post-cut distributions.");
+	    for (IPlotMacro* plot : plots(CutPosition::Post)) {
+	      if (plot->name() == "weight") {
+		((PlotMacro1D<float>*) plot)->fill(w);
+	      } else {
+		((PlotMacro1D<T>*) plot)->fill(obj);
+	      }
+	    }
+	  }
+	}
+
 	DEBUG("  Filling trees.");
         this->m_trees[CutPosition::Pre]->Fill();
         if (passes) {
@@ -212,7 +291,7 @@ namespace AnalysisTools {
         this->dir()->cd();
         
         this->m_trees[CutPosition::Pre]  = makeUniqueMove( new TTree("Precut",  "TTree with (pre-)cut value distribution") );
-        this->m_trees[CutPosition::Post] = makeUniqueMove(  new TTree("Postcut", "TTree with (post-)cut value distribution") );
+        this->m_trees[CutPosition::Post] = makeUniqueMove( new TTree("Postcut", "TTree with (post-)cut value distribution") );
         
         if (m_variable == "") {
             m_variable = "CutVariable";

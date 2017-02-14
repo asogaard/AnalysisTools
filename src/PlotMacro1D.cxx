@@ -4,7 +4,7 @@ namespace AnalysisTools {
 
     // Set method(s).
     template <class T>
-    void PlotMacro1D<T>::setFunction  (const function< double(const T&) >& f) {
+    void PlotMacro1D<T>::setFunction  (const std::function< float(const T&) >& f) {
         m_function = f;
         return;
     }
@@ -15,6 +15,15 @@ namespace AnalysisTools {
     
     
     // High-level management method(s).
+  /*
+    template <class T>
+    void PlotMacro1D<T>::fillDirectly (const float& value) {
+        assert( m_tree );
+        m_value = value;
+        return;
+    }
+  */
+
     template <class T>
     void PlotMacro1D<T>::fill (const T& obj) {
         assert( m_tree );
@@ -47,7 +56,7 @@ namespace AnalysisTools {
 }
 
 template class AnalysisTools::PlotMacro1D<float>;
-template class AnalysisTools::PlotMacro1D<double>;
+//template class AnalysisTools::PlotMacro1D<double>;
 template class AnalysisTools::PlotMacro1D<TLorentzVector>;
 template class AnalysisTools::PlotMacro1D<AnalysisTools::PhysicsObject>;
 template class AnalysisTools::PlotMacro1D<AnalysisTools::Event>;

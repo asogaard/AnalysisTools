@@ -30,11 +30,13 @@ namespace  AnalysisTools {
 
 // AnalysisTools include(s).
 #include "AnalysisTools/IOperation.h"
+#include "AnalysisTools/ISelection.h"
 #include "AnalysisTools/Localised.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
 #include "AnalysisTools/Range.h"
 #include "AnalysisTools/PlotMacro1D.h"
+#include "AnalysisTools/ValuesCache.h"
 
 using namespace std;
 
@@ -76,7 +78,7 @@ namespace AnalysisTools {
 	  this->m_plots[CutPosition::Post] = std::vector< std::unique_ptr<IPlotMacro> >();
 	};
         
-        Cut (const string& name, const function< double(const T&) >& f) :
+        Cut (const string& name, const function< float(const T&) >& f) :
             Cut(name)
         {
 	  m_function = f;
@@ -110,21 +112,23 @@ namespace AnalysisTools {
         void clearRanges ();
         
         void setRange (const Range& range);
-        void setRange (const pair<double, double>& limits);
-        void setRange (const double& down, const double& up);
+        void setRange (const pair<float, float>& limits);
+        void setRange (const float& down, const float& up);
         
         void setRanges (const Ranges& ranges);
-        void setRanges (const vector< pair<double, double> >& vec_limits);
+        void setRanges (const vector< pair<float, float> >& vec_limits);
         
         void addRange (const Range& range);
-        void addRange (const pair<double, double>& limits);
-        void addRange (const double& down, const double& up);
-        void addRange (const double& value);
+        void addRange (const pair<float, float>& limits);
+        void addRange (const float& down, const float& up);
+        void addRange (const float& value);
         
         void addRanges (const Ranges& ranges);
-        void addRanges (const vector< pair<double, double> >& vec_limits);
+        void addRanges (const vector< pair<float, float> >& vec_limits);
+
+	Cut<T> withRange (const float& down, const float& up);
         
-        void setFunction (const function< double(const T&) >& f);
+        void setFunction (const function< float(const T&) >& f);
         
         void clearPlots ();
         void addPlot    (const CutPosition& pos, const IPlotMacro& plot);
@@ -149,7 +153,7 @@ namespace AnalysisTools {
         
     private:
         
-        function< double(const T&) > m_function;
+        function< float(const T&) > m_function;
         Ranges m_ranges;
         
         string m_variable = "";

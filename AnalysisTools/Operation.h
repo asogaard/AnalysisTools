@@ -4,14 +4,14 @@
 /**
  * @file Operation.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
 #include <iostream>
 #include <string>
 #include <vector>
 #include <functional> /* std::function */
-#include <assert.h> /* assert */
+#include <cassert> /* assert */
 
 // xAOD include(s)
 // ...
@@ -68,7 +68,7 @@ namespace AnalysisTools {
           this->m_plots[CutPosition::Post] = std::vector< std::unique_ptr<IPlotMacro> >();
 	};
 
-	Operation (const string& name, const function< double(T&) >& f) :
+	Operation (const string& name, const function< float(T&) >& f) :
             Operation(name)
 	{
 	    m_function = f;
@@ -99,7 +99,7 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setFunction (const function< double(T&) >& f);
+        void setFunction (const std::function< float(T&) >& f);
         
         void clearPlots ();
         void addPlot    (const CutPosition& pos, const IPlotMacro& plot);
@@ -122,7 +122,7 @@ namespace AnalysisTools {
         
     private:
         
-        function< double(T&) > m_function;
+	std::function< float(T&) > m_function;
         Ranges m_ranges;
         
         string m_variable = "";

@@ -35,7 +35,6 @@ namespace  AnalysisTools {
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
 
-using namespace std;
 
 namespace AnalysisTools {
 
@@ -57,11 +56,11 @@ namespace AnalysisTools {
             Localised()
         {};
         
-        PlotMacro1D (const string& name) :
+        PlotMacro1D (const std::string& name) :
             Localised(name)
         {};
         
-        PlotMacro1D (const string& name, const function< double(const T&) >& f) :
+	    PlotMacro1D (const std::string& name, const std::function< float(const T&) >& f) :
             Localised(name)
         {
             setFunction(f);
@@ -81,16 +80,17 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        //void setVariable  (const string& variable);
-        //void setUnit      (const string& unit);
-        void setFunction  (const function< double(const T&) >& f);
+        //void setVariable  (const std::string& variable);
+        //void setUnit      (const std::string& unit);
+        void setFunction  (const std::function< float(const T&) >& f);
 
         
         // Get method(s).
-        // ...
+        const std::function< float(const T&) >& function () const { return m_function; }
         
         
         // High-level management method(s).
+        //void fillDirectly (const float& value);
         void fill (const T& obj);
         void fill (      T& obj);
         
@@ -104,7 +104,7 @@ namespace AnalysisTools {
         
     private:
         
-        function< double(const T&) > m_function;
+	std::function< float(const T&) > m_function;
         
         
     };
