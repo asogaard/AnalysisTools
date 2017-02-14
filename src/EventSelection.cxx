@@ -41,6 +41,11 @@ namespace AnalysisTools {
 	// Make sure that collection links have been cached.
 	if (not m_hasCachedCollections) { cacheCollections_(); }
 
+	// Clear values cache.
+	if (this->performCaching()) {
+	  this->valuesCache()->clear();
+	}
+
 	// Loop categories (Nominal, ...)
         for (const auto& category : this->categories()) {
 	    DEBUG("  Category: '%s'", category.c_str());

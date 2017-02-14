@@ -86,7 +86,6 @@ namespace AnalysisTools {
 
 	    DEBUG("Number of candidates in '%s' after full selection: %d", this->name().c_str(), this->m_candidates[category].size());
 	    //std::cout << " [" << &this->m_candidates[category] << "]" << std::endl;
-
         }
 
         this->m_hasRun = true;
