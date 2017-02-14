@@ -61,6 +61,7 @@ namespace AnalysisTools {
 	  this->m_children = {};
 	  this->m_dir      = nullptr;
 	  this->m_parent   = nullptr;
+	  this->m_required = other.m_required;
 
 	  addCategories(other.m_categories);
 	  for (const auto& category : m_categories) {
@@ -87,6 +88,9 @@ namespace AnalysisTools {
         
         // Set method(s).
         void setWeight (const float* weight);
+
+	inline void setRequired (const bool& required = true) { m_required = required; }
+	inline virtual bool required () const { return m_required; }
         
         void addCategory     (const string& category);
         void addCategories   (const vector<string>& categories);
