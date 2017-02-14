@@ -303,15 +303,15 @@ namespace AnalysisTools {
       if (m_sum)  { maxMC   = max(m_sum ->GetBinContent(ibin + 1), maxMC); }
     }
     
-    const double plotmax = max(maxData, maxMC);
-    const double plotmin = (m_normalised ? 1e-05 : 0.5); // log-plots only
+    const double plotmax = (m_plotmax > 0 ? m_plotmax : max(maxData, maxMC));
+    const double plotmin = (m_plotmin > 0 ? m_plotmin : (m_normalised ? 1e-05 : 0.5)); // log-plots only
     
     // Setting y-axis range.
     DEBUG("Setting y-axis range.");
     if (m_log) {
-      m_sum->GetYaxis()->SetRangeUser(plotmin, exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
+      m_sum->GetYaxis()->SetRangeUser(plotmin, m_plotmax > 0 ? plotmax : exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
     } else {
-      m_sum->GetYaxis()->SetRangeUser(0, m_padding * plotmax);
+      m_sum->GetYaxis()->SetRangeUser(m_plotmin > 0 ? plotmin : 0, m_plotmax > 0 ? plotmax :m_padding * plotmax);
     }
     
     // Check x-axis labels.
@@ -324,7 +324,7 @@ namespace AnalysisTools {
     DEBUG("Drawing background.");
     m_sum->DrawCopy("AXIS");
     background->Draw("HIST same");
-    m_sum->DrawCopy("E2 same"); // E2
+    //m_sum->DrawCopy("E2 same"); // E2
     
     // -- Signal
     DEBUG("Drawing signal.");
@@ -340,6 +340,81 @@ namespace AnalysisTools {
     }
     m_sum->DrawCopy("AXIS same");
     
+    // -- Arrows
+    if (m_arrowsDown.size() + m_arrowsRight.size() + m_arrowsLeft.size() > 0) {
+
+      // Definitions
+      //float w = gPad->GetWw() * gPad->GetAbsWNDC();
+      //float h = gPad->GetWh() * gPad->GetAbsHNDC();
+      float ymin = (m_log ? plotmin : 0 );
+      float ymax = (m_log ? exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)) : m_padding * plotmax );
+      float xmin = gPad->GetUxmin();
+      float xmax = gPad->GetUxmax();
+
+      // Initialise and style TLine objects
+      TLine whiteLine, blackLine;
+      whiteLine.SetLineWidth(2);
+      blackLine.SetLineWidth(4);
+      whiteLine.SetLineColor(kWhite);
+      blackLine.SetLineColor(kBlack);
+
+      // Compute absolute arrow coordinates
+      float offset_bottom = (m_ratio ? 0.04 : 0.14); // relative
+      float arrow_head        = 0.01; // relative
+      float arrow_base_length = 0.10; // relative
+      float arrow_head_lengthx = arrow_head * (xmax - xmin);
+      float arrow_head_lengthy, arrow_head_lengthydown;
+      float arrow_ymin, arrow_ymax;
+      if (m_log) {
+	float logdy   = std::log(ymax) - std::log(ymin);
+	float logymin = std::log(ymin);
+	arrow_head_lengthy = std::exp((offset_bottom + arrow_head) * logdy + logymin) - std::exp(offset_bottom * logdy + logymin);
+	arrow_head_lengthydown = std::exp((offset_bottom) * logdy + logymin) - std::exp((offset_bottom - arrow_head) * logdy + logymin);
+	arrow_ymin = std::exp( offset_bottom * logdy + logymin);
+	arrow_ymax = std::exp((offset_bottom + arrow_base_length) * logdy + logymin);
+      } else {
+	arrow_head_lengthy = arrow_head * (ymax - ymin);
+	arrow_ymin = offset_bottom * (ymax - ymin) + ymin;
+	arrow_ymax = arrow_ymin + arrow_base_length * (ymax - ymin);
+      }
+
+      // Actually draw the arrows.
+      for (TLine* line : { &blackLine, &whiteLine }) {
+	float x, y1, y2, dx, dy;
+
+	dx = arrow_head_lengthx;
+	y1 = arrow_ymin;
+	y2 = arrow_ymax;
+	dy = arrow_head_lengthy;
+
+	// -- Down
+	for (const float& x : m_arrowsDown) {
+	  line->DrawLine(x, y1, x, y2);
+	  line->DrawLine(x, y1, x + dx, y1 + dy);
+	  line->DrawLine(x, y1, x - dx, y1 + dy);
+	}
+
+	// -- Right
+	float dydown = arrow_head_lengthydown;
+	for (const float& x : m_arrowsRight) {
+	  line->DrawLine(x, y1, x, y2);
+	  line->DrawLine(x, y1, x + 2 * dx, y1);
+	  line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 + dy);
+	  line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 - dydown);
+	}
+
+	// -- Left
+	for (const float& x : m_arrowsLeft) {
+	  line->DrawLine(x, y1, x, y2);
+	  line->DrawLine(x, y1, x - 2 * dx, y1);
+	  line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 + dy);
+	  line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 - dydown);
+	}
+
+      }
+
+    }
+
     
     // Ratio distributions.
     if (m_data) {
@@ -512,9 +587,9 @@ namespace AnalysisTools {
       line.SetLineColor(kGray + 3);
       line.DrawLine(axismin, 1, axismax, 1);
       
-      line.SetLineStyle(2);
-      line.DrawLine(axismin, 1.1, axismax, 1.1);
-      line.DrawLine(axismin, 0.9, axismax, 0.9);
+      //line.SetLineStyle(2);
+      //line.DrawLine(axismin, 1.1, axismax, 1.1);
+      //line.DrawLine(axismin, 0.9, axismax, 0.9);
     }
     
     // Cut improvements.
@@ -833,7 +908,8 @@ namespace AnalysisTools {
   bool PlottingHelper<HistType>::loadHistograms_ () {
     
     DEBUG("Entering.");
-    
+    INFO("Getting histogram/tree: '%s'", m_input.c_str());
+
     // Check whether any file names were provided.
     if (m_filenames.size() == 0) {
       ERROR("No input files were provided.");
@@ -841,7 +917,7 @@ namespace AnalysisTools {
     }
     
     // Initialise luminosity counter.
-    m_lumi = 0.;
+    //m_lumi = 0.;
     
     // Looping input files.
     // -------------------------------------------------------------------------
@@ -890,9 +966,12 @@ namespace AnalysisTools {
       bool isSignal = (info.type == SampleType::Signal);
       
       // Keep track of the actual amount of luminosity added.
+      /*
       if (!isMC) {
+	INFO("Adding %f to %f -> %5", info.lumi / 1000., m_lumi, m_lumi + info.lumi / 1000.);
 	m_lumi += info.lumi / 1000.; // Scaling pb-1 -> fb-1.
       }
+      */
             
       // Perform styling.
       styleHist_(hist.get(), isMC, info.name);
@@ -908,6 +987,9 @@ namespace AnalysisTools {
 	  hist->Scale(m_scaleSignal);
 
 	  // Make sure that each signal is unique.
+	  if (m_signals.count(info.name) != 0) {
+	    WARNING("Signal with name '%s' already encountered! Breaking.", info.name.c_str());
+	  }
 	  assert( m_signals.count(info.name) == 0 );
 
 	  // Move histogram to signal collection.
@@ -1036,7 +1118,7 @@ namespace AnalysisTools {
 
       // Split line into fields, separated by commas.
       vector<string> fields = split(line, ',');
-      
+
       // Initialised dataset ID/run number and SampleInfo variables.
       unsigned DSID;
       SampleInfo info;

@@ -19,7 +19,7 @@
 #include <iomanip> /* std::setprecision */
 #include <algorithm> /* std::max, std::sort, std::reverse, std::find */
 #include <regex> /* std::regex */
-#include <cmath> /* log */
+#include <cmath> /* std::log, std::log10, std::pow */
 #include <memory> /* std::unique_ptr, std::shared_ptr */
 #include <exception> /* std::exception */
 
@@ -136,6 +136,9 @@ namespace AnalysisTools {
     
     void drawRatioPad (const bool& ratio);
     
+    inline void setPlotmin (const double& plotmin) { m_plotmin = plotmin; }
+    inline void setPlotmax (const double& plotmax) { m_plotmax = plotmax; }
+
     void rebin  (const unsigned& nrebin);
     void setLog (const bool&     doLog);
     
@@ -146,7 +149,13 @@ namespace AnalysisTools {
     
     void setNormalised (const bool& normalised);
     void setSortBackgrounds (const bool& sortBackgrounds);
+
+    inline void setLuminosity (const double& lumi) { m_lumi = lumi; }
     
+    inline void setArrowsDown (const std::vector<float>& arrowsDown)  { m_arrowsDown  = arrowsDown; }
+    inline void setArrowsRight(const std::vector<float>& arrowsRight) { m_arrowsRight = arrowsRight; }
+    inline void setArrowsLeft (const std::vector<float>& arrowsLeft)  { m_arrowsLeft  = arrowsLeft; }
+
 
     /// Get method(s).
     // ...
@@ -187,6 +196,9 @@ namespace AnalysisTools {
     
     vector<string> m_axistitles = {"", "", ""};
     
+    double m_plotmin = -1.;
+    double m_plotmax = -1.;
+
     unsigned m_nbinsx = 1; /* For use only when reading from tree. */
     unsigned m_nbinsy = 1; /* For use only when reading from tree. */
     double   m_xmin   = 0.;
@@ -201,13 +213,17 @@ namespace AnalysisTools {
     bool m_log = true;
     bool m_1D  = true; /* make accessor */
    
-    double m_padding = 2.3;
+    double m_padding = 2.0;
     
     bool m_print = false;
     
     bool m_normalised = false;
     bool m_sortBackgrounds = true;
  
+    std::vector<float> m_arrowsDown  = {};
+    std::vector<float> m_arrowsRight = {};
+    std::vector<float> m_arrowsLeft  = {};
+
     // Completely internal.
     upTCanvas m_canvas;
     pair< upTPad, upTPad > m_pads = {nullptr, nullptr};
