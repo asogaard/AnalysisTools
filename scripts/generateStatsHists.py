@@ -39,6 +39,7 @@ def main ():
     # Specify which variables to get.
     print "-- Specify variables to read."
     treename = 'BoostedJet+ISRgamma/EventSelection/Pass/tau21DDT_0p50/Postcut'
+    #treename = 'BoostedJet+ISRgamma/EventSelection/Pass/NumFatjetsAfterDphi/Postcut'
     prefix   = 'leadingfatjet_'
 
     getvars  = ['m']
@@ -57,7 +58,6 @@ def main ():
     print "-- Initialise number of (good) jets."
     N = len(data[getvars[0]])
 
-
     # Fill output histograms.
     # ----------------------------------------------------------------
     print "\nFill output histograms."
@@ -66,7 +66,7 @@ def main ():
     hists = list()
     ranges = [
         # Backgrounds.
-        ((361039, 361062), "estimate"), # Sherpa gamma + jet
+        ((361039, 361062), "QCD"), # Sherpa gamma + jet
         ((305435, 305439), "W"), # Sherpa gamma + W
         ((305440, 305444), "Z"), # Sherpa gamma + Z
 
@@ -112,44 +112,59 @@ def main ():
         if name.startswith('mR'):
             m = re.search('mR([0-9]*)p([0-9]+)*', name)
             masstext = '%s%s' % (m.group(1), m.group(2).ljust(3, '0').lstrip('0'))
-            title = 'Signal_%s' % masstext
+            title = 'signal_%s' % masstext
             mass = int(masstext.rjust(4, '0'))
         else:
             title = name
             mass = counter
             counter += 1
             pass
-        title = 'mJ_' + title
+        title = title
         new_ranges.append((DSIDs, name, title, mass))
         pass
     ranges = new_ranges
 
-    # Write to file.
-    outfile = TFile('ISRgamma_histograms.root', 'RECREATE')
-    for DSIDs, name, title, mass in sorted(ranges, key = lambda t : t[3]):
-        print "Filling histogram for '%s' (%d)." % (name, mass)
-        msk = np.where((data['DSID'] >= DSIDs[0]) & (data['DSID'] <= DSIDs[1]))
-
-        # Fill histogram
-        hist = TH1F(title, "", 30, 100., 250.)
-        hist.Sumw2()
-        fill_hist(hist, data['m'][msk], weights = data['weight'][msk])
-        hist.Write()
-        pass
-
+    # Write to signal file(s).
+    signalfile = TFile('ISRgamma_signals.root', 'RECREATE')
     for DSIDs, _, title, mass in sorted(ranges, key = lambda t : t[3]):
+        if mass <= 2: continue
+
         print "Filling tree for '%s'." % name
         msk = np.where((data['DSID'] >= DSIDs[0]) & (data['DSID'] <= DSIDs[1]))
 
         # Fill tree
-        arr = np.array(data['m'][msk].ravel(),
-                       dtype=[('m', np.float32),
-                              ])
-        tree = array2tree(arr, 'tree_' + title)
+        M = [tuple(el) for el in np.hstack((np.atleast_2d(data['m']     [msk].ravel()).T,
+                                            np.atleast_2d(data['weight'][msk].ravel()).T)).tolist()]
+        arr = np.array(M, dtype=[('m_J',    'f4'),
+                                 ('weight', 'f4'),
+                                 ])
+
+        tree = array2tree(arr, title)
         tree.Write()
         pass
 
-    outfile.Close()
+    signalfile.Close()
+
+    # Writing to background file(s)
+    backgroundfile = TFile('ISRgamma_backgrounds.root', 'RECREATE')
+    for DSIDs, _, title, mass in sorted(ranges, key = lambda t : t[3]):
+        if mass > 2: continue
+
+        print "Filling tree for '%s'." % name
+        msk = np.where((data['DSID'] >= DSIDs[0]) & (data['DSID'] <= DSIDs[1]))
+
+        # Fill tree
+        M = [tuple(el) for el in np.hstack((np.atleast_2d(data['m']     [msk].ravel()).T,
+                                            np.atleast_2d(data['weight'][msk].ravel()).T)).tolist()]
+        arr = np.array(M, dtype=[('m_J',    'f4'),
+                                 ('weight', 'f4'),
+                                 ])
+
+        tree = array2tree(arr, title)
+        tree.Write()
+        pass
+
+    backgroundfile.Close()
 
     # ...
 
