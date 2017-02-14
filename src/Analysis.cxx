@@ -135,16 +135,16 @@ namespace AnalysisTools {
     
     bool Analysis::run () {
 	DEBUG("Entering (actual run method).");
-        bool status = true;
+        bool passed = true;
         for (auto& selection : m_selections) {
 	    DEBUG("  Setting weight.");
             selection->setWeight(m_weight);
 	    DEBUG("  Running %s.", selection->name().c_str());
-            status &= selection->run();
-            if (!status) { break; }
+            passed &= selection->run();
+            if (!passed && selection->required()) { break; }
         }
 	DEBUG("Exiting (actual run method).");
-        return status;
+        return passed;
     }
     
     void Analysis::openOutput  (const string& filename) {
@@ -229,6 +229,7 @@ namespace AnalysisTools {
     }
 
     /// Explicitly instatiate templates.
+    template void Analysis::addSelection< PseudoObjectDefinition<TLorentzVector> >(PseudoObjectDefinition<TLorentzVector>*);
     template void Analysis::addSelection< ObjectDefinition<TLorentzVector> >(ObjectDefinition<TLorentzVector>*);
     template void Analysis::addSelection< EventSelection >(EventSelection*);
     
