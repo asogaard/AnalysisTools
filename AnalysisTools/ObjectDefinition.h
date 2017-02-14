@@ -70,6 +70,22 @@ namespace AnalysisTools {
         
     };
 
+  /**
+   * Mini class for pseudo-object definitions whose sole purpose is producing a PhysicsObject collection from a set of TLorentzVectors.
+   */
+  template<class T>
+  class PseudoObjectDefinition : public ObjectDefinition<T> {
+
+  public:
+    // Constructor(s).
+    PseudoObjectDefinition (const string& name) :
+      ObjectDefinition<T>(name)
+    {
+      this->addOperation("nop", [](T&) {return true; });
+    };
+    
+  };
+
 }
 
 #endif
