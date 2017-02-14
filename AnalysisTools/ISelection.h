@@ -4,7 +4,7 @@
 /**
  * @file ISelection.h
  * @author Andreas Sogaard
- **/
+ */
 
 // STL include(s).
 #include <iostream>
@@ -23,6 +23,7 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/IOperation.h"
 #include "AnalysisTools/Localised.h"
+#include "AnalysisTools/ValuesCache.h"
 
 using namespace std;
 
@@ -46,7 +47,7 @@ namespace AnalysisTools {
         
         // Set method(s).
         virtual void setWeight (const float* weight) = 0;
-        
+	virtual bool required () const = 0;
         
         // Get method(s).
         virtual vector< string > categories       () = 0;
@@ -57,7 +58,9 @@ namespace AnalysisTools {
         virtual TH1F*                    cutflow       (const string& category) = 0;
         
         virtual bool hasRun () = 0;
-        
+
+	inline ValuesCache* valuesCache () { return &m_valuesCache; }
+	inline const bool& performCaching () const { return m_performCaching; }
         
         // High-level management method(s).
         virtual bool run () = 0;
@@ -83,7 +86,14 @@ namespace AnalysisTools {
 
 	const float* m_weight = nullptr;
 
-        
+	bool m_required = false; // Whether the analysis will stop if this selection isn't passed
+
+	/**
+	 * Cache for storing the function return-values used e.g. in PlotMacro1D. This is based on the idea that all plottin-macros with name 'xyz' within the same selection will (hopefully!) return the same value, which means that we only need to evaluate it once.	 
+	 */
+	ValuesCache m_valuesCache;
+	bool m_performCaching = false;
+
     };
     
     //using SelectionsPtr = std::vector< std::unique_ptr<ISelection> >;

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <assert.h>
+#include <cassert>
 #include <memory> /* std::unique_ptr */
 
 // ROOT include(s).
@@ -53,6 +53,7 @@ namespace AnalysisTools {
         
         // High-level management method(s).
         // ...
+	inline void fillDirectly (const double& value) { assert( m_tree ); m_value = value; }
         
         
     public:
