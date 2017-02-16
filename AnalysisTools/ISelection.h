@@ -65,6 +65,8 @@ namespace AnalysisTools {
         // High-level management method(s).
         virtual bool run () = 0;
 
+	virtual bool passes (const std::string& category) const {};
+
 	virtual void print () const = 0;
         
     protected:
@@ -86,7 +88,7 @@ namespace AnalysisTools {
 
 	const float* m_weight = nullptr;
 
-	bool m_required = false; // Whether the analysis will stop if this selection isn't passed
+	bool m_required = true; // Whether the analysis will stop if this selection isn't passed
 
 	/**
 	 * Cache for storing the function return-values used e.g. in PlotMacro1D. This is based on the idea that all plottin-macros with name 'xyz' within the same selection will (hopefully!) return the same value, which means that we only need to evaluate it once.	 
