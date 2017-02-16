@@ -186,33 +186,42 @@ namespace AnalysisTools {
   }
   
   template<class T>
-    inline std::vector<T>* readBranchVector ( TTree* tree, const std::string& branchName) {
+    inline std::unique_ptr< std::vector<T> > readBranchVector ( TTree* tree, const std::string& branchName) {
+    //inline std::vector<T>* readBranchVector ( TTree* tree, const std::string& branchName) {
     /* @TODO: Move to unique_ptr? */
+    /* -- * /
     std::vector<T>* output = nullptr;
     tree->SetBranchAddress(branchName.c_str(), &output);
+    /* -- */
+    /* -- */
+
+    std::vector<T>* outputv = nullptr;
+    tree->SetBranchAddress(branchName.c_str(), &outputv);
+    std::unique_ptr< std::vector<T> > output (outputv);
+    /* -- */
     return output;
   }
   
   
   // Return a vector of TLorentzVectors based on vectors of (pt, eta, phi, m) components.
-  inline std::vector< TLorentzVector > createFourVectorsM (const std::vector<float>& vec_pt,
-							   const std::vector<float>& vec_eta,
-							   const std::vector<float>& vec_phi,
-							   const std::vector<float>& vec_m) {
+  inline std::vector< TLorentzVector > createFourVectorsM (std::vector<float>* vec_pt,
+							   std::vector<float>* vec_eta,
+							   std::vector<float>* vec_phi,
+							   std::vector<float>* vec_m) {
     // Initialise size of vectors.
-    unsigned N = vec_pt.size();
+    unsigned N = vec_pt->size();
     
     // Checks.
-    if (vec_eta.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and eta (%d) vectors don't agree.", N, vec_eta.size());
+    if (vec_eta->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and eta (%d) vectors don't agree.", N, vec_eta->size());
       return {};
     }
-    if (vec_phi.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and phi (%d) vectors don't agree.", N, vec_phi.size());
+    if (vec_phi->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and phi (%d) vectors don't agree.", N, vec_phi->size());
       return {};
     }
-    if (vec_m.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and m (%d) vectors don't agree.", N, vec_m.size());
+    if (vec_m->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and m (%d) vectors don't agree.", N, vec_m->size());
       return {};
     } 
     
@@ -221,34 +230,34 @@ namespace AnalysisTools {
     
     // Fill output vector.
     for (unsigned i = 0; i < N; i++) {
-      output[i].SetPtEtaPhiM( vec_pt .at(i),
-			      vec_eta.at(i),
-			      vec_phi.at(i),
-			      vec_m  .at(i));
+      output[i].SetPtEtaPhiM( vec_pt ->at(i),
+			      vec_eta->at(i),
+			      vec_phi->at(i),
+			      vec_m  ->at(i));
     }
     
     return output;
   }
   
   // Return a vector of TLorentzVectors based on vectors of (pt, eta, phi, e) components.
-  inline std::vector< TLorentzVector > createFourVectorsE (const std::vector<float>& vec_pt,
-							   const std::vector<float>& vec_eta,
-							   const std::vector<float>& vec_phi,
-							   const std::vector<float>& vec_e) {
+  inline std::vector< TLorentzVector > createFourVectorsE (std::vector<float>* vec_pt,
+							   std::vector<float>* vec_eta,
+							   std::vector<float>* vec_phi,
+							   std::vector<float>* vec_e) {
     // Initialise size of vectors.
-    unsigned N = vec_pt.size();
+    unsigned N = vec_pt->size();
     
     // Checks.
-    if (vec_eta.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and eta (%d) vectors don't agree.", N, vec_eta.size());
+    if (vec_eta->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and eta (%d) vectors don't agree.", N, vec_eta->size());
       return {};
     }
-    if (vec_phi.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and phi (%d) vectors don't agree.", N, vec_phi.size());
+    if (vec_phi->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and phi (%d) vectors don't agree.", N, vec_phi->size());
       return {};
     }
-    if (vec_e.size() != N) {
-      FCTWARNING("Number of elements in pT (%d) and e (%d) vectors don't agree.", N, vec_e.size());
+    if (vec_e->size() != N) {
+      FCTWARNING("Number of elements in pT (%d) and e (%d) vectors don't agree.", N, vec_e->size());
       return {};
     } 
     
@@ -257,10 +266,10 @@ namespace AnalysisTools {
     
     // Fill output vector.
     for (unsigned i = 0; i < N; i++) {
-      output[i].SetPtEtaPhiE( vec_pt .at(i),
-			      vec_eta.at(i),
-			      vec_phi.at(i),
-			      vec_e  .at(i));
+      output[i].SetPtEtaPhiE( vec_pt ->at(i),
+			      vec_eta->at(i),
+			      vec_phi->at(i),
+			      vec_e  ->at(i));
 
     }
     
