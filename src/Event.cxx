@@ -7,15 +7,17 @@ namespace AnalysisTools {
     
     // Set method(s).
     void Event::addInfo (const string& name, const double& val) {
-      //WARNING("Adding info '%s'", name.c_str());
-        assert( m_info.count(name) == 0 );
+        if ( m_info.count(name) =! 0 ) {
+	    ERROR("Info named '%s' already exists.", name.c_str());
+	}
         m_info[name] = val;
         return;
     }
     
     void Event::addCollection (const string& name, PhysicsObjects* collection) {
-      //INFO("Adding collection '%s'", name.c_str());
-        assert( m_collections.count(name) == 0 );
+        if ( m_collections.count(name) =! 0 ) {
+	    ERROR("Collection named '%s' already exists.", name.c_str());
+	}
 	m_collections[name] = {};
 	for (const PhysicsObject& p : *collection) {
 	  m_collections[name].push_back(&p);
@@ -41,27 +43,31 @@ namespace AnalysisTools {
         return m_collections.count(name) > 0;
     }
 
-  //PhysicsObjects* Event::collection (const string& name) const {
-  const PhysicsObjectPtrs& Event::collection (const string& name) const {
-      //INFO("Trying to access collection '%s'", name.c_str());
-        assert( m_collections.count(name) > 0 );
+    const PhysicsObjectPtrs& Event::collection (const string& name) const {
+        if ( m_collections.count(name) == 0 ) {
+	    ERROR("No collection named '%s' exists.", name.c_str());
+	}
         return m_collections.at(name);
     }
     
   PhysicsObjectPtrs& Event::mutableCollection (const string& name) {
-      //INFO("Trying to access collection '%s'", name.c_str());
-        assert( m_collections.count(name) > 0 );
+        if ( m_collections.count(name) == 0 ) {
+	    ERROR("No collection named '%s' exists.", name.c_str());
+	}
         return m_collections.at(name);
     }
     
     double Event::info (const string& name) const {
-      //INFO("Looking for '%s'", name.c_str());
-        assert( m_info.count(name) > 0 );
+        if (m_info.count(name) == 0) {
+	    ERROR("No info named '%s' was found", name.c_str());
+	}
         return m_info.at(name);
     }
     
     const PhysicsObject& Event::particle (const string& name) const {
-        assert( m_particles.count(name) > 0 );
+        if ( m_particles.count(name) == 0 ) {
+	    ERROR("No particle named '%s' exists.", name.c_str());
+	}
         return m_particles.at(name);
     }
     
