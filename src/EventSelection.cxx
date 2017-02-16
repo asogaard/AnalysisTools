@@ -61,6 +61,9 @@ namespace AnalysisTools {
             m_passes[category] = true;
 
 	    // Add all available auxiliary information.
+            for (const auto& name_val : this->infoContainer<unsigned>()) {
+                m_events[category].addInfo(name_val.first, (double) *name_val.second);
+            }
             for (const auto& name_val : this->infoContainer<double>()) {
                 m_events[category].addInfo(name_val.first, (double) *name_val.second);
             }
@@ -77,7 +80,6 @@ namespace AnalysisTools {
 	    // Add all collections found above.
             for (auto& name_pointer : m_collectionLinks[category]) {	      
                 m_events[category].addCollection(name_pointer.first, name_pointer.second);
-		DEBUG("    Adding collection '%s':", name_pointer.first.c_str());
             }
             
 	    // Set correct MC weight, if possibly.
@@ -197,22 +199,39 @@ namespace AnalysisTools {
 
 	// Get parent analysis.
 	ILocalised* parent = this->parent();
-	
-	// Loop through analysis's children elements.
+
+	// Determine category to which 'this' belongs
+	std::string this_category;
 	for (const std::pair<ILocalised*, string>& child_str : parent->children()) {
 	  
 	  // Unpack pair
 	  ILocalised* child;
-	  std::string childName;
-	  std::tie(child, childName) = child_str;
+	  std::tie(child, this_category) = child_str;
+
+	  // Break if 'this' has been reached, we have found the category.
+	  if (child == (ILocalised*) this) { break; }
+
+	}
+	DEBUG("    Deduced category '%s'", this_category.c_str());
+
+	// Loop through analysis's children elements to find target collection.
+	for (const std::pair<ILocalised*, string>& child_str : parent->children()) {
+	  
+	  // Unpack pair
+	  ILocalised* child;
+	  std::string child_category;
+	  std::tie(child, child_category) = child_str;
+
+	  // If we're in the wrong category, go to next.
+	  if (child_category != this_category) { continue; }
 
 	  // Break if 'this' has been reached, meaning that we are no 
-	  // longer quiring preceeding child elements.
+	  // longer querying preceeding child elements.
 	  if (child == (ILocalised*) this) { break; }
 	  
 	  // Check whether name of child matches name of target Selection-
 	  // type instance.
-	  DEBUG(" -- Comparing '%s' and '%s' (%s)", selectionName.c_str(), child->name().c_str(), childName.c_str());
+	  DEBUG(" -- Comparing '%s' and '%s' (%s)", selectionName.c_str(), child->name().c_str(), child_category.c_str());
 	  
 	  if (selectionName == child->name()) {
 	    DEBUG(" -- Got one!");
@@ -226,6 +245,7 @@ namespace AnalysisTools {
 	      // Add a copy of the resulting collection.
 	      // @TODO: - Pointer + masking?
 	      m_collectionLinks[category][name] = objdef->result(selectionCategory);
+	      DEBUG(" ------ Storing results pointer:");
 	      break;
 	    }
 	  }

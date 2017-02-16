@@ -63,10 +63,14 @@ namespace AnalysisTools {
                 
         // Get method(s).
         // ...
+	virtual inline bool passes (const std::string& category) const {
+	  assert( this->hasCategory(category) );
+	  return m_passes.at(category);
+	}
         
         
         // High-level management method(s).
-        bool run ();
+        virtual bool run ();
         
         bool result ();
         bool result (const string& category);
