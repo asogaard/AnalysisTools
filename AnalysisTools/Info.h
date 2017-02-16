@@ -15,7 +15,7 @@
 #include <cassert> /* assert */
 
 // AnalysisTools include(s).
-// ...
+#include "AnalysisTools/Logger.h"
 
 // Templated aliases for brevity
 template <class T>
@@ -42,9 +42,12 @@ class BasicInfo {
    * if a pointer with the same name and type already exists.
    */
   template<class T>
-  void addInfo (const std::string& name, const T* value) {
-    assert(infoContainer<T>().find(name) == infoContainer<T>().end());
-    infoContainer_<T>().emplace(name, value);
+    void addInfo (const std::string& name, const T* value, const bool& overwrite = false) {
+    if (!overwrite && infoContainer<T>().find(name) != infoContainer<T>().end()) {
+      FCTERROR("Info variable '%s' already exists.", name.c_str());
+    }
+    //infoContainer_<T>().emplace(name, value);
+    infoContainer_<T>()[name] = value;
     return;
   }
 
@@ -88,10 +91,11 @@ class BasicInfo {
   /**
    * Type-specific auxiliary information containers.
    */
-  basicContainer_t<double> m_doubles;
-  basicContainer_t<float> m_floats;
-  basicContainer_t<bool> m_bools;
-  basicContainer_t<int> m_ints;
+  basicContainer_t<unsigned> m_unsigneds;
+  basicContainer_t<double>   m_doubles;
+  basicContainer_t<float>    m_floats;
+  basicContainer_t<bool>     m_bools;
+  basicContainer_t<int>      m_ints;
   
  };
  
@@ -111,9 +115,12 @@ class VectorInfo {
    * if a pointer with the same name and type already exists.
    */
   template<class T>
-  void addInfo (const std::string& name, const std::vector<T>* value) {
-    assert(infoContainer<T>().find(name) == infoContainer<T>().end());
-    infoContainer_<T>().emplace(name, value);
+  void addInfo (const std::string& name, const std::vector<T>* value, const bool& overwrite = false) {
+    if (!overwrite and infoContainer<T>().find(name) != infoContainer<T>().end()) {
+      FCTERROR("Info variable '%s' already exists.", name.c_str());
+    }
+    //infoContainer_<T>().emplace(name, value);
+    infoContainer_<T>()[name] = value;
     return;
   }
 
@@ -158,10 +165,11 @@ class VectorInfo {
   /**
    * Type-specific auxiliary information containers.
    */
-  vectorContainer_t<double> m_doubles;
-  vectorContainer_t<float>  m_floats;
-  vectorContainer_t<bool>   m_bools;
-  vectorContainer_t<int>    m_ints;
+  vectorContainer_t<unsigned> m_unsigneds;
+  vectorContainer_t<double>   m_doubles;
+  vectorContainer_t<float>    m_floats;
+  vectorContainer_t<bool>     m_bools;
+  vectorContainer_t<int>      m_ints;
   
 };
  
