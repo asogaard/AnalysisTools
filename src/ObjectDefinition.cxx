@@ -17,12 +17,11 @@ namespace AnalysisTools {
     // High-level management method(s).
     template <class T>
     bool ObjectDefinition<T>::run () {
-        DEBUG("Entering.");
+        DEBUG("Entering '%s'.", this->name().c_str());
         assert( this->m_input );
         /* *
          * Check that input- and info containers have same length.
          */
-
         for (const auto& category : this->m_categories) {
             m_candidates[category].clear();
         }

@@ -46,7 +46,7 @@ namespace AnalysisTools {
         void setInput  (const vector<T>* candidates);
         
         // High-level management method(s).
-        bool run ();
+        virtual bool run ();
         
         PhysicsObjects* const result ();
         PhysicsObjects* const result (const string& category);

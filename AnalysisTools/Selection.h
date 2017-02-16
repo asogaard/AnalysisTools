@@ -62,6 +62,8 @@ namespace AnalysisTools {
 	  this->m_dir      = nullptr;
 	  this->m_parent   = nullptr;
 	  this->m_required = other.m_required;
+	  this->m_locked   = false;
+	  this->m_debug    = other.m_debug;
 
 	  addCategories(other.m_categories);
 	  for (const auto& category : m_categories) {
@@ -142,8 +144,8 @@ namespace AnalysisTools {
         
         // High-level management method(s).
         virtual bool run () = 0; /* No implementation. */
-        
-        
+
+
     protected:
         
         // Low-level management method(s).
@@ -165,7 +167,7 @@ namespace AnalysisTools {
     
     template <class T, class U>
     using Selections = vector< Selection<T, U> >;
-    
+
 }
 
 #endif
