@@ -7,7 +7,7 @@ namespace AnalysisTools {
     
     // Set method(s).
     void Event::addInfo (const string& name, const double& val) {
-        if ( m_info.count(name) =! 0 ) {
+        if ( m_info.count(name) != 0 ) {
 	    ERROR("Info named '%s' already exists.", name.c_str());
 	}
         m_info[name] = val;
@@ -15,7 +15,7 @@ namespace AnalysisTools {
     }
     
     void Event::addCollection (const string& name, PhysicsObjects* collection) {
-        if ( m_collections.count(name) =! 0 ) {
+        if ( m_collections.count(name) != 0 ) {
 	    ERROR("Collection named '%s' already exists.", name.c_str());
 	}
 	m_collections[name] = {};
