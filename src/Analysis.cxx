@@ -8,229 +8,273 @@
 
 namespace AnalysisTools {
     
-    // Set method(s).
-    template<typename T>
-    void Analysis::addSelection (T* selection) { // ISelection*
-        m_selections.emplace_back(makeUniqueMove(new T(*selection))); // std::move(std::unique_ptr<ISelection>(new T(*selection))) );
-	this->grab(m_selections.back().get());
-        //m_selections.push_back( selection );
-	//this->grab(selection);
-        return;
+  // Set method(s).
+  template<typename T>
+  void Analysis::addSelection (T* selection, const std::string& pattern) {
+    DEBUG("Adding seletion '%s' to categories with pattern '%s'", selection->name().c_str(), pattern.c_str());
+    for (const auto& category : this->categories(pattern)) {
+      m_selections[category].emplace_back(makeUniqueMove(new T(*selection)));
+      this->grab(m_selections[category].back().get(), category);
+    }
+    return;
+  }
+  
+  void Analysis::addTree (const std::string& pattern, const std::string& name) {
+    
+    DEBUG("Entering");
+    
+    // Make sure that an output file exists.
+    assert( hasOutput() );
+    
+    // Move to the directory of the current analysis.
+    DEBUG("  Going to '%s'.", this->dir()->GetName());
+
+    // Create a TTree in the current directory.
+    for (const auto& category : this->categories(pattern)) {
+
+      // Go to location of current analysis.
+      TDirectory* putDir = this->dir();
+      putDir->cd();
+
+      // Check whether 'category' subdirectory already exists (it shouldn't).
+      bool hasDir = (putDir->GetDirectory(category.c_str()) != nullptr);
+      assert( !hasDir );
+      
+      // Create 'category' subdirectory, and move there.
+      putDir = putDir->mkdir(category.c_str());
+
+      // Create output tree for 'category'.
+      m_outtree[category] = std::shared_ptr<TTree>(new TTree(name.c_str(), "Physics output tree"));
+      m_outtree[category]->SetDirectory(putDir);
     }
     
-    void Analysis::addTree (const string& name) {
+    DEBUG("Exiting.");
+    
+    return;
+  }
+  
+  void Analysis::setWeight (const float* weight, const std::string& pattern) {
+    for (const auto& category : this->categories(pattern)) {
+      m_weight[category] = weight;
+    }
+    return;
+  }
+  
+  
+  // Get method(s).
+  const std::map<std::string, SelectionPtrs>&  Analysis::selections () const {
+    return m_selections;
+  }
 
-        DEBUG("Entering");
+  const SelectionPtrs& Analysis::selections (const std::string& category) const {
+    assert( this->hasCategory(category) );
+    return m_selections.at(category);
+  }
 
-	// Make sure that an output file exists.
-        assert( hasOutput() );
-
-	// Move to the directory of the current analysis.
-	DEBUG("  Going to '%s'.", this->dir()->GetName());
-	this->dir()->cd();
-
-	// Create a TTree in the current directory.
-        m_outtree = std::shared_ptr<TTree>(new TTree(name.c_str(), "Physics output tree"));
-
-	DEBUG("Exiting.");
-
-        return;
+  void Analysis::clearSelections () {
+    m_selections.clear();
+    return;
+  }
+  
+  std::shared_ptr<TTree> Analysis::tree (const std::string& category) {
+    if (category == "" && this->numCategories() == 1) {
+      return trees().begin()->second;
+    }
+    assert( this->hasCategory(category) );
+    return m_outtree.at(category);
+  }
+  
+  const std::map<std::string, std::shared_ptr<TTree> >& Analysis::trees () {
+    return m_outtree;
+  }
+  
+  std::shared_ptr<TFile> Analysis::file () {
+    assert( m_outfile );
+    return m_outfile;
+  }
+    
+  void Analysis::writeTree (const std::string& category) {
+    assert( m_outtree.at(category) );
+    m_outtree.at(category)->Fill();
+    return;
+  }
+  
+  void Analysis::writeTrees () {
+    for (const auto& category : this->categories()) {
+      writeTree(category);
+    }
+    return;
+  }
+  
+  
+  // High-level management method(s).
+  bool Analysis::run (const std::string& category, const unsigned& current, const unsigned& maximum, const int& DSID) {
+    DEBUG("Entering.");
+    // * Progress bar.
+    int barWidth = 67;
+    
+    float progress = 0., prevProgress = 0.;
+    if (maximum == 1) {
+      progress = 1;
+    } else {
+      prevProgress = ((float) (current - 1) / (float) (maximum - 1));
+      progress     = ((float) current / (float) (maximum - 1));
     }
     
-    void Analysis::setWeight (const float* weight) {
-        m_weight = weight;
-        return;
-    }
-
+    bool update = (progress == 1) || (progress == 0) || (int(progress*100.) != int(prevProgress*100.)) || (int(barWidth*progress) != int(barWidth*prevProgress));
     
-    // Get method(s).
-    void Analysis::clearSelections () {
-        m_selections.clear();
-        return;
+    if (progress == 0) {
+      m_start = std::clock();
     }
     
-    std::shared_ptr<TTree> Analysis::tree () {
-        assert( m_outtree );
-        return m_outtree;
+    if (update) {
+      if (DSID > 0) {
+	cout << DSID << " | ";
+	barWidth -= 9;
+      }
+      if (progress < 1) {
+	std::cout << "[";
+	if (progress < 0.33) {
+	  cout << "\033[0;31m";
+	} else if (progress < 0.66) {
+	  cout << "\033[0;33m";
+	} else  {
+	  cout << "\033[0;32m";
+	}
+	int pos = barWidth * progress;
+	for (int i = 0; i < barWidth; ++i) {
+	  if (i < pos) std::cout << "=";
+	  else if (i == pos) std::cout << ">";
+	  else std::cout << " ";
+	}
+	std::cout << "\033[0m";
+	std::cout << "] " << int(progress * 100.0) << " %\r";
+	std::cout.flush();
+      } else {
+	std::cout << "[";
+	int pos = barWidth * progress;
+	for (int i = 0; i < barWidth; ++i) {
+	  if (i < pos) std::cout << "=";
+	  else if (i == pos) std::cout << ">";
+	  else std::cout << " ";
+	}
+	std::clock_t stop = std::clock();
+	printf("] %7d | %6.1f s | %5.3f ms/evt\n", maximum, (stop - m_start) / (double)(CLOCKS_PER_SEC), (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum));
+      }
     }
     
-    std::shared_ptr<TFile> Analysis::file () {
-        assert( m_outfile );
-        return m_outfile;
+    // * Running.
+    DEBUG("  Calling the actual 'run' method.");
+    return run(category);
+    DEBUG("Exiting.");
+  }
+  
+  bool Analysis::run (const std::string& category, const unsigned& current, const unsigned& maximum) {
+    return run (category, current, maximum, -1);
+  }
+  
+  bool Analysis::run (const std::string& category) {
+    DEBUG("Entering (actual run method).");
+    assert( this->hasCategory(category) );
+    bool passed = true;
+    for (auto& selection : m_selections.at(category)) {
+      DEBUG("  Setting weight.");
+      selection->setWeight(m_weight.at(category));
+      passed &= selection->run();
+      if (!passed && selection->required()) { break; }
     }
-
-
-    void Analysis::writeTree () {
-        assert( m_outtree );
-        m_outtree->Fill();
-        return;
-    }
-
+    DEBUG("Exiting (actual run method).");
+    return passed;
+  }
+  
+  void Analysis::openOutput  (const string& filename) {
+    /* Perform checks. */
+    /* Allow for adding to another file? */
+    /* Separate histogram and physics output? */
     
-    // High-level management method(s).
-    bool Analysis::run (const unsigned& current, const unsigned& maximum, const int& DSID) {
-        DEBUG("Entering.");
-        // * Progress bar.
-        int barWidth = 67;
-        
-        float progress = 0., prevProgress = 0.;
-        if (maximum == 1) {
-            progress = 1;
-        } else {
-            prevProgress = ((float) (current - 1) / (float) (maximum - 1));
-            progress     = ((float) current / (float) (maximum - 1));
-        }
-        
-        bool update = (progress == 1) || (progress == 0) || (int(progress*100.) != int(prevProgress*100.)) || (int(barWidth*progress) != int(barWidth*prevProgress));
-        
-        if (progress == 0) {
-            m_start = std::clock();
-        }
-        
-        if (update) {
-            if (DSID > 0) {
-                cout << DSID << " | ";
-                barWidth -= 9;
-            }
-            if (progress < 1) {
-                std::cout << "[";
-                if (progress < 0.33) {
-                    cout << "\033[0;31m";
-                } else if (progress < 0.66) {
-                    cout << "\033[0;33m";
-                } else  {
-                    cout << "\033[0;32m";
-                }
-                int pos = barWidth * progress;
-                for (int i = 0; i < barWidth; ++i) {
-                    if (i < pos) std::cout << "=";
-                    else if (i == pos) std::cout << ">";
-                    else std::cout << " ";
-                }
-                std::cout << "\033[0m";
-                std::cout << "] " << int(progress * 100.0) << " %\r";
-                std::cout.flush();
-            } else {
-                std::cout << "[";
-                int pos = barWidth * progress;
-                for (int i = 0; i < barWidth; ++i) {
-                    if (i < pos) std::cout << "=";
-                    else if (i == pos) std::cout << ">";
-                    else std::cout << " ";
-                }
-                std::clock_t stop = std::clock();
-                printf("] %7d | %6.1f s | %5.3f ms/evt\n", maximum, (stop - m_start) / (double)(CLOCKS_PER_SEC), (stop - m_start) / (double)(CLOCKS_PER_SEC) * 1000. / double(maximum));
-            }
-        }
-        
-        // * Running.
-	DEBUG("  Calling the actual 'run' method.");
-        return run();
-	DEBUG("Exiting.");
-    }
-    
-    bool Analysis::run (const unsigned& current, const unsigned& maximum) {
-        return run (current, maximum, -1);
-    }
-    
-    bool Analysis::run () {
-	DEBUG("Entering (actual run method).");
-        bool passed = true;
-        for (auto& selection : m_selections) {
-	    DEBUG("  Setting weight.");
-            selection->setWeight(m_weight);
-	    DEBUG("  Running %s.", selection->name().c_str());
-            passed &= selection->run();
-            if (!passed && selection->required()) { break; }
-        }
-	DEBUG("Exiting (actual run method).");
-        return passed;
-    }
-    
-    void Analysis::openOutput  (const string& filename) {
-        /* Perform checks. */
-        /* Allow for adding to another file? */
-        /* Separate histogram and physics output? */
-        
-        if (strcmp(filename.substr(0,1).c_str(), "/") == 0) {
-            cout << "WARNING: File '" << filename << "' not accepted. Only accepting realtive paths." << endl;
-            return;
-        }
-        
-        if (filename.find("/") != string::npos) {
-            string dir = filename.substr(0,filename.find_last_of("/")); // ...
-            if (!dirExists(dir)) {
-                cout << "WARNING: Directory '" << dir << "' does not exist. Creating it." << endl;
-                system(("mkdir -p " + dir).c_str());
-            }
-        }
-        
-        
-        m_outfile = std::shared_ptr<TFile>( new TFile(filename.c_str(), "RECREATE"));
-        
-        //this->m_dir = m_outfile->mkdir(this->m_name.c_str());
-	setup_();
-
-        return;
-    }
-
-    void Analysis::setOutput (std::shared_ptr<TFile> outfile) {
-      m_outfile = outfile;
-      setup_();
+    if (strcmp(filename.substr(0,1).c_str(), "/") == 0) {
+      cout << "WARNING: File '" << filename << "' not accepted. Only accepting realtive paths." << endl;
       return;
     }
     
-    void Analysis::closeOutput () {
-        if (m_outfile) {
-	    m_outfile->Close();
-            m_outfile = nullptr;
-        }
-        return;
+    if (filename.find("/") != string::npos) {
+      string dir = filename.substr(0,filename.find_last_of("/")); // ...
+      if (!dirExists(dir)) {
+	cout << "WARNING: Directory '" << dir << "' does not exist. Creating it." << endl;
+	system(("mkdir -p " + dir).c_str());
+      }
     }
     
-    bool Analysis::hasOutput () {
-        return (bool) m_outfile;
-    }
     
-    void Analysis::save () {
-
-        DEBUG("Entering.");
-
-	// Make sure that an output file exists.
-        assert( hasOutput() );
-
-	// Save file.
-        m_outfile->Write();
-
-	DEBUG("Exiting.");
-
-        return;
+    m_outfile = std::shared_ptr<TFile>( new TFile(filename.c_str(), "RECREATE"));
+    
+    setup_();
+    
+    return;
+  }
+  
+  void Analysis::setOutput (std::shared_ptr<TFile> outfile) {
+    m_outfile = outfile;
+    setup_();
+    return;
+  }
+  
+  void Analysis::closeOutput () {
+    if (m_outfile) {
+      m_outfile->Close();
+      m_outfile = nullptr;
     }
-
-    void Analysis::print () const {
-      INFO("");
-      INFO("Configuration for analysis '%s':", name().c_str());
-      for (const auto& selection : m_selections) {
+    return;
+  }
+  
+  bool Analysis::hasOutput () {
+    return (bool) m_outfile;
+  }
+  
+  void Analysis::save () {
+    
+    DEBUG("Entering.");
+    
+    // Make sure that an output file exists.
+    assert( hasOutput() );
+    
+    // Save file.
+    m_outfile->Write();
+    
+    DEBUG("Exiting.");
+    
+    return;
+  }
+  
+  void Analysis::print () {
+    INFO("");
+    INFO("Configuration for analysis '%s':", name().c_str());
+    for (const auto& category : this->categories()) {
+      INFO("  Category '%s':", category.c_str());
+      for (const auto& selection : m_selections.at(category)) {
 	selection->print();
       }
-      INFO("");
-      return;
     }
-
-    void Analysis::setup_ () {
-
-      // Create a new directory, with the name of the analysis.
-      this->setDir( m_outfile->mkdir(this->m_name.c_str()) );
-
-      // Add output tree to the newly created directory.
-      addTree();
-
-      return;
-    }
-
-    /// Explicitly instatiate templates.
-    template void Analysis::addSelection< PseudoObjectDefinition<TLorentzVector> >(PseudoObjectDefinition<TLorentzVector>*);
-    template void Analysis::addSelection< ObjectDefinition<TLorentzVector> >(ObjectDefinition<TLorentzVector>*);
-    template void Analysis::addSelection< EventSelection >(EventSelection*);
+    INFO("");
+    return;
+  }
+  
+  void Analysis::setup_ () {
     
+    // Create a new directory, with the name of the analysis.
+    this->setDir( m_outfile->mkdir(this->m_name.c_str()) );
+    
+    // Add output tree(s) to the newly created directory.
+    for (const auto& category : this->categories()) {
+      addTree(category);
+    }
+    
+    return;
+  }
+  
+  /// Explicitly instatiate templates.
+  template void Analysis::addSelection< PseudoObjectDefinition<TLorentzVector> >(PseudoObjectDefinition<TLorentzVector>*, const std::string&);
+  template void Analysis::addSelection< ObjectDefinition<TLorentzVector> >(ObjectDefinition<TLorentzVector>*, const std::string&);
+  template void Analysis::addSelection< EventSelection >(EventSelection*, const std::string&);
+  
 }
