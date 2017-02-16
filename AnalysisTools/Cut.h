@@ -114,7 +114,8 @@ namespace AnalysisTools {
         void setRange (const Range& range);
         void setRange (const pair<float, float>& limits);
         void setRange (const float& down, const float& up);
-        
+	void setRange (const float& value);
+
         void setRanges (const Ranges& ranges);
         void setRanges (const vector< pair<float, float> >& vec_limits);
         
@@ -127,6 +128,7 @@ namespace AnalysisTools {
         void addRanges (const vector< pair<float, float> >& vec_limits);
 
 	Cut<T> withRange (const float& down, const float& up);
+	Cut<T> withRange (const float& value);
         
         void setFunction (const function< float(const T&) >& f);
         

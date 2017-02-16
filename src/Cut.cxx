@@ -33,7 +33,14 @@ namespace AnalysisTools {
         addRange(down, up);
         return;
     }
-    
+
+    template <class T>
+    void Cut<T>::setRange (const float& value) {
+        clearRanges();
+	addRange(value);
+        return;
+    }
+        
     template <class T>
     void Cut<T>::setRanges (const Ranges& ranges) {
         m_ranges = ranges;
@@ -90,7 +97,16 @@ namespace AnalysisTools {
     template <class T>
     Cut<T> Cut<T>::withRange (const float& down, const float& up) {
         Cut<T> output(*this);
-	output.setRange(down, up);
+	output.clearRanges();
+	output.addRange(down, up);
+	return output;
+    }
+    
+    template <class T>
+    Cut<T> Cut<T>::withRange (const float& value) {
+        Cut<T> output(*this);
+	output.clearRanges();
+	output.addRange(value);
 	return output;
     }
     
