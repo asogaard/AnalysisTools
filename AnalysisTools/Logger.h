@@ -21,13 +21,13 @@
 
 /// Printing macros, with signature similar to 'printf'.
 // Macros only to be called from classes inheriting from Logger.
-#define ERROR(...)                        {this->print_(type(*this),  __FUNCTION__, "ERROR",   __VA_ARGS__);}
+#define ERROR(...)                        {this->print_(type(*this),  __FUNCTION__, "ERROR",   __VA_ARGS__); throw; }
 #define WARNING(...)                      {this->print_(type(*this),  __FUNCTION__, "WARNING", __VA_ARGS__);}
 #define INFO(...)                         {this->print_(type(*this),  __FUNCTION__, "INFO",    __VA_ARGS__);}
 #define DEBUG(...)   if (this->debug())   {this->print_(type(*this),  __FUNCTION__, "DEBUG",   __VA_ARGS__);}
 #define VERBOSE(...) if (this->verbose()) {this->print_(type(*this),  __FUNCTION__, "VERBOSE", __VA_ARGS__);}
 // Macros to be called from wherever.
-#define FCTERROR(...)   {AnalysisTools::Logger::fctprint_(__FUNCTION__, "ERROR",   __VA_ARGS__);}
+#define FCTERROR(...)   {AnalysisTools::Logger::fctprint_(__FUNCTION__, "ERROR",   __VA_ARGS__); throw; }
 #define FCTWARNING(...) {AnalysisTools::Logger::fctprint_(__FUNCTION__, "WARNING", __VA_ARGS__);}
 #define FCTINFO(...)    {AnalysisTools::Logger::fctprint_(__FUNCTION__, "INFO",    __VA_ARGS__);}
 
