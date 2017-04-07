@@ -60,6 +60,11 @@ namespace AnalysisTools {
     return;
   }
   
+  void Analysis::setSumWeights (const float* sum_weights) {
+    m_sum_weights = sum_weights;
+    return;
+  }
+  
   
   // Get method(s).
   const std::map<std::string, SelectionPtrs>&  Analysis::selections () const {
@@ -180,6 +185,9 @@ namespace AnalysisTools {
     for (auto& selection : m_selections.at(category)) {
       DEBUG("  Setting weight.");
       selection->setWeight(m_weight.at(category));
+      if (m_sum_weights) {
+	selection->setSumWeights(m_sum_weights);
+      }
       passed &= selection->run();
       if (!passed && selection->required()) { break; }
     }

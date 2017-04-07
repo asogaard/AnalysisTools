@@ -57,7 +57,8 @@ namespace AnalysisTools {
 	Selection (const Selection<T,U>& other) :
 	    Selection(other.m_name)
 	{
-	  this->m_weight   = other.m_weight;
+	  this->m_weight      = other.m_weight;
+	  this->m_sum_weights = other.m_sum_weights;
 	  this->m_children = {};
 	  this->m_dir      = nullptr;
 	  this->m_parent   = nullptr;
@@ -89,7 +90,8 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void setWeight (const float* weight);
+        void setWeight     (const float* weight);
+        void setSumWeights (const float* weight);
 
 	inline void setRequired (const bool& required = true) { m_required = required; }
 	inline virtual bool required () const { return m_required; }

@@ -87,6 +87,9 @@ namespace AnalysisTools {
             if (this->m_weight) {
                 weight = *this->m_weight;
             }
+            if (this->m_sum_weights && *this->m_sum_weights != 0) {
+                weight /= *this->m_sum_weights;
+            }
             
 
              // Run selection.

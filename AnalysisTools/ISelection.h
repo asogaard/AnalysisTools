@@ -46,7 +46,8 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        virtual void setWeight (const float* weight) = 0;
+        virtual void setWeight     (const float* weight) = 0;
+        virtual void setSumWeights (const float* weight) = 0;
 	virtual bool required () const = 0;
         
         // Get method(s).
@@ -86,7 +87,8 @@ namespace AnalysisTools {
         
         bool m_hasRun = false;
 
-	const float* m_weight = nullptr;
+	const float* m_weight      = nullptr;
+	const float* m_sum_weights = nullptr;
 
 	bool m_required = true; // Whether the analysis will stop if this selection isn't passed
 

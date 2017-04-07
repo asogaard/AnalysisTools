@@ -68,6 +68,7 @@ namespace AnalysisTools {
     void addSelection    (T* selection, const std::string& pattern = "");
     void addTree         (const std::string& pattern = "", const std::string& name = "outputTree");
     void setWeight       (const float* w, const std::string& pattern = "");
+    void setSumWeights   (const float* w);
 
 
     // Get method(s).
@@ -108,6 +109,7 @@ namespace AnalysisTools {
     std::map<std::string, std::shared_ptr<TTree> > m_outtree;
 
     std::map<std::string, const float*> m_weight;
+    const float* m_sum_weights = nullptr;
 
     std::map<std::string, SelectionPtrs> m_selections;
 

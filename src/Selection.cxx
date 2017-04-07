@@ -10,6 +10,12 @@ namespace AnalysisTools {
     }
     
     template <class T, class U>
+    void Selection<T,U>::setSumWeights (const float* weight) {
+        m_sum_weights = weight;
+        return;
+    }
+    
+    template <class T, class U>
     void Selection<T,U>::addCategory (const string& category) {
         assert( !locked() );
         assert( canAddCategories() );
