@@ -76,6 +76,12 @@ int main (int argc, char* argv[]) {
       cerr << "Unable to retrieve tree." << endl;
       continue;
     }
+    TTree* sumWeightsTree = (TTree*) inputFile.Get("sumWeights");
+    if (!sumWeightsTree) {
+      cerr << "Unable to retrieve tree." << endl;
+      continue;
+    }
+
 
     const std::vector<std::string> categories = { "Tight", "Loose" };
     //const std::vector<std::string> categories = { "Loose", "Tight" }; // { "Tight", "Loose" };
@@ -113,7 +119,7 @@ int main (int argc, char* argv[]) {
     }
     
     // Photon kinematic quantities
-    std::map<std::string, std::vector<float>* > ph_pt, ph_eta, ph_phi, ph_e;
+    std::map<std::string, std::vector<float>* > ph_pt, ph_eta, ph_phi, ph_e, ph_iso;
     //std::map<std::string, std::unique_ptr< std::vector<float> > > ph_pt, ph_eta, ph_phi, ph_e;
     for (const auto& category : categories) {
       /* -- * /
@@ -135,6 +141,9 @@ int main (int argc, char* argv[]) {
 
       ph_e [category] = nullptr;
       inputTree[category]->SetBranchAddress("ph_e", &ph_e[category]);
+
+      ph_iso [category] = nullptr; // ptvarcone20
+      inputTree[category]->SetBranchAddress("ph_iso", &ph_iso[category]);
       /* -- */
 
       /* THIS WORKS! * /
@@ -260,9 +269,19 @@ int main (int argc, char* argv[]) {
     // -------------------------------------------------------------------
     float weightDefault = 1.;
     std::map<std::string, float*> weight;
+    std::map<std::string, float> sum_weights;
     for (const auto& category : categories) {
+      sum_weights[category] = 0.;
       if (isMC) {
+	// MC weight
 	weight[category] = weight_mc[category].get(); 
+
+	// Sum of weights, for normalisation
+	auto part_sum_weights = readBranch<float>(sumWeightsTree, "totalEventsWeighted");
+	for (unsigned i = 0; i < sumWeightsTree->GetEntries(); i++) {
+	  sumWeightsTree->GetEntry(i);
+	  sum_weights[category] += *part_sum_weights.get();
+	}
       } else {
 	weight[category] = &weightDefault;
       }
@@ -286,6 +305,7 @@ int main (int argc, char* argv[]) {
     for (auto* analysis : analyses) {
       for (const auto& category : categories) {
 	analysis->setWeight(weight[category], category);
+	analysis->setSumWeights(&sum_weights[category]);
       }
     }
     
@@ -297,6 +317,8 @@ int main (int argc, char* argv[]) {
     std::map<std::string, std::vector<TLorentzVector> > signalPhotons, signalLargeRadiusJets, signalSmallRadiusJets;
     std::map<std::string, std::vector<float> > signalLargeRadiusJets_tau21DDT;
     std::map<std::string, std::map<std::string, bool> > passes;
+    std::map<std::string, float> leadingLargeRadiusJet_tau21DDT, leadingLargeRadiusJet_pt, leadingLargeRadiusJet_eta, photon_iso;
+    std::map<std::string, unsigned> numSmallRadiusJetsInTransverseRegion;
     for (const auto& category : categories) {
       passes[category]["Pass"] = false;
       passes[category]["Fail"] = false;
@@ -310,8 +332,17 @@ int main (int argc, char* argv[]) {
 
 	analysis->tree(category)->Branch("largeRadiusJets_tau21DDT", &signalLargeRadiusJets_tau21DDT[category]);
 
-	analysis->tree(category)->Branch("Pass", &passes[category]["Pass"]);
-	analysis->tree(category)->Branch("Fail", &passes[category]["Fail"]);
+	analysis->tree(category)->Branch("leadingLargeRadiusJet_tau21DDT", &leadingLargeRadiusJet_tau21DDT[category]);
+	analysis->tree(category)->Branch("leadingLargeRadiusJet_pt", &leadingLargeRadiusJet_pt[category]);
+	analysis->tree(category)->Branch("leadingLargeRadiusJet_eta", &leadingLargeRadiusJet_eta[category]);
+	analysis->tree(category)->Branch("numSmallRadiusJetsInTransverseRegion", &numSmallRadiusJetsInTransverseRegion[category]);
+
+	analysis->tree(category)->Branch("photon_iso", &photon_iso[category]);
+
+	//analysis->tree(category)->Branch("Pass", &passes[category]["Pass"]);
+	//analysis->tree(category)->Branch("Fail", &passes[category]["Fail"]);
+
+	analysis->tree(category)->Branch("weight", weight[category]);
 	
 	analysis->tree(category)->Branch("isMC",   &isMC);
 	analysis->tree(category)->Branch("DSID",   &DSID);
@@ -334,8 +365,14 @@ int main (int argc, char* argv[]) {
     
     auto tau21DDT = [&rhoDDT](const PhysicsObject& p) {
       // Linear correction function.
-      const float p0 =  0.6887;
-      const float p1 = -0.0941;
+      /* pT > 150 GeV
+	 const float p0 =  0.6887;
+	 const float p1 = -0.0941;
+      */
+      /* pT > 200 GeV */
+      const float p0 =  0.705;
+      const float p1 = -0.100;
+
       const float rhoDDTmin = 1.0;
       auto linearCorrection = [&p0, &p1] (const float& x) { return p0 + p1 * x; };	  
       
@@ -471,13 +508,25 @@ int main (int argc, char* argv[]) {
     LargeRadiusJetObjdef.setInput(&largeRadiusJets);
     
     LargeRadiusJetObjdef.addInfo("dPhiPhoton", &lj_dphiMinPhoton);
+
+    // * computing tau21DDT value
+    Operation<PhysicsObject> operation_largeRadiusJet_tau21DDT ("compute_tau21DDT");
+    operation_largeRadiusJet_tau21DDT.setFunction( [&tau21DDT](PhysicsObject& p) { 
+	/* Doing it here, even though we're not guaranteed to be within the range of validity for the transform */
+	p.addInfo("tau21DDT", tau21DDT(p));
+	return true;
+      });
+    LargeRadiusJetObjdef.addOperation(operation_largeRadiusJet_tau21DDT);
     
     // * eta
-    LargeRadiusJetObjdef.addCut(cut_eta.withRange(-2.5, 2.5));
+    LargeRadiusJetObjdef.addCut(cut_eta.withRange(-2., 2.));
     
     // * pt
-    LargeRadiusJetObjdef.addCut(cut_pt.withRange(150., inf));
-    
+    LargeRadiusJetObjdef.addCut(cut_pt.withRange(200., inf));
+
+    // * dphi
+    LargeRadiusJetObjdef.addCut(get_cut_object_info("dPhiPhoton").withRange(pi/2., inf));
+
     // * Boosted regime
     Cut<PhysicsObject> cut_largeRadiusJet_BoostedRegime ("BoostedRegime");
     cut_largeRadiusJet_BoostedRegime.setFunction( [](const PhysicsObject& p) { 
@@ -486,6 +535,7 @@ int main (int argc, char* argv[]) {
     cut_largeRadiusJet_BoostedRegime.addRange(1., inf);
     LargeRadiusJetObjdef.addCut(cut_largeRadiusJet_BoostedRegime);
     
+
     // * rhoDDT
     Cut<PhysicsObject> cut_largeRadiusJet_rhoDDT ("rhoDDT");
     cut_largeRadiusJet_rhoDDT.setFunction( [&rhoDDT](const PhysicsObject& p) { 
@@ -494,21 +544,13 @@ int main (int argc, char* argv[]) {
     cut_largeRadiusJet_rhoDDT.addRange(1.5, inf);
     LargeRadiusJetObjdef.addCut(cut_largeRadiusJet_rhoDDT);
 
-    // * dphi
-    LargeRadiusJetObjdef.addCut(get_cut_object_info("dPhiPhoton").withRange(2.*pi/3., inf));
-    
-    // * computing tau21DDT value
-    Operation<PhysicsObject> operation_largeRadiusJet_tau21DDT ("compute_tau21DDT");
-    operation_largeRadiusJet_tau21DDT.setFunction( [&tau21DDT](PhysicsObject& p) { 
-	p.addInfo("tau21DDT", tau21DDT(p));
-	return true;
-      });
-    LargeRadiusJetObjdef.addOperation(operation_largeRadiusJet_tau21DDT);
     
     // * Check distributions.
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_pt);
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_m);
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_eta);
+    LargeRadiusJetObjdef.addPlot(CutPosition::Post, get_plot_object_info("tau21"));
+    LargeRadiusJetObjdef.addPlot(CutPosition::Post, get_plot_object_info("tau21DDT"));
     
     
     // Stuff for binding selections together.
@@ -543,10 +585,10 @@ int main (int argc, char* argv[]) {
     // * Blinding.
     Cut<Event> cut_event_blinding ("Blinding");
     cut_event_blinding.setFunction( [&blind](const Event& e){
-	return (!blind or e.info("isMC"));
+	return (!blind or e.info("isMC") or e.collection("LargeRadiusJets").at(0)->M() / 1000. < 100.);
       });
     eventSelection.addCut(cut_event_blinding, "Pass");
-    
+
     // * tau21DDT
     Cut<Event> cut_event_leadingLargeRadiusJet_tau21DDT ("tau21DDT_0p50");
     cut_event_leadingLargeRadiusJet_tau21DDT.setFunction( [](const Event& e) {
@@ -556,13 +598,23 @@ int main (int argc, char* argv[]) {
     eventSelection.addCut(cut_event_leadingLargeRadiusJet_tau21DDT, "Fail");
     
     cut_event_leadingLargeRadiusJet_tau21DDT.setRange(-inf, 0.5);
-    eventSelection.addCut(cut_event_leadingLargeRadiusJet_tau21DDT, "Pass");
+    eventSelection.addCut(cut_event_leadingLargeRadiusJet_tau21DDT, "Pass");    
     
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_pt ("LargeRadiusJets"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_m  ("LargeRadiusJets"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_eta("LargeRadiusJets"));    
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_phi("LargeRadiusJets"));    
+
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_E  ("Photons"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_pt ("Photons"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_eta("Photons"));    
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_phi("Photons"));    
+
     eventSelection.addPlot(CutPosition::Post, plot_event_leadingLargeRadiusJet_rhoDDT);
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21DDT"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "D2"));
+
     
     
     // Adding selections.
@@ -591,10 +643,12 @@ int main (int argc, char* argv[]) {
       ISRgammaAnalysis.addSelection(&SmallRadiusJetObjdef, category);
       
       // -- Large-radius jets
-      LargeRadiusJetObjdef.addInfo("tau21",    lj_tau21  [category], true);
+      LargeRadiusJetObjdef.addInfo("tau21", lj_tau21 [category], true);
+      LargeRadiusJetObjdef.addInfo("D2",    lj_D2    [category], true);
       ISRgammaAnalysis.addSelection(&LargeRadiusJetObjdef, category);
       
       // -- Photons
+      PhotonObjdef.addInfo("iso", ph_iso[category], true);
       ISRgammaAnalysis.addSelection(&PhotonObjdef, category);
       
       // Event selection.
@@ -672,10 +726,12 @@ int main (int argc, char* argv[]) {
 	  }
 	  
 	  // Photons
-	  signalPhotons[category].clear();            
+	  signalPhotons[category].clear();       
+	  photon_iso[category] = -9999.;
 	  assert( pPhotonsObjdef );
 	  for (const PhysicsObject& p : *pPhotonsObjdef->result()) {
 	    signalPhotons[category].push_back( (TLorentzVector) p );
+	    photon_iso[category] = p.info("iso");
 	  }
 	  
 	  // Large-radius jets
@@ -686,12 +742,18 @@ int main (int argc, char* argv[]) {
 	    signalLargeRadiusJets         [category].push_back( (TLorentzVector) p );
 	    signalLargeRadiusJets_tau21DDT[category].push_back( p.info("tau21DDT") );
 	  }
+	  leadingLargeRadiusJet_tau21DDT[category] = pLargeRadiusJetsObjdef->result()->at(0).info("tau21DDT");
+	  leadingLargeRadiusJet_pt      [category] = pLargeRadiusJetsObjdef->result()->at(0).Pt() / 1000.;
+	  leadingLargeRadiusJet_eta     [category] = pLargeRadiusJetsObjdef->result()->at(0).Eta();
 	  
 	  // Small-radius jets
 	  signalSmallRadiusJets[category].clear();            
+	  numSmallRadiusJetsInTransverseRegion[category] = 0;
 	  assert( pSmallRadiusJetsObjdef );
 	  for (const PhysicsObject& p : *pSmallRadiusJetsObjdef->result()) { 
 	    signalSmallRadiusJets[category].push_back( (TLorentzVector) p );
+	    float dphi = std::abs(p.DeltaPhi(signalPhotons[category].at(0)));
+	    if (dphi > pi/3. && dphi < 2.*pi/3.) { numSmallRadiusJetsInTransverseRegion[category]++; }
 	  }
 	  /* -- */
 	  
