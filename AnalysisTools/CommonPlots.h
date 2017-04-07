@@ -29,6 +29,11 @@ namespace AnalysisTools {
       return p.M() / 1000.;
     });
 
+  // Physics object E.
+  PlotMacro1D<PhysicsObject> plot_object_E ("E", [](const PhysicsObject& p) {
+      return p.E() / 1000.;
+    });
+
   // Physics object eta.
   PlotMacro1D<PhysicsObject> plot_object_eta ("eta", [](const PhysicsObject& p) {
       return p.Eta();
@@ -60,6 +65,17 @@ namespace AnalysisTools {
     plot.setFunction([collection, fallback](const Event& e) {
 	if (e.collection(collection).size() < 1) { return fallback; }
 	return (float) e.collection(collection).at(0)->M() / float(1000.);
+      });
+    return plot;
+  }
+
+
+  // Leading PhysicsObject E.
+  inline PlotMacro1D<Event> get_plot_event_leading_E (const std::string& collection, const float& fallback = -9999.) {
+    PlotMacro1D<Event> plot ("leading_" + collection + "_E");
+    plot.setFunction([collection, fallback](const Event& e) {
+	if (e.collection(collection).size() < 1) { return fallback; }
+	return (float) e.collection(collection).at(0)->E() / float(1000.);
       });
     return plot;
   }
