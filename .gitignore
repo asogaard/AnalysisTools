@@ -11,3 +11,6 @@ share/Loader_C*
 share/datasets*
 plotting/201*
 scripts/plots/*
+*.pdf
+*__init__.py
+*.txt

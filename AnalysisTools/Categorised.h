@@ -17,6 +17,9 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/Localised.h"
 
+/**
+ * @TODO: - Simply make 'Localised' support categories natively?
+ */
 namespace AnalysisTools {
 
   /**
