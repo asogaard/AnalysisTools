@@ -101,6 +101,11 @@ namespace AnalysisTools {
   template<class HistType>
   void PlottingHelper<HistType>::setXaxis (const vector<double>& bins) {
     /* @TODO... */
+    m_nbinsx = bins.size() - 1;
+    m_xmin = bins.at(0);
+    m_xmax = bins.at(m_nbinsx);
+    const unsigned numBins (m_nbinsx);
+    m_xbins = &bins[0];
     return;
   }
   
@@ -154,8 +159,20 @@ namespace AnalysisTools {
   }
   
   template<class HistType>
+  void PlottingHelper<HistType>::setScaleBackground (const std::string& name, const double& scale) {
+    m_scaleBackground[name] = scale;
+    return;
+  }
+  
+  template<class HistType>
   void PlottingHelper<HistType>::setPadding (const double& padding) {
     m_padding = padding;
+    return;
+  }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::setPulls (const bool& pulls) {
+    m_pulls = pulls;
     return;
   }
   
@@ -170,6 +187,14 @@ namespace AnalysisTools {
     m_sortBackgrounds = sortBackgrounds;
     return;
   }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::addSystematic (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f) {
+    // Store function for later evaluation
+    m_systematicCalls.push_back(f);
+    return;
+  }
+
   
   
   /// Get method(s). 
@@ -234,7 +259,7 @@ namespace AnalysisTools {
       
       // Background(s).
       if (m_sum) {
-	integral = m_sum->Integral();
+	integral = m_sum->Integral(); // @TODO: Fix
 	if (integral > 0) {
 	  m_sum->Scale(1/integral);
 	  for (const auto& p : m_backgrounds) { p.second->Scale(1/integral); }
@@ -279,12 +304,115 @@ namespace AnalysisTools {
       std::reverse(m_backgroundsSorted.begin(), m_backgroundsSorted.end()); 
     }
 
-    std::unique_ptr<THStack> background (new THStack("StackedBackgrounds", ""));
+
+    // Scale backgrounds
+    std::vector<std::string> scaled_backgrounds = {};
     for (const auto& p : m_backgroundsSorted) {
-      INFO(" -- Adding background '%s'.", p.first.c_str());
-      background->Add(p.second);
+      if (m_scaleBackground.find(p.first) != m_scaleBackground.end()) {
+	p.second->Scale(m_scaleBackground[p.first]);
+	scaled_backgrounds.push_back(p.first);
+      }
     }
+
+    //  -- Check that all requested backgrounds were scaled
+    for (const auto& p : m_scaleBackground) {
+      if (!contains(scaled_backgrounds, p.first)) {
+	WARNING("Background '%s' requested for scaling (%.2f) was not found.", p.first.c_str(), p.second);
+      }
+    }
+
+
+
+    // Add _all_ background
+    for (const auto& p : m_backgroundsSorted) {
+
+      // Add to m_background _regardless of subtraction_
+      if (m_background) {
+        // If so contents of histogram to existing background.
+        m_background->Add(p.second);
+      } else {
+        // Otherwise move first histogram to background.
+        m_background = makeUniqueMove( (TH1F*) p.second->Clone("background") );
+      }
+
+    }
+
+
+    // Add systematics
+    /* Do this before subtracting background from data. */
+    computeSystematics_();
     
+    bool first = true;
+    for (const auto& syst : m_systematics) {
+      if (m_systematicsSum) {
+	for (unsigned bin = 1; bin <= m_systematicsSum->GetXaxis()->GetNbins(); bin++) {
+	  float c1 = m_systematicsSum->GetBinError(bin);
+	  float c2 = syst            ->GetBinError(bin);
+	  m_systematicsSum->SetBinError(bin, std::sqrt( std::pow(c1, 2) + std::pow(c2, 2) ));
+	}
+      } else {
+	m_systematicsSum = makeUniqueMove( (TH1F*) syst.get()->Clone("syst_sum") );
+      }
+      first = false;
+    }
+
+
+
+    // Add non-subtracted backgrounds
+    std::unique_ptr<THStack> background (new THStack("StackedBackgrounds", ""));
+    std::vector<std::string> subtract (m_subtract);
+    m_sum = makeUniqueMove( (TH1F*) m_background->Clone("sum") );
+    for (const auto& p : m_backgroundsSorted) {
+
+      //if (m_scaleBackground.find(p.first) != m_scaleBackground.end()) {
+      //p.second->Scale(m_scaleBackground[p.first]);
+      //scaled_backgrounds.push_back(p.first);
+      //}
+
+      INFO(" -- Adding background '%s'.", p.first.c_str());
+      // Check whether to subtract this background.
+      std::vector<std::string>::iterator pos = std::find(subtract.begin(), subtract.end(), p.first);
+      if (pos != subtract.end()) {
+	//m_data->Add(p.second, -1);
+	for (unsigned i = 0; i < m_nbinsx; i++) {
+	  double d  = m_data->GetBinContent(i + 1);
+	  double mc = p.second->GetBinContent(i + 1);
+	  m_data->SetBinContent(i + 1, d - mc);
+	  m_sum->SetBinContent(i + 1, m_sum->GetBinContent(i + 1) - mc);
+	}
+
+	//m_sum ->Add(p.second, -1.);
+	subtract.erase(pos);
+	continue;
+      }
+
+      // If not, add to stack...
+      background->Add(p.second);
+
+      /*
+      // ... and add to sum
+      // Check whether the sum background MC distribution exists.
+      if (m_sum) {
+	// If so contents of histogram to existing sum.
+	m_sum->Add(p.second);
+      } else {
+	// Otherwise move first histogram to sum.
+	m_sum = makeUniqueMove( (TH1F*) p.second->Clone("sum") );
+      }
+      */
+
+    }
+
+    styleHist_(m_sum.get(),  true,  "StatsError");
+
+    if (subtract.size() > 0) {
+      WARNING("Following MC backgrounds were not subtracted:");
+      for (const auto& name : subtract) {
+	WARNING("-- '%s'", name.c_str());
+      }
+    }
+
+
     // Drawing (main pad).
     DEBUG("Going to first pad.");
     m_pads.first->cd();
@@ -294,6 +422,18 @@ namespace AnalysisTools {
     gPad->Update();
     DEBUG("... Done!");
     
+    // Add errors to zero-content data bins
+    if (m_data) {
+      /*
+      for (unsigned i = 0; i < m_nbinsx; i++) {	
+	if (m_data->GetBinContent(i + 1) < 0) {
+	  m_data->SetBinContent(i + 1, 1.E-01);
+	  m_data->SetBinError  (i + 1, 1.);
+	}
+      }
+      */
+    }
+
     // Get plot maximum.
     DEBUG("Getting plot maximum");
     double maxData = 0., maxMC = 0.;
@@ -303,15 +443,15 @@ namespace AnalysisTools {
       if (m_sum)  { maxMC   = max(m_sum ->GetBinContent(ibin + 1), maxMC); }
     }
     
-    const double plotmax = (m_plotmax > 0 ? m_plotmax : max(maxData, maxMC));
-    const double plotmin = (m_plotmin > 0 ? m_plotmin : (m_normalised ? 1e-05 : 0.5)); // log-plots only
+    const double plotmax = (m_plotmax != -9999 ? m_plotmax : max(maxData, maxMC));
+    const double plotmin = (m_plotmin != -9999 ? m_plotmin : (m_normalised ? 1e-05 : 0.5)); // log-plots only
     
     // Setting y-axis range.
     DEBUG("Setting y-axis range.");
     if (m_log) {
-      m_sum->GetYaxis()->SetRangeUser(plotmin, m_plotmax > 0 ? plotmax : exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
+      m_sum->GetYaxis()->SetRangeUser(plotmin, m_plotmax != -9999 ? plotmax : exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)));
     } else {
-      m_sum->GetYaxis()->SetRangeUser(m_plotmin > 0 ? plotmin : 0, m_plotmax > 0 ? plotmax :m_padding * plotmax);
+      m_sum->GetYaxis()->SetRangeUser(m_plotmin != -9999 ? plotmin : 0, m_plotmax != -9999 ? plotmax : m_padding * plotmax);
     }
     
     // Check x-axis labels.
@@ -324,7 +464,7 @@ namespace AnalysisTools {
     DEBUG("Drawing background.");
     m_sum->DrawCopy("AXIS");
     background->Draw("HIST same");
-    //m_sum->DrawCopy("E2 same"); // E2
+    m_sum->DrawCopy("E2 same"); // E2
     
     // -- Signal
     DEBUG("Drawing signal.");
@@ -336,6 +476,7 @@ namespace AnalysisTools {
     // -- Data
     DEBUG("Drawing data");
     if (m_data) {
+      //m_data->DrawCopy("PE0L same");
       m_data->DrawCopy("PE same");
     }
     m_sum->DrawCopy("AXIS same");
@@ -419,47 +560,132 @@ namespace AnalysisTools {
     // Ratio distributions.
     if (m_data) {
       m_ratiohists["Ratio"] = makeUniqueMove((HistType*) m_data->Clone("DataMC_Ratio"));
-      m_ratiohists["Ratio"]->Divide(m_sum.get());
+      m_ratiohists["Pulls"] = makeUniqueMove((HistType*) m_data->Clone("DataMC_Pulls"));
+
+
+      if (m_pulls) {
+	// Data - MC pulls
+	for (unsigned i = 0; i < m_sum->GetXaxis()->GetNbins(); i++) {
+	  double c_data = m_ratiohists["Pulls"]->GetBinContent(i + 1);
+	  double e_data = m_ratiohists["Pulls"]->GetBinError  (i + 1);
+	  double c_MC = m_sum->GetBinContent(i + 1);
+	  double e_MC = m_sum->GetBinError  (i + 1);
+	  m_ratiohists["Pulls"]->SetBinContent(i + 1, e_data + e_MC > 0 ? (c_data - c_MC) / std::sqrt( std::pow(e_data, 2) + std::pow(e_MC, 2) ) : 0);
+	}
+      } else {
+	// Data/MC ratio
+	for (unsigned i = 0; i < m_sum->GetXaxis()->GetNbins(); i++) {
+	  double c = m_ratiohists["Ratio"]->GetBinContent(i + 1);
+	  double e = m_ratiohists["Ratio"]->GetBinError  (i + 1);
+	  double cMC = m_sum->GetBinContent(i + 1);
+	  m_ratiohists["Ratio"]->SetBinContent(i + 1, cMC > 0 ? c/cMC : 999.);
+	  m_ratiohists["Ratio"]->SetBinError  (i + 1, cMC > 0 ? e/cMC : 0.);	
+	}
+      }
       
       m_ratiohists["StatsError"] = makeUniqueMove((HistType*) m_ratiohists["Ratio"]->Clone("DataMC_StatsError"));
       m_ratiohists["StatsError"]->SetDirectory(0);
       for (unsigned i = 0; i < m_ratiohists["StatsError"]->GetXaxis()->GetNbins(); i++) {
 	m_ratiohists["StatsError"]->SetBinContent(i + 1, 1);
-	double c = m_sum->GetBinContent(i + 1);
-	double e = m_sum->GetBinError(i + 1);
+	double c = m_sum       ->GetBinContent(i + 1);
+	double e = m_background->GetBinError  (i + 1);
 	m_ratiohists["StatsError"]->SetBinError  (i + 1, (c > 0 ? e/c : 999.));
+      }
+
+      // Compute sum in quadrature of statistical and systematic uncertainty
+      m_ratiohists["StatsSystError"] = makeUniqueMove((HistType*) m_ratiohists.at("Ratio")->Clone("DataMC_StatsSystError"));
+      if (m_systematicsSum) {
+	for (unsigned bin = 1; bin <= m_ratiohists.at("StatsSystError")->GetXaxis()->GetNbins(); bin++) {
+	  float e1 = m_systematicsSum->GetBinError(bin);
+	  float e2 = m_background    ->GetBinError(bin);
+	  float c  = m_sum           ->GetBinContent(bin);
+	  m_ratiohists.at("StatsSystError")->SetBinContent(bin, 1);
+	  m_ratiohists.at("StatsSystError")->SetBinError(bin, std::sqrt( std::pow(e1, 2) + std::pow(e2, 2) ) / c);
+	}
       }
       
       // Styling.
-      styleHist_(m_ratiohists["Ratio"].get(),      false, "Ratio");
-      styleHist_(m_ratiohists["StatsError"].get(), true,  "StatsError");
-      
-      m_ratiohists["StatsError"]->GetXaxis()->SetTitleSize(s_fontSizeM * 0.75/0.25);
-      m_ratiohists["StatsError"]->GetYaxis()->SetTitleSize(s_fontSizeM * 0.75/0.25);
-      m_ratiohists["StatsError"]->GetXaxis()->SetLabelSize(s_fontSizeM * 0.75/0.25);
-      m_ratiohists["StatsError"]->GetYaxis()->SetLabelSize(s_fontSizeM * 0.75/0.25);
-      m_ratiohists["StatsError"]->GetXaxis()->SetNdivisions(505);
-      m_ratiohists["StatsError"]->GetYaxis()->SetNdivisions(503);
-      
-      m_ratiohists["StatsError"]->GetXaxis()->SetTitleOffset(1.3);
-      m_ratiohists["StatsError"]->GetYaxis()->SetTitleOffset(1.5 / (0.75/0.25));
-      
-      m_ratiohists["StatsError"]->GetXaxis()->SetTickLength(0.03 * 0.75/0.25);
-      
-      m_ratiohists["StatsError"]->GetYaxis()->SetRangeUser(0.5, 1.5);
-      
-      m_ratiohists["StatsError"]->GetXaxis()->SetLabelOffset(0.02);
-      
-    }
-    
-    if (m_ratio) {
-      DEBUG("Drawing ratio pads.");
-      m_pads.second->cd();
+      styleHist_(m_ratiohists.at("Ratio").get(),          false, "Ratio");
+      styleHist_(m_ratiohists.at("StatsError").get(),     true,  "StatsError");
+      styleHist_(m_ratiohists.at("StatsSystError").get(), true,  "StatsSystError");
+      styleHist_(m_ratiohists.at("Pulls").get(),          false, "Pulls");
 
-      m_ratiohists["StatsError"]->GetYaxis()->SetTitle("Data / MC");
-      m_ratiohists["StatsError"]->Draw("E3"); // E2
-      m_ratiohists["Ratio"]->DrawCopy("PE0L SAME");
+      std::vector< std::string > hist_names = { "Ratio", "StatsError", "StatsSystError", "Pulls" };
+
+      double yminratio = 0.8, ymaxratio = 1.2;
+      if (m_subtract.size() > 0) {
+	yminratio = 0.;
+	ymaxratio = 2.;
+      }
+      if (m_pulls) {
+	yminratio = -5;
+	ymaxratio =  5;
+      }
+
+      for (const std::string& hist_name : hist_names) {
+	m_ratiohists.at(hist_name)->GetXaxis()->SetTitleSize(s_fontSizeM * 0.75/0.25);
+	m_ratiohists.at(hist_name)->GetYaxis()->SetTitleSize(s_fontSizeM * 0.75/0.25);
+	m_ratiohists.at(hist_name)->GetXaxis()->SetLabelSize(s_fontSizeM * 0.75/0.25);
+	m_ratiohists.at(hist_name)->GetYaxis()->SetLabelSize(s_fontSizeM * 0.75/0.25);
+	m_ratiohists.at(hist_name)->GetXaxis()->SetNdivisions(505);
+	m_ratiohists.at(hist_name)->GetYaxis()->SetNdivisions(503);
+	
+	m_ratiohists.at(hist_name)->GetXaxis()->SetTitleOffset(1.3);
+	m_ratiohists.at(hist_name)->GetYaxis()->SetTitleOffset(1.5 / (0.75/0.25));
+	m_ratiohists.at(hist_name)->GetXaxis()->SetLabelOffset(0.02);
+	
+	m_ratiohists.at(hist_name)->GetXaxis()->SetTickLength(0.03 * 0.75/0.25);
+	m_ratiohists.at(hist_name)->GetYaxis()->SetRangeUser(yminratio, ymaxratio);
+      }
+
+            
+      if (m_ratio) {
+	DEBUG("Drawing ratio pads.");
+	m_pads.second->cd();
+	
+	if (m_pulls) {
+	  m_ratiohists.at("Pulls")->GetYaxis()->SetTitle("Pulls");
+	  m_ratiohists.at("Pulls")->Draw("HIST");
+	} else {
+	  m_ratiohists.at("StatsError")->GetYaxis()->SetTitle("Data / MC");
+	  m_ratiohists.at("StatsError")->Draw("E2"); 
+
+	  if (m_systematicsSum) {
+
+	    // Move systematics up.
+	    for (unsigned bin = 1; bin <= m_ratiohists.at("StatsSystError")->GetXaxis()->GetNbins(); bin++) {
+	      m_ratiohists.at("StatsSystError")->SetBinContent(bin, 1 + m_ratiohists.at("StatsSystError")->GetBinError(bin));
+	    }
+	    m_ratiohists.at("StatsSystError")->DrawCopy("HIST SAME");
+	    
+	    // Move systematics down.
+	    for (unsigned bin = 1; bin <= m_ratiohists.at("StatsSystError")->GetXaxis()->GetNbins(); bin++) {
+	      m_ratiohists.at("StatsSystError")->SetBinContent(bin, 1 - m_ratiohists.at("StatsSystError")->GetBinError(bin));
+	    }
+	    m_ratiohists.at("StatsSystError")->DrawCopy("HIST SAME");
+	  } 
+	  
+	  //m_ratiohists.at("StatsSystErrorDown")->Draw("HIST SAME"); 
+	  m_ratiohists.at("Ratio")->Draw("PE0L SAME");
+	}
+      }
       
+      // Out-of-bounds indicators (@TODO: make work)
+      auto h_data_up   = makeUniqueMove((HistType*) m_ratiohists.at("Ratio")->Clone("h_data_up"));
+      auto h_data_down = makeUniqueMove((HistType*) m_ratiohists.at("Ratio")->Clone("h_data_down"));
+      h_data_up  ->SetMarkerColor(kRed);
+      h_data_down->SetMarkerColor(kBlue);
+      for (unsigned i = 0; i < m_data->GetXaxis()->GetNbins(); i++) {
+	double cu = h_data_up  ->GetBinContent(i + 1);
+	double cd = h_data_down->GetBinContent(i + 1);
+	double dy = (ymaxratio - yminratio) * 0.05;
+	h_data_up  ->SetBinContent(i + 1, 0.9); //cu > ymaxratio ? ymaxratio - dy : cu);
+	h_data_down->SetBinContent(i + 1, 0.9); //cd < yminratio ? yminratio + dy : cd);
+	//h_data_up  ->SetBinError(i + 1, 0);
+	//h_data_down->SetBinError(i + 1, 0);
+      }
+      h_data_up  ->Draw("P SAME");
+      h_data_down->Draw("P SAME");
     }
    
 
@@ -528,11 +754,27 @@ namespace AnalysisTools {
       latex.DrawLatexNDC(xDraw, yDraw, line.c_str());
       yDraw -= yStep;
     }
+
+    if (m_subtract.size() > 0) {
+      std::string line = "Subtracting ";
+      unsigned iline = 0;
+      for (const std::string& name : m_subtract) {
+	if (iline++ > 0) { line += ", "; }
+	line += name;
+	if (contains(scaled_backgrounds, name)) {
+	  std::stringstream scale_stream;
+	  scale_stream << std::setprecision(2) << m_scaleBackground[name];
+	  line += " (#times " + scale_stream.str() + ")";
+	}
+      }
+      latex.DrawLatexNDC(xDraw, yDraw, line.c_str());
+      yDraw -= yStep;
+    }
     
     
     // Legend.
     DEBUG("Drawing legend.");
-    unsigned N = (m_data ? 1 : 0) + m_backgrounds.size() + m_signals.size() + 1;
+    unsigned N = (m_data ? 1 : 0) + m_backgrounds.size() + m_signals.size() + 1 - m_subtract.size() + (m_systematicsSum ? 1 : 0);
     
     xDraw = 0.61; // 0.63
     yDraw = yDraw0 + 0.35 * yStep; // 0.95;
@@ -557,7 +799,16 @@ namespace AnalysisTools {
     //vector< pair<string, upHistType> >::iterator it = m_backgroundsSorted.end();
     auto it = m_backgroundsSorted.end();
     for (; it-- != m_backgroundsSorted.begin();) {
-      legend->AddEntry(it->second, it->first.c_str(), "F");
+      if (std::find(m_subtract.begin(), m_subtract.end(), it->first) != m_subtract.end()) { continue; }
+
+      // Scale factor for background
+      double scale = contains(scaled_backgrounds, it->first) ? m_scaleBackground[it->first] : 1;
+
+      stringstream stream;
+      stream << fixed << setprecision(2) << scale;
+      string s = stream.str();
+
+      legend->AddEntry(it->second, (it->first + (scale != 1 ? " (#times " + s + ")": "")).c_str(), "F");
     }
     
     // -- Signal(s).
@@ -572,6 +823,11 @@ namespace AnalysisTools {
     if (m_sum) {
       legend->AddEntry(m_sum.get(), "Stat. uncert.", "F");
     }
+
+    // -- Stats. and syst. uncert.
+    if (m_systematicsSum) {
+      legend->AddEntry(m_ratiohists.at("StatsSystError").get(), "Stat. #oplus syst.", "F");
+    }
     
     legend->Draw("same");
     
@@ -581,11 +837,19 @@ namespace AnalysisTools {
     TLine line;
     if (m_ratio) {
       m_pads.second->cd();
-      double axismin = m_ratiohists["StatsError"]->GetXaxis()->GetXmin();
-      double axismax = m_ratiohists["StatsError"]->GetXaxis()->GetXmax();
+      double axismin = m_ratiohists.at("StatsError")->GetXaxis()->GetXmin();
+      double axismax = m_ratiohists.at("StatsError")->GetXaxis()->GetXmax();
       
       line.SetLineColor(kGray + 3);
-      line.DrawLine(axismin, 1, axismax, 1);
+
+      if (m_pulls) {
+	line.DrawLine(axismin,  0, axismax,  0);
+	line.SetLineStyle(2);
+	line.DrawLine(axismin,  2, axismax,  2);
+	line.DrawLine(axismin, -2, axismax, -2);
+      } else {
+	line.DrawLine(axismin, 1, axismax, 1);
+      }
       
       //line.SetLineStyle(2);
       //line.DrawLine(axismin, 1.1, axismax, 1.1);
@@ -820,6 +1084,10 @@ namespace AnalysisTools {
   std::unique_ptr<HistType> PlottingHelper<HistType>::getHistogram_ (TFile* file, 
 								     const std::string& path) {
 
+    if (!file) {
+      ERROR("File doesn't exist, or is not provided.");
+    }
+
     // Try to the object specified by the input name.
     TObject* obj = (TObject*) file->Get(path.c_str());
       
@@ -830,7 +1098,7 @@ namespace AnalysisTools {
     
     // Initialise pointer to output histogram.
     std::unique_ptr<HistType> hist = makeUniqueMove(dynamic_cast<HistType*>(obj));
-    
+
     if (hist) {
       
       // Reading histgram of specified type.
@@ -849,7 +1117,7 @@ namespace AnalysisTools {
        */
 
       // Get analysis name.
-      std::string analysisname = split(path, '/')[0];
+      std::string analysisname = split(path, '/')[0] + "/" + split(path, '/')[1];
       std::string treename     = analysisname + "/outputTree";
       // Reading tree.
       /* @TODO: Distinguish between the number of ':' in the input name, to allow for TH2/TProfile as well. */
@@ -868,7 +1136,11 @@ namespace AnalysisTools {
       m_outfile->cd();
 
       // Create the histogram using the member axis variables.
-      hist = makeUniqueMove(new TH1F(histname.c_str(), "", m_nbinsx, m_xmin, m_xmax));
+      if (m_xbins == nullptr) {
+	hist = makeUniqueMove(new TH1F(histname.c_str(), "", m_nbinsx, m_xmin, m_xmax));
+      } else {
+	hist = makeUniqueMove(new TH1F(histname.c_str(), "", m_nbinsx, m_xbins));
+      }
       hist->Sumw2();
       /**
        * @TODO: Depending on type, set other axes.
@@ -887,7 +1159,7 @@ namespace AnalysisTools {
       unsigned nEntries = tree->GetEntries();
       for (unsigned iEntry = 0; iEntry < nEntries; iEntry++) {
 	tree->GetEntry(iEntry);
-	hist->Fill(min(max(value, m_xmin + 1E-06), m_xmax - 1E-06), weight); //(weight > 1000. ? 1. : weight));
+	hist->Fill(m_includeOverflow ? min(max(value, m_xmin + 1E-06), m_xmax - 1E-06) : value, weight); //(weight > 1000. ? 1. : weight));
 	/**
 	 * @TODO: Depending on HistType, call 'Fill()' with more argument (e.g. for HistType == TProfile).
 	 */
@@ -899,7 +1171,7 @@ namespace AnalysisTools {
       return nullptr;
       
     }
-    
+
     return hist;
   }
   
@@ -979,7 +1251,7 @@ namespace AnalysisTools {
       // Add histogram to appropriate collection.
       if (isMC) {
 	// Scaling MC samples by cross section.
-	hist->Scale(info.xsec / float(info.evts));
+	hist->Scale(info.xsec); // / float(info.evts)); // @TEMP: Assuming MC weights are scaled by one over sum of weights
 
 	if (isSignal) {
 
@@ -996,7 +1268,8 @@ namespace AnalysisTools {
 	  m_signals[info.name] = std::move(hist);
 
 	} else {
-
+	  
+	  /*
 	  // Check whether the sum background MC distribution exists.
 	  if (m_sum) {
 
@@ -1009,6 +1282,7 @@ namespace AnalysisTools {
 	    m_sum = makeUniqueMove( (TH1F*) hist->Clone("sum") );
 
 	  }
+	  */
 
 	  // Check whether this is the first sample of a given type.
 	  if (m_backgrounds.count(info.name) == 0) {
@@ -1057,14 +1331,17 @@ namespace AnalysisTools {
       pair.second->Scale(m_lumi);
     }
     for (const auto& pair : m_backgrounds) {
-      pair.second->Scale(m_lumi);
+      if (pair.first.find("(d.d.)") == std::string::npos) {
+	// Only scale MC backgrounds by luminosity (i.e. not data-driven ones)
+	pair.second->Scale(m_lumi);
+      }
     }
-    if (m_sum) {
-      m_sum->Scale(m_lumi);
-    }
+    //if (m_sum) {
+    //  m_sum->Scale(m_lumi);
+    //}
     
     // Perform styling.
-    styleHist_(m_sum.get(),  true,  "StatsError");
+    //styleHist_(m_sum.get(),  true,  "StatsError");
     styleHist_(m_data.get(), false, "Data");
     
     m_outfile->cd();
@@ -1184,15 +1461,18 @@ namespace AnalysisTools {
 
 	std::regex re_powhegTtbar("PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad");
 
-	std::regex re_ISRgammaSignal(".*dmA_jja_Ph([0-9]+)_mRp0([0-9]+).*");
+	std::regex re_ISRgammaSignal1(".*dmA_jja_Ph([0-9]+)_mRp0([0-9]+).*");
+	std::regex re_ISRgammaSignal2(".*dmA_jja_Ph([0-9]+)_mRp([0-9]+).*");
 	std::regex re_ISRjetSignal(".*dmA_jjj_Jet([0-9]+).*_mRp([0-9]+).*");
 
 	std::smatch re_match_name;
-	if        (std::regex_match(ldn, re_match_name, re_sherpaInclGamma2)) {
-	  name = "Incl. #gamma";
+	if (info.DSID < 200000) {
+	  name = "Incl. #gamma (d.d.)";
+	} else if (std::regex_match(ldn, re_match_name, re_sherpaInclGamma2)) {
+	  name = "Incl. #gamma"; // @TEMP
 	  // p_{T} #in [" + string(re_match_name[1]) + ", " + string(re_match_name[2]) + "] GeV";
 	} else if (std::regex_match(ldn, re_match_name, re_sherpaInclGamma1)) {
-	  name = "Incl. #gamma";
+	  name = "Incl. #gamma"; // @TEMP
 	  // p_{T} > " + string(re_match_name[1]) + " GeV";
 	} 
 	else if (std::regex_match(ldn, re_match_name, re_sherpaMultijets)) { name = "QCD multijets"; }
@@ -1204,8 +1484,12 @@ namespace AnalysisTools {
 	else if (std::regex_match(ldn, re_match_name, re_sherpaGammaW))    { name = "#gamma + W"; } 
 	else if (std::regex_match(ldn, re_match_name, re_sherpaGammaZ))    { name = "#gamma + Z"; }
 	else if (std::regex_match(ldn, re_match_name, re_powhegTtbar))     { name = "t#bar{t}"; }
-	else if (std::regex_match(ldn, re_match_name, re_ISRgammaSignal)) {
+	else if (std::regex_match(ldn, re_match_name, re_ISRgammaSignal1)) {
 	  name = "Z' (" + string(re_match_name[2]) + " GeV)";
+	  signal = true;
+	}
+	else if (std::regex_match(ldn, re_match_name, re_ISRgammaSignal2)) {
+	  name = "Z' (" + string(re_match_name[2]) + "00 GeV)";
 	  signal = true;
 	}
 	else if (std::regex_match(ldn, re_match_name, re_ISRjetSignal)) {
@@ -1272,9 +1556,33 @@ namespace AnalysisTools {
       hist->SetMarkerStyle(0);
       
       hist->SetLineStyle(1);
-      hist->SetLineWidth(2);
       hist->SetLineColor(kGray + 3);
 
+      return;
+    }
+
+    if (name == "StatsSystError") {
+      hist->SetFillColor(0);
+      hist->SetFillStyle(0);
+      
+      hist->SetMarkerColor(0);
+      hist->SetMarkerStyle(0);
+      
+      hist->SetLineStyle(1);
+      hist->SetLineColor(kGray + 3);
+
+      return;
+    }
+
+    if (name == "Pulls") {
+      hist->SetFillColorAlpha(kBlack, 0.3);
+      
+      hist->SetMarkerColor(0);
+      hist->SetMarkerStyle(0);
+      
+      hist->SetLineStyle(1);
+      hist->SetLineWidth(2);
+      hist->SetLineColor(kBlack);
       return;
     }
     
@@ -1360,12 +1668,50 @@ namespace AnalysisTools {
       hist->SetLineColor(kBlack);
       
       // Remove horisonal error bars.
-      gStyle->SetErrorX(0.001);
+      //gStyle->SetErrorX(0.001);
       
     }
     
     return;    
   }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::computeSystematics_ () {
+    // Loop stored systematics calls
+    INFO("Entering.");
+    for (auto f : m_systematicCalls) {
+      computeSystematic_(f);
+    }
+    INFO("Exiting");
+    return;
+  }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::computeSystematic_ (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f) {
+
+    INFO("Entering");
+    // Initialise (unique) systematic name
+    std::string systname = "syst_" + std::to_string(m_systematics.size());
+
+    // Initialise systematic histogram
+    std::unique_ptr<HistType> syst;
+    if (m_xbins == nullptr) {
+      syst = makeUniqueMove(new TH1F(systname.c_str(), "", m_nbinsx, m_xmin, m_xmax));
+    } else {
+      syst = makeUniqueMove(new TH1F(systname.c_str(), "", m_nbinsx, m_xbins));
+    }
+    syst.get()->Sumw2();
+
+    // Call function
+    f(syst.get(), m_data.get(), m_background.get());
+
+    // Append systematic to list
+    m_systematics.push_back(std::move(syst));
+
+    INFO("Exiting");
+    return;
+  }
+
 
   /// Explicitly instatiate templates.
   template class PlottingHelper<TH1F>;

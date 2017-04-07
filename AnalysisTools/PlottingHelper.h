@@ -145,7 +145,9 @@ namespace AnalysisTools {
     void computeImprovement (const int&  improvementDirection);
     void printBinContents   (const bool& print);
     void setScaleSignal     (const double& scaleSignal);
-    void setPadding     (const double& padding);
+    void setScaleBackground (const std::string& name, const double& scale);
+    void setPadding         (const double& padding);
+    void setPulls           (const bool& pulls);
     
     void setNormalised (const bool& normalised);
     void setSortBackgrounds (const bool& sortBackgrounds);
@@ -156,7 +158,13 @@ namespace AnalysisTools {
     inline void setArrowsRight(const std::vector<float>& arrowsRight) { m_arrowsRight = arrowsRight; }
     inline void setArrowsLeft (const std::vector<float>& arrowsLeft)  { m_arrowsLeft  = arrowsLeft; }
 
+    inline void subtract (const std::vector<std::string>& subtract) { m_subtract = subtract; }
 
+    inline void setIncludeOverflow (const bool& includeOverflow) { m_includeOverflow = includeOverflow; }
+
+    void addSystematic (const TH1F& hist);
+    void addSystematic (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f);
+    
     /// Get method(s).
     // ...
     
@@ -176,6 +184,8 @@ namespace AnalysisTools {
     
     void styleHist_ (HistType* hist, const bool& isMC, const string& name); // const unsigned& DSID = 0);
     
+    void computeSystematics_ ();
+    void computeSystematic_  (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f);
     
   private:
 
@@ -196,8 +206,8 @@ namespace AnalysisTools {
     
     vector<string> m_axistitles = {"", "", ""};
     
-    double m_plotmin = -1.;
-    double m_plotmax = -1.;
+    double m_plotmin = -9999.;
+    double m_plotmax = -9999.;
 
     unsigned m_nbinsx = 1; /* For use only when reading from tree. */
     unsigned m_nbinsy = 1; /* For use only when reading from tree. */
@@ -205,8 +215,10 @@ namespace AnalysisTools {
     double   m_xmax   = 1.;
     double   m_ymin   = 0.;
     double   m_ymax   = 1.;
+    const double*  m_xbins  = nullptr;
     
     bool m_ratio = true;
+    bool m_pulls = false;
     
     unsigned m_rebin = 1; /* For use only when reading from histogram. */
     
@@ -232,6 +244,7 @@ namespace AnalysisTools {
     unsigned m_height = 700;
     
     upHistType m_sum  = nullptr;
+    upHistType m_background  = nullptr;
     upHistType m_data = nullptr;
     map<string, upHistType > m_backgrounds;
     map<string, upHistType > m_signals;
@@ -243,7 +256,16 @@ namespace AnalysisTools {
     
     int m_improvementDirection = -1;
     double m_scaleSignal = 10.;
+    std::map<std::string, double> m_scaleBackground;
+
+    bool m_includeOverflow = true;
             
+    std::vector<std::string> m_subtract = {};
+    
+    std::vector< upHistType > m_systematics = {};
+    std::vector< std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) > > m_systematicCalls = {};
+    upHistType m_systematicsSum = nullptr;
+
   };
 
 
