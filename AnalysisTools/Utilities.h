@@ -32,6 +32,11 @@ namespace AnalysisTools {
   const float inf =    std::numeric_limits<float>::infinity();
   const float eps = 1./std::numeric_limits<float>::max();
   const float pi  = 3.14159265359;
+
+  // @TODO: Template
+  inline bool contains (const std::vector< std::string >& array, const std::string& value) {
+    return std::find(array.begin(), array.end(), value) != array.end();
+  }
   
   // Check whether file exists.
   inline bool fileExists (const std::string& filename) {
