@@ -17,9 +17,11 @@
 #include <memory> /* std::unique_ptr */
 #include <utility> /* std::move */
 #include <sys/stat.h> /* struct stat */
+#include <exception> /* std::exception */
 
 // ROOT include(s).
 #include "TLorentzVector.h"
+#include "TFile.h"
 #include "TTree.h"
 #include "TBranch.h"
 
@@ -34,7 +36,9 @@ namespace AnalysisTools {
   const float pi  = 3.14159265359;
 
   // @TODO: Template
-  inline bool contains (const std::vector< std::string >& array, const std::string& value) {
+  //inline bool contains (const std::vector< std::string >& array, const std::string& value) {
+  template<class T>
+  inline bool contains (const std::vector<T>& array, const T& value) {
     return std::find(array.begin(), array.end(), value) != array.end();
   }
   
@@ -207,7 +211,9 @@ namespace AnalysisTools {
     return output;
   }
   
-  
+  // Return a pointer to a TTree in a ROOT file. Throw exception if it cannot be accessed.
+  TTree* retrieveTree (const std::string& name, TFile* file);
+ 
   // Return a vector of TLorentzVectors based on vectors of (pt, eta, phi, m) components.
   inline std::vector< TLorentzVector > createFourVectorsM (std::vector<float>* vec_pt,
 							   std::vector<float>* vec_eta,
