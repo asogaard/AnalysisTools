@@ -7,6 +7,9 @@ namespace AnalysisTools {
     
     // Set method(s).
     void PhysicsObject::addInfo (const string& name, const double& val) {
+      if (m_info.count(name) > 0) {
+	FCTWARNING("Info '%s' already exists.", name.c_str());
+      }
         assert( m_info.count(name) == 0 );
         m_info[name] = val;
         return;
@@ -15,6 +18,9 @@ namespace AnalysisTools {
     
     // Get method(s).
     double PhysicsObject::info (const string& name) const {
+      if (m_info.count(name) == 0) {
+	FCTWARNING("Info '%s' was not found.", name.c_str());
+      }
         assert( m_info.count(name) > 0 );
         return m_info.at(name);
     }
