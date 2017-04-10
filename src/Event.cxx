@@ -79,6 +79,12 @@ namespace AnalysisTools {
     
     
     // High-level management method(s).
-    // ...
+    void Event::clear () {
+      m_info.clear();
+      m_collections.clear();
+      m_particles.clear();
+      m_grl = nullptr;
+      return;
+    }
     
 }

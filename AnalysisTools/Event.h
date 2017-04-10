@@ -57,7 +57,7 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-        // ...
+	void clear ();
         
         
     private:
