@@ -58,6 +58,7 @@ namespace AnalysisTools {
         
         // Low-level management method(s).
         // ...
+	void prepareCandidates_ ();
         
         
     private:

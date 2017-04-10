@@ -25,6 +25,11 @@ namespace AnalysisTools {
     return;
   }
 
+  void EventSelection::setInput (const Event* event) {
+    m_input = event;
+    return;
+  }
+
     
     // Get methods(s).
     // ...
@@ -57,7 +62,7 @@ namespace AnalysisTools {
             if (!this->hasCutflow(category)) { this->setupCutflow(category); }
 	    
 	    // Initialise new Event.
-            m_events[category] = Event();
+            m_events[category] = m_input ? *m_input : Event();
             m_passes[category] = true;
 
 	    // Add all available auxiliary information.
@@ -242,11 +247,15 @@ namespace AnalysisTools {
 	    // Make sure that the found element can be type-cast to 
 	    // ObjectDefinition; the class from which to extract 
 	    // collections of physics objects.
-	    if (ObjectDefinition<TLorentzVector>* objdef = dynamic_cast<ObjectDefinition<TLorentzVector>*>(child)) {
+	    // If successful, add a copy of the resulting collection.
+	    // @TODO: - Pointer + masking?
+	    if (ObjectDefinition<TLorentzVector>* objdef = dynamic_cast<ObjectDefinition<TLorentzVector>*>(child) ) {
 	      DEBUG(" ---- Got one! Looking for '%s'.", selectionCategory.c_str());
-	      
-	      // Add a copy of the resulting collection.
-	      // @TODO: - Pointer + masking?
+	      m_collectionLinks[category][name] = objdef->result(selectionCategory);
+	      DEBUG(" ------ Storing results pointer:");
+	      break;
+	    } else if (ObjectDefinition<PhysicsObject>* objdef = dynamic_cast<ObjectDefinition<PhysicsObject>*>(child) ) {
+	      DEBUG(" ---- Got one! Looking for '%s'.", selectionCategory.c_str());
 	      m_collectionLinks[category][name] = objdef->result(selectionCategory);
 	      DEBUG(" ------ Storing results pointer:");
 	      break;

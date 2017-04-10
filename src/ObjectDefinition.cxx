@@ -15,6 +15,11 @@ namespace AnalysisTools {
 
     
     // High-level management method(s).
+  /**
+   * Specialise for (1) template<TLorentzVector> and (2) template<PhysicsObject>
+   * - if (1), have to create PhysicsObjects in run
+   * - if (2), don't need to, and shouldn't be allowed to add info
+   */
     template <class T>
     bool ObjectDefinition<T>::run () {
         DEBUG("Entering '%s'.", this->name().c_str());
@@ -27,26 +32,8 @@ namespace AnalysisTools {
         }
         
         // * Set up PhysicsObject candidates. [Within a private 'init' function?]
-        for (unsigned i = 0; i < this->m_input->size(); i++) {
-            for (const auto& category : this->m_categories) {
-                PhysicsObject p ((T) this->m_input->at(i));
-                for (const auto& name_val : this->infoContainer<double>()) {
-                    p.addInfo(name_val.first, (double) name_val.second->at(i));
-                }
-                for (const auto& name_val : this->infoContainer<float>()) {
-                    p.addInfo(name_val.first, (double) name_val.second->at(i));
-                }
-                for (const auto& name_val : this->infoContainer<bool>()) {
-                    p.addInfo(name_val.first, (double) name_val.second->at(i));
-                }
-                for (const auto& name_val : this->infoContainer<int>()) {
-                    p.addInfo(name_val.first, (double) name_val.second->at(i));
-                }
+	prepareCandidates_();
 
-                m_candidates[category].emplace_back(p);
-            }
-        }
-        
         float weight = 1.;
         if (this->m_weight) {
             weight = *this->m_weight;
@@ -128,7 +115,40 @@ namespace AnalysisTools {
 
     // Low-level management method(s).
     // ...
+  template <>
+  void ObjectDefinition<TLorentzVector>::prepareCandidates_ () {
+    for (unsigned i = 0; i < this->m_input->size(); i++) {
+      for (const auto& category : this->m_categories) {
+	PhysicsObject p ((TLorentzVector) this->m_input->at(i));
+	for (const auto& name_val : this->infoContainer<double>()) {
+	  p.addInfo(name_val.first, (double) name_val.second->at(i));
+	}
+	for (const auto& name_val : this->infoContainer<float>()) {
+	  p.addInfo(name_val.first, (double) name_val.second->at(i));
+	}
+	for (const auto& name_val : this->infoContainer<bool>()) {
+	  p.addInfo(name_val.first, (double) name_val.second->at(i));
+	}
+	for (const auto& name_val : this->infoContainer<int>()) {
+	  p.addInfo(name_val.first, (double) name_val.second->at(i));
+	}
+	
+	m_candidates[category].emplace_back(p);
+      }
+    }
+    return;
+  }
+
+  template <>
+  void ObjectDefinition<PhysicsObject>::prepareCandidates_ () {
+    for (const auto& category : this->m_categories) {
+      m_candidates[category] = *this->m_input;
+    }
+    return;
+  }
+
 
 }
 
 template class AnalysisTools::ObjectDefinition<TLorentzVector>;
+template class AnalysisTools::ObjectDefinition<AnalysisTools::PhysicsObject>;

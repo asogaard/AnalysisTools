@@ -60,6 +60,8 @@ namespace AnalysisTools {
 	//void addCollection (const string& name, const string& selection, const string& category = "");
 	void addCollection (const string& name, const string& objdef, const string& objdefCategory = "Nominal", const string& category = "");
 
+	void setInput (const Event* event);
+	
                 
         // Get method(s).
         // ...
@@ -86,6 +88,7 @@ namespace AnalysisTools {
 
   private:
         
+	const Event* m_input = nullptr;
         map< string, Event > m_events;
         map< string, bool >  m_passes;
 	map< string, std::vector<std::tuple<string, string, string> > > m_collectionNames;

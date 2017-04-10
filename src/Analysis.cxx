@@ -11,11 +11,12 @@ namespace AnalysisTools {
   // Set method(s).
   template<typename T>
   void Analysis::addSelection (T* selection, const std::string& pattern) {
-    DEBUG("Adding seletion '%s' to categories with pattern '%s'", selection->name().c_str(), pattern.c_str());
+    DEBUG("Adding selection '%s' to categories with pattern '%s'", selection->name().c_str(), pattern.c_str());
     for (const auto& category : this->categories(pattern)) {
       m_selections[category].emplace_back(makeUniqueMove(new T(*selection)));
       this->grab(m_selections[category].back().get(), category);
     }
+    DEBUG("Done");
     return;
   }
   
@@ -170,8 +171,9 @@ namespace AnalysisTools {
     
     // * Running.
     DEBUG("  Calling the actual 'run' method.");
-    return run(category);
+    bool status = run(category);
     DEBUG("Exiting.");
+    return status;
   }
   
   bool Analysis::run (const std::string& category, const unsigned& current, const unsigned& maximum) {
@@ -282,7 +284,9 @@ namespace AnalysisTools {
   
   /// Explicitly instatiate templates.
   template void Analysis::addSelection< PseudoObjectDefinition<TLorentzVector> >(PseudoObjectDefinition<TLorentzVector>*, const std::string&);
+  template void Analysis::addSelection< PseudoObjectDefinition<AnalysisTools::PhysicsObject> >(PseudoObjectDefinition<AnalysisTools::PhysicsObject>*, const std::string&);
   template void Analysis::addSelection< ObjectDefinition<TLorentzVector> >(ObjectDefinition<TLorentzVector>*, const std::string&);
+  template void Analysis::addSelection< ObjectDefinition<AnalysisTools::PhysicsObject> >(ObjectDefinition<AnalysisTools::PhysicsObject>*, const std::string&);
   template void Analysis::addSelection< EventSelection >(EventSelection*, const std::string&);
   
 }

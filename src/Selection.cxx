@@ -426,4 +426,5 @@ namespace AnalysisTools {
 }
 
 template class AnalysisTools::Selection<TLorentzVector, AnalysisTools::PhysicsObject>;
+template class AnalysisTools::Selection<AnalysisTools::PhysicsObject, AnalysisTools::PhysicsObject>;
 template class AnalysisTools::Selection<AnalysisTools::Event, AnalysisTools::Event>;
