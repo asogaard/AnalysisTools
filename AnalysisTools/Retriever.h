@@ -50,22 +50,18 @@ namespace AnalysisTools {
 
     // Set address of ROOT TTree from which to read information.
     void setTree (TTree* tree);
+
     
     /// Get method(s).
     // ...
+
     
     /// High-level method(s).
-    // Print (@TEMP)
-    void print ();
-
     // Clear stored object(s).
     void clear ();
 
     // Rename auxiliary information.
     void rename (const std::string& name1, const std::string& name2);
-
-    // Return retrieved content;
-    //virtual T* result () = 0; // Can't do this, due to possible std::vector< ... >
 
     // Retrieve content from TTree. Must be called each event.
     void retrieve ();
