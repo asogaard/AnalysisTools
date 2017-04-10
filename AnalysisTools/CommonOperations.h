@@ -58,6 +58,19 @@ namespace AnalysisTools {
   }
 
   /**
+   * Cut on the value of auxiliary information variable of leading PhysicsObject in some collection.
+   */
+  inline Cut<Event> get_cut_event_leading_info (const std::string& collection, const std::string& name, const float& scale = 1.) {
+    Cut<Event> cut ("leading_" + collection + "_" + name, [collection, name, scale](const Event& e) {
+	if (e.collection(collection).size() == 0) {
+	  return -9999.;
+	}
+        return e.collection(collection).at(0)->info(name) * scale;
+      });
+    return cut;
+  }
+
+  /**
    * Cut on the value of auxiliary information variable of PhysicsObject
    */
   inline Cut<PhysicsObject> get_cut_object_info (const std::string& name, const float& scale = 1.) {
