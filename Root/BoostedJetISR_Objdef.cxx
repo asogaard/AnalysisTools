@@ -19,6 +19,8 @@
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/PhysicsObject.h"
 #include "AnalysisTools/Event.h"
+#include "AnalysisTools/CollectionRetriever.h"
+#include "AnalysisTools/EventRetriever.h"
 #include "AnalysisTools/Range.h"
 #include "AnalysisTools/GRL.h"
 #include "AnalysisTools/Cut.h"
@@ -43,11 +45,13 @@ int main (int argc, char* argv[]) {
     cout << "Please provide at least one input file." << endl;
     return 0;
   }
-  
+
+  const bool debug = false;
+     
   // Load dictionaries and stuff.
   gROOT->ProcessLine(".L share/Loader.C+");
   
-  std::vector< std::string > inputs = getDatasetsFromCommandlineArguments(argc, argv);
+  std::vector<std::string> inputs = getDatasetsFromCommandlineArguments(argc, argv);
   
   if (inputs.size() == 0) {
     FCTINFO("Found 0 input files. Exiting.");
@@ -55,7 +59,7 @@ int main (int argc, char* argv[]) {
   }
   
   // Loop input files.
-  for (const string& input : inputs) {
+  for (const std::string& input : inputs) {
     
     // Get input file.
     TFile inputFile(input.c_str(), "READ");
@@ -64,30 +68,24 @@ int main (int argc, char* argv[]) {
       return 0;
     }
     
-    // Get input tree.
+    // Get input tree(s).
     std::map<std::string, TTree*> inputTree;
-    inputTree["Tight"] = (TTree*) inputFile.Get("nominal"); 
-    if (!inputTree["Tight"]) {
-      cerr << "Unable to retrieve tree." << endl;
-      continue;
-    }
-    inputTree["Loose"] = (TTree*) inputFile.Get("nominal_Loose");
-    if (!inputTree["Loose"]) {
-      cerr << "Unable to retrieve tree." << endl;
-      continue;
-    }
-    TTree* sumWeightsTree = (TTree*) inputFile.Get("sumWeights");
-    if (!sumWeightsTree) {
-      cerr << "Unable to retrieve tree." << endl;
-      continue;
+    TTree* sumWeightsTree = nullptr;
+
+    try {
+      inputTree["Tight"] = retrieveTree("nominal",       &inputFile);
+      inputTree["Loose"] = retrieveTree("nominal_Loose", &inputFile);
+      sumWeightsTree     = retrieveTree("sumWeights",    &inputFile);
+    } catch (...) { 
+      FCTWARNING("One or more trees couldn't bee retrieved.");
+      continue; 
     }
 
-
+    // Analysis categories.
     const std::vector<std::string> categories = { "Tight", "Loose" };
-    //const std::vector<std::string> categories = { "Loose", "Tight" }; // { "Tight", "Loose" };
-    
+
     // Get number of events.
-    std::map<std::string, unsigned> nEvents; // = 10000; //inputTree->GetEntries();
+    std::map<std::string, unsigned> nEvents;
     bool empty = true;
     for (const auto& pair : inputTree) {
       nEvents[pair.first] = pair.second->GetEntries();
@@ -97,157 +95,78 @@ int main (int argc, char* argv[]) {
       cout << " -- (File '" << input << "' is empty.)" << endl;
       continue;
     }
-    
-    // Manually built vectors.
-    std::vector<TLorentzVector> photons;
-    std::vector<TLorentzVector> largeRadiusJets;
-    std::vector<TLorentzVector> smallRadiusJets;
-    std::vector<float> lj_dphiMinPhoton;
 
+    // Pointers to data from retrievers.
+    Event* pEvent = nullptr;
+    std::vector<PhysicsObject>* pPhotons = nullptr;
+    std::vector<PhysicsObject>* pLargeRadiusJets = nullptr;
+    std::vector<PhysicsObject>* pSmallRadiusJets = nullptr;
+
+    // Helper functions
+    auto rho      = [](const PhysicsObject& p) { 
+      return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 2.0));
+    };
+    auto rhoDDT   = [](const PhysicsObject& p) { 
+      return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.0));
+    };
     
+    auto tau21DDT = [&rhoDDT](const PhysicsObject& p) {
+      // Linear correction function.
+      /* pT > 150 GeV
+	 const float p0 =  0.6887;
+	 const float p1 = -0.0941;
+      */
+      /* pT > 200 GeV */
+      const float p0 =  0.705;
+      const float p1 = -0.100;
+
+      const float rhoDDTmin = 1.0;
+      auto linearCorrection = [&p0, &p1] (const float& x) { return p0 + p1 * x; };	  
+      
+      // (DDT) modified tau21 value.
+      return p.info("tau21") + (linearCorrection(rhoDDTmin) - linearCorrection(rhoDDT(p)));
+    };
+    
+    auto dPhiPhoton = [&pPhotons] (const PhysicsObject& p) {
+      float dphi = 9999.;
+      if (pPhotons->size() > 0) {
+	dphi = std::abs(p.DeltaPhi(pPhotons->at(0)));
+      } 
+      return dphi;
+    };
+
+    // Data retrievers
+    EventRetriever eventRetriever ({"mcChannelNumber", "HLT_j380", "HLT_j400", "HLT_g140_loose", "ISRgamma", "eventNumber",  "runNumber", "lumiBlock"});
+    eventRetriever.addInfo("isMC", [](const Event& e) { return e.info("mcChannelNumber") > 0; });
+    eventRetriever.setDebug(debug);
+    pEvent = eventRetriever.result();
+
+    CollectionRetriever photonsRetriever (FromPtEtaPhiE(), "ph_");
+    photonsRetriever.addInfo({"iso"}, "ph_");
+    photonsRetriever.setDebug(debug);
+    pPhotons = photonsRetriever.result();
+
+    CollectionRetriever largeRadiusJetsRetriever (FromPtEtaPhiM(), "rljet_");
+    largeRadiusJetsRetriever.addInfo({"Tau21_wta", "D2"}, "rljet_");
+    largeRadiusJetsRetriever.rename("Tau21_wta", "tau21");
+    largeRadiusJetsRetriever.addInfo("rhoDDT",     rhoDDT);
+    largeRadiusJetsRetriever.addInfo("tau21DDT",   tau21DDT);
+    largeRadiusJetsRetriever.addInfo("dPhiPhoton", dPhiPhoton);
+    largeRadiusJetsRetriever.setDebug(debug);
+    pLargeRadiusJets = largeRadiusJetsRetriever.result();
+
+    CollectionRetriever smallRadiusJetsRetriever (FromPtEtaPhiE("pt", "eta", "phi", "e"), "jet_");
+    smallRadiusJetsRetriever.setDebug(debug);
+    pSmallRadiusJets = smallRadiusJetsRetriever.result();
+  
     // General, event-level information
-    std::map<std::string, std::unique_ptr<unsigned> > runNumber, lumiBlock, mcChannelNumber;
-    std::map<std::string, std::unique_ptr<unsigned long long> > eventNumber;
     std::map<std::string, std::unique_ptr<float> > weight_mc;
     for (const auto& category : categories) {
-      runNumber      [category] = readBranch<unsigned>          (inputTree[category], "runNumber");
-      lumiBlock      [category] = readBranch<unsigned>          (inputTree[category], "lumiBlock");
-      eventNumber    [category] = readBranch<unsigned long long>(inputTree[category], "eventNumber");
-      mcChannelNumber[category] = readBranch<unsigned>          (inputTree[category], "mcChannelNumber");
-      weight_mc      [category] = readBranch<float>             (inputTree[category], "weight_mc");
+      weight_mc[category] = readBranch<float>(inputTree[category], "weight_mc");
       /* @TODO: Pile-up reweighting? */
     }
     
-    // Photon kinematic quantities
-    std::map<std::string, std::vector<float>* > ph_pt, ph_eta, ph_phi, ph_e, ph_iso;
-    //std::map<std::string, std::unique_ptr< std::vector<float> > > ph_pt, ph_eta, ph_phi, ph_e;
-    for (const auto& category : categories) {
-      /* -- * /
-      ph_pt [category] = readBranchVector< float >(inputTree[category], "ph_pt");
-      ph_eta[category] = readBranchVector< float >(inputTree[category], "ph_eta");
-      ph_phi[category] = readBranchVector< float >(inputTree[category], "ph_phi");
-      ph_e  [category] = readBranchVector< float >(inputTree[category], "ph_e");
-      / * -- */
-
-      /* -- */
-      ph_pt [category] = nullptr;
-      inputTree[category]->SetBranchAddress("ph_pt", &ph_pt[category]);
-
-      ph_eta [category] = nullptr;
-      inputTree[category]->SetBranchAddress("ph_eta", &ph_eta[category]);
-
-      ph_phi [category] = nullptr;
-      inputTree[category]->SetBranchAddress("ph_phi", &ph_phi[category]);
-
-      ph_e [category] = nullptr;
-      inputTree[category]->SetBranchAddress("ph_e", &ph_e[category]);
-
-      ph_iso [category] = nullptr; // ptvarcone20
-      inputTree[category]->SetBranchAddress("ph_iso", &ph_iso[category]);
-      /* -- */
-
-      /* THIS WORKS! * /
-      std::string var;
-
-      ph_pt [category] = nullptr;
-      var = "ph_pt";
-      inputTree[category]->SetBranchAddress(var.c_str(), &ph_pt[category]);
-
-      ph_eta [category] = nullptr;
-      var = "ph_eta";
-      inputTree[category]->SetBranchAddress(var.c_str(), &ph_eta[category]);
-
-      ph_phi [category] = nullptr;
-      var = "ph_phi";
-      inputTree[category]->SetBranchAddress(var.c_str(), &ph_phi[category]);
-
-      ph_e [category] = nullptr;
-      var = "ph_e";
-      inputTree[category]->SetBranchAddress(var.c_str(), &ph_e[category]);
-      /* -- */
-    }
-
-    /*
-    for (const auto& category : categories) {
-      std::cout << "===" << category << "===" << std::endl;
-      std::cout << ph_pt[category]->size() << std::endl;
-      for (unsigned i = 0; i < 10; i ++) {
-	inputTree[category]->GetEntry(i);
-	std::cout << ph_pt[category]->size() << std::endl;
-      }
-    }
-    */
-    
-    // Trimmed large-radius jet kinematic quantities
-    std::map<std::string, std::vector<float>* > lj_pt, lj_eta, lj_phi, lj_m;
-    //std::map<std::string, std::unique_ptr< std::vector<float> > > lj_pt, lj_eta, lj_phi, lj_m;
-    for (const auto& category : categories) {
-      lj_pt [category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_pt", &lj_pt [category]);
-      lj_eta[category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_eta", &lj_eta[category]);
-      lj_phi[category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_phi", &lj_phi[category]);
-      lj_m  [category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_m", &lj_m  [category]);
-      /*
-	lj_pt [category] = readBranchVector< float >(inputTree[category], "rljet_pt");
-      lj_eta[category] = readBranchVector< float >(inputTree[category], "rljet_eta");
-      lj_phi[category] = readBranchVector< float >(inputTree[category], "rljet_phi");
-      lj_m  [category] = readBranchVector< float >(inputTree[category], "rljet_m");
-      */
-    }
-    
-    // Small-radius jet kinematic quantities
-    std::map<std::string, std::vector<float>* > sj_pt, sj_eta, sj_phi, sj_e;
-    //std::map<std::string, std::unique_ptr< std::vector<float> > > sj_pt, sj_eta, sj_phi, sj_e;
-    for (const auto& category : categories) {
-      sj_pt [category] = nullptr;
-      inputTree[category]->SetBranchAddress("jet_pt", &sj_pt [category]);
-      sj_eta[category] = nullptr;
-      inputTree[category]->SetBranchAddress("jet_eta", &sj_eta[category]);
-      sj_phi[category] = nullptr;
-      inputTree[category]->SetBranchAddress("jet_phi", &sj_phi[category]);
-      sj_e  [category] = nullptr;
-      inputTree[category]->SetBranchAddress("jet_e", &sj_e  [category]);
-      /*
-      sj_pt [category] = readBranchVector< float >(inputTree[category], "jet_pt");
-      sj_eta[category] = readBranchVector< float >(inputTree[category], "jet_eta");
-      sj_phi[category] = readBranchVector< float >(inputTree[category], "jet_phi");
-      sj_e  [category] = readBranchVector< float >(inputTree[category], "jet_e");
-      */
-    }
-    
-    // Trimmed jet substructure quantities
-    std::map<std::string, std::vector<float>* > lj_tau21, lj_D2;
-    //std::map<std::string, std::unique_ptr< std::vector<float> > > lj_tau21, lj_D2;
-    for (const auto& category : categories) {
-      lj_tau21 [category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_Tau21_wta", &lj_tau21 [category]);
-      lj_D2[category] = nullptr;
-      inputTree[category]->SetBranchAddress("rljet_D2", &lj_D2[category]);
-      /*
-      lj_tau21[category] = readBranchVector< float >(inputTree[category], "rljet_Tau21_wta");
-      lj_D2   [category] = readBranchVector< float >(inputTree[category], "rljet_D2");
-      */
-    }
-    
-    // Trigger information
-    std::map<std::string, std::unique_ptr<bool> > HLT_g140_loose, HLT_j380, HLT_j400;
-    for (const auto& category : categories) {
-      HLT_g140_loose[category] = readBranch< bool >(inputTree[category], "HLT_g140_loose");
-      HLT_j380      [category] = readBranch< bool >(inputTree[category], "HLT_j380");
-      HLT_j400      [category] = readBranch< bool >(inputTree[category], "HLT_j400");
-    }
-    
-    // Pre-pre-selection
-    std::map<std::string, std::unique_ptr<int> > ISRgamma, ISRjet;
-    for (const auto& category : categories) {
-      ISRgamma     [category] = readBranch< int >(inputTree[category], "ISRgamma");
-      ISRjet       [category] = readBranch< int >(inputTree[category], "ISRjet");
-    }
-    
-    
+        
     // Get GRL.
     // -------------------------------------------------------------------       
     GRL grl2015 ("share/GRL/data15_13TeV.periodAllYear_DetStatus-v79-repro20-02_DQDefects-00-02-02_PHYS_StandardGRL_All_Good_25ns.txt");
@@ -256,10 +175,12 @@ int main (int argc, char* argv[]) {
     
     // Get file name.
     // -------------------------------------------------------------------
+    eventRetriever.setTree(inputTree[categories.at(0)]);
     inputTree[categories.at(0)]->GetEvent(0);
+    eventRetriever.retrieve();
     
-    bool     isMC = (*mcChannelNumber[categories.at(0)] > 0);
-    unsigned DSID = (isMC ? *mcChannelNumber[categories.at(0)] : *runNumber[categories.at(0)]);
+    bool     isMC = pEvent->info("isMC");
+    unsigned DSID = pEvent->info("isMC") ? pEvent->info("mcChannelNumber") : pEvent->info("runNumber");
     
     const string filedir  = "outputObjdef";
     const string filename = (string) "objdef_" + (isMC ? "MC" : "data") + "_" + to_string(DSID) + ".root";
@@ -292,8 +213,6 @@ int main (int argc, char* argv[]) {
     Analysis ISRgammaAnalysis ("BoostedJet+ISRgamma");
     
     ISRgammaAnalysis.addCategories(categories);
-    
-    const bool debug = false;
     
     std::vector<Analysis*> analyses = { &ISRgammaAnalysis }; 
     for (auto* analysis : analyses) {
@@ -352,49 +271,6 @@ int main (int argc, char* argv[]) {
     
     // Plotting macros.
     // -------------------------------------------------------------------
-    
-    auto rho      = [](const PhysicsObject& p) { 
-      return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 2.0));
-    };
-    auto rhoPrime = [](const PhysicsObject& p) { 
-      return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.4));
-    };
-    auto rhoDDT   = [](const PhysicsObject& p) { 
-      return log(pow(p.M() / 1000., 2.0) / pow(p.Pt() / 1000., 1.0));
-    };
-    
-    auto tau21DDT = [&rhoDDT](const PhysicsObject& p) {
-      // Linear correction function.
-      /* pT > 150 GeV
-	 const float p0 =  0.6887;
-	 const float p1 = -0.0941;
-      */
-      /* pT > 200 GeV */
-      const float p0 =  0.705;
-      const float p1 = -0.100;
-
-      const float rhoDDTmin = 1.0;
-      auto linearCorrection = [&p0, &p1] (const float& x) { return p0 + p1 * x; };	  
-      
-      // (DDT) modified tau21 value.
-      return p.info("tau21") + (linearCorrection(rhoDDTmin) - linearCorrection(rhoDDT(p)));
-    };
-    
-    
-    // Leading largeRadiusJet rhoPrime.
-    PlotMacro1D<Event> plot_event_leadingLargeRadiusJet_rhoPrime ("leading_LargeRadiusJets_rhoPrime");
-    plot_event_leadingLargeRadiusJet_rhoPrime.setFunction( [&rhoPrime](const Event& e) { 
-	if (e.collection("LargeRadiusJets").size() == 0) { return -9999.; }
-	return rhoPrime(*e.collection("LargeRadiusJets").at(0)); 
-      });
-    
-    // Leading largeRadiusJet rhoDDT.
-    PlotMacro1D<Event> plot_event_leadingLargeRadiusJet_rhoDDT ("leading_LargeRadiusJets_rhoDDT");
-    plot_event_leadingLargeRadiusJet_rhoDDT.setFunction( [&rhoDDT](const Event& e) { 
-	if (e.collection("LargeRadiusJets").size() == 0) { return -9999.; }
-	return rhoDDT(*e.collection("LargeRadiusJets").at(0)); 
-      });
-    
     // Delta-eta separation between photon and leading largeRadiusJet.
     PlotMacro1D<Event> plot_event_leadingLargeRadiusJetPhotonDeltaEta ("leadingLargeRadiusJetPhotonDeltaEta", [](const Event& e) { 
 	if (e.collection("LargeRadiusJets").size() == 0) { return -9999.; }
@@ -412,40 +288,32 @@ int main (int argc, char* argv[]) {
 	return std::fabs(recoil.Eta() - e.collection("Photons").at(0)->Eta());
       });
     
-    // Physics object rhoDDT
-    PlotMacro1D<PhysicsObject> plot_object_rhoDDT ("rhoDDT");
-    plot_object_rhoDDT.setFunction([&rhoDDT](const PhysicsObject& p) { 
-	return rhoDDT(p);
-      });
     
     
     // Pseudo-objdefs (for creating collections).
     // -------------------------------------------------------------------
     // * All largeRadiusJets.
-    PseudoObjectDefinition<TLorentzVector> AllLargeRadiusJetsObjdef("AllLargeRadiusJets");
-    AllLargeRadiusJetsObjdef.setInput(&largeRadiusJets);
+    PseudoObjectDefinition<PhysicsObject> AllLargeRadiusJetsObjdef("AllLargeRadiusJets");
+    AllLargeRadiusJetsObjdef.setInput(pLargeRadiusJets);
 
     // * All photons.
-    PseudoObjectDefinition<TLorentzVector> AllPhotonsObjdef("AllPhotons");
-    AllPhotonsObjdef.setInput(&photons);    
+    PseudoObjectDefinition<PhysicsObject> AllPhotonsObjdef("AllPhotons");
+    AllPhotonsObjdef.setInput(pPhotons);    
     
 
     // Pre-selection
     // -------------------------------------------------------------------
     EventSelection preSelection ("PreSelection");
+    preSelection.setInput(pEvent);
     preSelection.setDebug(debug);	
-    
-    preSelection.addInfo("isMC", &isMC);
     
     preSelection.addCollection("LargeRadiusJets", "AllLargeRadiusJets");
     preSelection.addCollection("Photons", "AllPhotons");
-    
-    
+        
     // * Initial
     /* Important, in order to use the right trigger! */
     preSelection.addCut(get_cut_event_info("ISRgamma"));
-    
-    
+   
     // * GRL
     Cut<Event> event_grl ("GRL");
     event_grl.setFunction( [&grl2015, &grl2016](const Event& e) { 
@@ -453,7 +321,6 @@ int main (int argc, char* argv[]) {
 	                      || grl2016.contains(e.info("runNumber"), e.info("lumiBlock"));
       });
     preSelection.addCut(event_grl);
-    
     
     // * Event cleaning
     // ...
@@ -475,9 +342,8 @@ int main (int argc, char* argv[]) {
     
     // Photons
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ObjectDefinition<TLorentzVector> PhotonObjdef ("Photons");
-    
-    PhotonObjdef.setInput(&photons);
+    ObjectDefinition<PhysicsObject> PhotonObjdef ("Photons");
+    PhotonObjdef.setInput(pPhotons);
     
     // * pT
     PhotonObjdef.addCut(cut_pt.withRange(155., inf));
@@ -490,9 +356,8 @@ int main (int argc, char* argv[]) {
     
     // Small-radius jets.
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ObjectDefinition<TLorentzVector> SmallRadiusJetObjdef ("SmallRadiusJets");
-    
-    SmallRadiusJetObjdef.setInput(&smallRadiusJets);
+    ObjectDefinition<PhysicsObject> SmallRadiusJetObjdef ("SmallRadiusJets");
+    SmallRadiusJetObjdef.setInput(pSmallRadiusJets);
     
     // * eta
     SmallRadiusJetObjdef.addCut(cut_eta.withRange(-2.5, 2.5));
@@ -503,20 +368,8 @@ int main (int argc, char* argv[]) {
     
     // Large-radius jets
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ObjectDefinition<TLorentzVector> LargeRadiusJetObjdef ("LargeRadiusJets");
-    
-    LargeRadiusJetObjdef.setInput(&largeRadiusJets);
-    
-    LargeRadiusJetObjdef.addInfo("dPhiPhoton", &lj_dphiMinPhoton);
-
-    // * computing tau21DDT value
-    Operation<PhysicsObject> operation_largeRadiusJet_tau21DDT ("compute_tau21DDT");
-    operation_largeRadiusJet_tau21DDT.setFunction( [&tau21DDT](PhysicsObject& p) { 
-	/* Doing it here, even though we're not guaranteed to be within the range of validity for the transform */
-	p.addInfo("tau21DDT", tau21DDT(p));
-	return true;
-      });
-    LargeRadiusJetObjdef.addOperation(operation_largeRadiusJet_tau21DDT);
+    ObjectDefinition<PhysicsObject> LargeRadiusJetObjdef ("LargeRadiusJets");    
+    LargeRadiusJetObjdef.setInput(pLargeRadiusJets);
     
     // * eta
     LargeRadiusJetObjdef.addCut(cut_eta.withRange(-2., 2.));
@@ -534,21 +387,16 @@ int main (int argc, char* argv[]) {
       });
     cut_largeRadiusJet_BoostedRegime.addRange(1., inf);
     LargeRadiusJetObjdef.addCut(cut_largeRadiusJet_BoostedRegime);
-    
 
     // * rhoDDT
-    Cut<PhysicsObject> cut_largeRadiusJet_rhoDDT ("rhoDDT");
-    cut_largeRadiusJet_rhoDDT.setFunction( [&rhoDDT](const PhysicsObject& p) { 
-	return rhoDDT(p);
-      });
-    cut_largeRadiusJet_rhoDDT.addRange(1.5, inf);
-    LargeRadiusJetObjdef.addCut(cut_largeRadiusJet_rhoDDT);
-
+    LargeRadiusJetObjdef.addCut(get_cut_object_info("rhoDDT").withRange(1.5, inf));
     
     // * Check distributions.
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_pt);
-    LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_m);
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_eta);
+    LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_phi);
+    LargeRadiusJetObjdef.addPlot(CutPosition::Post, plot_object_m);
+    LargeRadiusJetObjdef.addPlot(CutPosition::Post, get_plot_object_info("rhoDDT"));
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, get_plot_object_info("tau21"));
     LargeRadiusJetObjdef.addPlot(CutPosition::Post, get_plot_object_info("tau21DDT"));
     
@@ -567,9 +415,8 @@ int main (int argc, char* argv[]) {
     // Event selection (nominal)
     // -------------------------------------------------------------------
     EventSelection eventSelection ("EventSelection");
+    eventSelection.setInput(pEvent);
     eventSelection.setDebug(debug);
-    
-    eventSelection.addInfo("isMC", &isMC);
     
     eventSelection.addCategories({"Pass", "Fail"});
     
@@ -590,30 +437,29 @@ int main (int argc, char* argv[]) {
     eventSelection.addCut(cut_event_blinding, "Pass");
 
     // * tau21DDT
-    Cut<Event> cut_event_leadingLargeRadiusJet_tau21DDT ("tau21DDT_0p50");
-    cut_event_leadingLargeRadiusJet_tau21DDT.setFunction( [](const Event& e) {
-	return e.collection("LargeRadiusJets").at(0)->info("tau21DDT");
-      });
+    Cut<Event> cut_event_leadingLargeRadiusJet_tau21DDT = get_cut_event_leading_info("LargeRadiusJets", "tau21DDT");
     cut_event_leadingLargeRadiusJet_tau21DDT.setRange(0.5, inf);
     eventSelection.addCut(cut_event_leadingLargeRadiusJet_tau21DDT, "Fail");
     
     cut_event_leadingLargeRadiusJet_tau21DDT.setRange(-inf, 0.5);
     eventSelection.addCut(cut_event_leadingLargeRadiusJet_tau21DDT, "Pass");    
-    
+
+    // * Check distributions
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_pt ("LargeRadiusJets"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_m  ("LargeRadiusJets"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_eta("LargeRadiusJets"));    
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_phi("LargeRadiusJets"));    
+
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "rhoDDT"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21DDT"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "D2"));
 
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_E  ("Photons"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_pt ("Photons"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_eta("Photons"));    
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_phi("Photons"));    
 
-    eventSelection.addPlot(CutPosition::Post, plot_event_leadingLargeRadiusJet_rhoDDT);
-    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21DDT"));
-    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "tau21"));
-    eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_info("LargeRadiusJets", "D2"));
 
     
     
@@ -630,12 +476,6 @@ int main (int argc, char* argv[]) {
       ISRgammaAnalysis.addSelection(&AllPhotonsObjdef, category);
       
       // Preselection.
-      preSelection.addInfo("HLT_j380",       HLT_j380      [category].get(), true);
-      preSelection.addInfo("HLT_j400",       HLT_j400      [category].get(), true);
-      preSelection.addInfo("HLT_g140_loose", HLT_g140_loose[category].get(), true);
-      preSelection.addInfo("ISRgamma",       ISRgamma      [category].get(), true);
-      preSelection.addInfo("runNumber",      runNumber     [category].get(), true);
-      preSelection.addInfo("lumiBlock",      lumiBlock     [category].get(), true);
       ISRgammaAnalysis.addSelection(&preSelection, category);
       
       // Object definitions.
@@ -643,12 +483,9 @@ int main (int argc, char* argv[]) {
       ISRgammaAnalysis.addSelection(&SmallRadiusJetObjdef, category);
       
       // -- Large-radius jets
-      LargeRadiusJetObjdef.addInfo("tau21", lj_tau21 [category], true);
-      LargeRadiusJetObjdef.addInfo("D2",    lj_D2    [category], true);
       ISRgammaAnalysis.addSelection(&LargeRadiusJetObjdef, category);
       
       // -- Photons
-      PhotonObjdef.addInfo("iso", ph_iso[category], true);
       ISRgammaAnalysis.addSelection(&PhotonObjdef, category);
       
       // Event selection.
@@ -662,33 +499,28 @@ int main (int argc, char* argv[]) {
     
     for (const auto& category : categories) {
 
+      // Set correct retriever trees.
+      eventRetriever          .setTree(inputTree[category]);
+      photonsRetriever        .setTree(inputTree[category]);
+      largeRadiusJetsRetriever.setTree(inputTree[category]);
+      smallRadiusJetsRetriever.setTree(inputTree[category]);
+
       // Duplicate event control.
       map<unsigned, set<unsigned> > uniqueEvents;
       
       // Loop events
       for (unsigned iEvent = 0; iEvent < nEvents[category]; iEvent++) {
-	
 	inputTree[category]->GetEvent(iEvent);
-	
+
+	// Retrieve collections and events
+	eventRetriever          .retrieve();
+	photonsRetriever        .retrieve();
+	largeRadiusJetsRetriever.retrieve();
+	smallRadiusJetsRetriever.retrieve();
+
 	// Reject duplicate events.
-	auto ret = uniqueEvents[DSID].emplace(*eventNumber[category]);
+	auto ret = uniqueEvents[DSID].emplace(pEvent->info("eventNumber"));
 	if (!ret.second) { continue; }
-	
-	// Build input collections.
-	photons         = createFourVectorsE(ph_pt[category], ph_eta[category], ph_phi[category], ph_e[category]);  
-	smallRadiusJets = createFourVectorsE(sj_pt[category], sj_eta[category], sj_phi[category], sj_e[category]);
-	largeRadiusJets = createFourVectorsM(lj_pt[category], lj_eta[category], lj_phi[category], lj_m[category]);
-
-	// Compute delta-phi separation between large-radius jets and leading photon
-	lj_dphiMinPhoton.clear();
-	for (const TLorentzVector& jet : largeRadiusJets) {
-	  if (photons.size() > 0) {
-	    lj_dphiMinPhoton.push_back(std::abs(jet.DeltaPhi(photons.at(0))));
-	  } else {
-	    lj_dphiMinPhoton.push_back(9999.);
-	  }
-	}
-
 	
 	// Run AnalysisTools.
 	for (auto* analysis : analyses) {
@@ -702,19 +534,13 @@ int main (int argc, char* argv[]) {
 	  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	  
 	  // Get pointer to object definitions
-	  ObjectDefinition<TLorentzVector> *pObjdef, *pPhotonsObjdef, *pSmallRadiusJetsObjdef, *pLargeRadiusJetsObjdef;
+	  ObjectDefinition<PhysicsObject> *pObjdef, *pPhotonsObjdef, *pSmallRadiusJetsObjdef, *pLargeRadiusJetsObjdef;
 	  for (const auto& pSelection : analysis->selections(category)) {
 	    pObjdef = nullptr;
-	    if (pObjdef = dynamic_cast<ObjectDefinition<TLorentzVector>*>(pSelection.get())) {
-	      if (pObjdef->name() == "Photons") {
-		pPhotonsObjdef = pObjdef;
-	      }
-	      if (pObjdef->name() == "SmallRadiusJets") {
-		pSmallRadiusJetsObjdef = pObjdef;
-	      }
-	      if (pObjdef->name() == "LargeRadiusJets") {
-		pLargeRadiusJetsObjdef = pObjdef;
-	      }
+	    if (pObjdef = dynamic_cast<ObjectDefinition<PhysicsObject>*>(pSelection.get())) {
+	      if (pObjdef->name() == "Photons")         { pPhotonsObjdef         = pObjdef; }
+	      if (pObjdef->name() == "SmallRadiusJets") { pSmallRadiusJetsObjdef = pObjdef; }
+	      if (pObjdef->name() == "LargeRadiusJets") { pLargeRadiusJetsObjdef = pObjdef; }
 	    }
 	  }
 
