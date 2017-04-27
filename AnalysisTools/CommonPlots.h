@@ -21,17 +21,17 @@ namespace AnalysisTools {
 
   // Physics object pT.
   PlotMacro1D<PhysicsObject> plot_object_pt ("pt", [](const PhysicsObject& p) {
-      return p.Pt() / 1000.;
+      return p.Pt();
     });
 
   // Physics object m.
   PlotMacro1D<PhysicsObject> plot_object_m ("m", [](const PhysicsObject& p) {
-      return p.M() / 1000.;
+      return p.M();
     });
 
   // Physics object E.
   PlotMacro1D<PhysicsObject> plot_object_E ("E", [](const PhysicsObject& p) {
-      return p.E() / 1000.;
+      return p.E();
     });
 
   // Physics object eta.
@@ -53,7 +53,7 @@ namespace AnalysisTools {
     PlotMacro1D<Event> plot ("leading_" + collection + "_pt");
     plot.setFunction([collection, fallback](const Event& e) {
 	if (e.collection(collection).size() < 1) { return fallback; }
-	return (float) e.collection(collection).at(0)->Pt() / float(1000.);
+	return (float) e.collection(collection).at(0)->Pt();
       });
     return plot;
   }
@@ -64,7 +64,7 @@ namespace AnalysisTools {
     PlotMacro1D<Event> plot ("leading_" + collection + "_m");
     plot.setFunction([collection, fallback](const Event& e) {
 	if (e.collection(collection).size() < 1) { return fallback; }
-	return (float) e.collection(collection).at(0)->M() / float(1000.);
+	return (float) e.collection(collection).at(0)->M();
       });
     return plot;
   }
@@ -75,7 +75,7 @@ namespace AnalysisTools {
     PlotMacro1D<Event> plot ("leading_" + collection + "_E");
     plot.setFunction([collection, fallback](const Event& e) {
 	if (e.collection(collection).size() < 1) { return fallback; }
-	return (float) e.collection(collection).at(0)->E() / float(1000.);
+	return (float) e.collection(collection).at(0)->E();
       });
     return plot;
   }
@@ -98,6 +98,64 @@ namespace AnalysisTools {
     plot.setFunction([collection, fallback](const Event& e) {
 	if (e.collection(collection).size() < 1) { return fallback; }
 	return (float) e.collection(collection).at(0)->Phi();
+      });
+    return plot;
+  }
+
+
+   // Standard kinematic of named PhysicsObject in Event 
+  // ---------------------------------------------------------------------------
+
+  // Particle PhysicsObject pT.
+  inline PlotMacro1D<Event> get_plot_event_particle_pt (const std::string& particle) {
+    PlotMacro1D<Event> plot (particle + "_pt");
+    plot.setFunction([particle](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).Pt();
+      });
+    return plot;
+  }
+
+
+  // Particle PhysicsObject m.
+  inline PlotMacro1D<Event> get_plot_event_particle_m (const std::string& particle) {
+    PlotMacro1D<Event> plot (particle + "_m");
+    plot.setFunction([particle](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).M();
+      });
+    return plot;
+  }
+
+
+  // Particle PhysicsObject E.
+  inline PlotMacro1D<Event> get_plot_event_particle_E (const std::string& particle) {
+    PlotMacro1D<Event> plot (particle + "_E");
+    plot.setFunction([particle](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).E();
+      });
+    return plot;
+  }
+
+
+  // Particle PhysicsObject eta.
+  inline PlotMacro1D<Event> get_plot_event_particle_eta (const std::string& particle) {
+    PlotMacro1D<Event> plot (particle + "_eta");
+    plot.setFunction([particle](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).Eta();
+      });
+    return plot;
+  }
+
+
+  // Particle PhysicsObject phi.
+  inline PlotMacro1D<Event> get_plot_event_particle_phi (const std::string& particle) {
+    PlotMacro1D<Event> plot (particle + "_phi");
+    plot.setFunction([particle](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).Phi();
       });
     return plot;
   }
@@ -127,7 +185,7 @@ namespace AnalysisTools {
   }
 
 
-   // Auxiliary information for (sub-)leading PhysicsObject in collection in Event 
+   // Auxiliary information for (sub-)leading or named PhysicsObject in collection in Event 
   // ---------------------------------------------------------------------------
 
   // ...
@@ -149,6 +207,17 @@ namespace AnalysisTools {
       });
     return plot;
   }
+
+  // ...
+  inline PlotMacro1D<Event> get_plot_event_particle_info (const std::string& particle, const std::string& name, const float& scale = 1.) {
+    PlotMacro1D<Event> plot (particle + "_" + name);
+    plot.setFunction([particle, name, scale](const Event& e) {
+	if (!e.hasParticle(particle)) { return float(-9999.); }
+	return (float) e.particle(particle).info(name) * scale;
+      });
+    return plot;
+  }
+
 
 
 
