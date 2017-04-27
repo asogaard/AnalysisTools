@@ -24,6 +24,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TBranch.h"
+#include "TAxis.h"
 
 // AnalysisTools include(s).
 #include "AnalysisTools/Logger.h"
@@ -35,8 +36,11 @@ namespace AnalysisTools {
   const float eps = 1./std::numeric_limits<float>::max();
   const float pi  = 3.14159265359;
 
-  // @TODO: Template
-  //inline bool contains (const std::vector< std::string >& array, const std::string& value) {
+  // Square number
+  template<class T>
+  inline T sq (const T& x) { return x * x; }
+
+  // Check whether vector containes specified value.
   template<class T>
   inline bool contains (const std::vector<T>& array, const T& value) {
     return std::find(array.begin(), array.end(), value) != array.end();
@@ -152,7 +156,7 @@ namespace AnalysisTools {
     
     if (endsWith(path, ".root")) {
       datasets.push_back(path);
-    } else if (endsWith(path, ".txt")) {
+    } else if (endsWith(path, ".txt") || endsWith(path, ".list")) {
       // Assuming the path is to a file containing a list of datasets.
       std::ifstream file ( path.c_str() );
       if (!file.is_open()) {
@@ -213,6 +217,18 @@ namespace AnalysisTools {
   
   // Return a pointer to a TTree in a ROOT file. Throw exception if it cannot be accessed.
   TTree* retrieveTree (const std::string& name, TFile* file);
+
+  // Return a pointer to a ROOT histogram type in a ROOT file. Throw exception is it cannot be accessed.
+  // Note: Since it's templated, it needs to be declared in header.
+  template<class T>
+  inline T* retrieveHist (const std::string& name, TFile* file) {
+    T* hist = (T*) file->Get(name.c_str());
+    if (!hist) {
+      FCTWARNING("Histogram '%s' could not be retrieved from file '%s'.", name.c_str(), file->GetName());
+      throw std::exception();
+    }
+    return hist;
+  }
  
   // Return a vector of TLorentzVectors based on vectors of (pt, eta, phi, m) components.
   inline std::vector< TLorentzVector > createFourVectorsM (std::vector<float>* vec_pt,
@@ -285,6 +301,62 @@ namespace AnalysisTools {
     }
     
     return output;
+  }
+
+  // Snap a coordinate to the nearest bin separation
+  enum class SnapDirection { Nearest, Up, Down, Middle };
+
+  inline float snapToAxis (const float& x, const TAxis* axis, const SnapDirection& dir = SnapDirection::Nearest) {
+
+    const float fallback = -inf;
+
+    // Check(s)
+    if (axis == nullptr) {
+      FCTWARNING("Null pointer provided for axis.");
+      return fallback;
+    }
+
+    const unsigned bin = axis->FindBin(x);
+    
+    if (bin <= 0) {
+      FCTWARNING("Requested coordinate not within axis bounds");
+      return axis->GetXmin();
+    }
+    if (bin > axis->GetNbins()) {
+      FCTWARNING("Requested coordinate not within axis bounds");
+      return axis->GetXmax();
+    }
+    
+    // Compute snapped coordinate based on requested direction
+    float down   = axis->GetBinLowEdge(bin);
+    float up     = axis->GetBinUpEdge (bin);
+    float middle = axis->GetBinCenter (bin);
+    switch (dir) {
+    case SnapDirection::Nearest:
+      {
+	float d1 = std::abs(x - down);
+	float d2 = std::abs(x - up);
+	if (d1 == d2) {
+	  FCTINFO("Coordinate exactly in the middle of bin. Returning lower edge.");
+	}
+	if (d1 <= d2) { return down; } 
+	else          { return up; }
+      }
+      break;
+    case SnapDirection::Up:
+      return down;
+
+    case SnapDirection::Down:
+      return up;
+
+    case SnapDirection::Middle:
+      return middle;
+
+    default:
+      FCTWARNING("Snap direction no recognised");
+      break;
+    }
+    return fallback;
   }
   
 }
