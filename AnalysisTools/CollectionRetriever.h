@@ -58,7 +58,7 @@ namespace AnalysisTools {
 
   struct FromTLorentzVector {
     inline FromTLorentzVector(const std::string& tlv) : 
-      branches({tlv}) {}
+      branches({tlv + ".Pt()", tlv + ".Eta()", tlv + ".Phi()", tlv + ".E()"}) {}
     std::vector<std::string> branches;
   };
 
@@ -81,7 +81,7 @@ namespace AnalysisTools {
     CollectionRetriever(RetrieverMode::PtEtaPhiM, st.branches, prefix) {};
     
     CollectionRetriever (const FromTLorentzVector& st, const std::string& prefix = "") :
-    CollectionRetriever(RetrieverMode::TLorentzVector, st.branches, prefix) {};
+    CollectionRetriever(RetrieverMode::PtEtaPhiE, st.branches, prefix) {}; //< Notice
     
     CollectionRetriever (const RetrieverMode& mode, const std::vector<std::string>& branches, const std::string& prefix) :
     m_mode(mode)

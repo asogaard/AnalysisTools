@@ -15,6 +15,7 @@ namespace AnalysisTools {
 
   void CollectionRetriever::fillCache_ () {
 
+    // Get size of first kinematic array, i.e. number of objects in collection
     const unsigned N = m_formulas[0]->GetNdata();
     m_collection.resize(N);
 
@@ -44,12 +45,7 @@ namespace AnalysisTools {
 		       m_formulas[3]->EvalInstance(i));
 	break;
       case RetrieverMode::TLorentzVector :
-	/* Requires heterogenous container, or similar...
-	p.SetPxPyPzE(m_inputs[0]->at(i).Px(),
-		     m_inputs[0]->at(i).Py(),
-		     m_inputs[0]->at(i).Pz(),
-		     m_inputs[0]->at(i).E());
-	*/
+	/* nop -- shouldn't happen */
 	break;
       default:
 	break;
