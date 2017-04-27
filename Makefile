@@ -30,8 +30,8 @@ PROGSRCS := $(shell find $(PROGDIR) -name '*.$(SRCEXT)')
 PROGS := $(patsubst $(PROGDIR)/%.$(SRCEXT),$(EXEDIR)/%.exe,$(PROGSRCS))
 GARBAGE = $(OBJDIR)/*.o $(EXEDIR)/* $(LIBDIR)/*.so
 
-# Dependencies
-CXXFLAGS  = --std=c++11 -O3 -fPIC -I$(INCDIR) $(ROOTCFLAGS)
+# Dependencies (-Wno-narrowing flag added to ignore warnings of narrowing conversions from double to float)
+CXXFLAGS  = --std=c++11 -O3 -fPIC -Wno-narrowing -I$(INCDIR) $(ROOTCFLAGS)
 LINKFLAGS = -O3 -L$(LIBDIR) -L$(ROOTSYS)/lib $(ROOTLIBS) $(ROOTGLIBS)
 
 # Libraries
