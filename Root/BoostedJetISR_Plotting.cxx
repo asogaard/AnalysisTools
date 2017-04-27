@@ -38,10 +38,10 @@ int main (int argc, char* argv[]) {
     const double lumi2016 = 33.13138242028672;
     const double lumi = lumi2015 + lumi2016;
     
-    const float backgroundScale = 1.300;
+    const float backgroundScale = 1.402; //1.300;
 
     bool fullSelection = false;
-    bool jetMass       = true;
+    bool jetMass       = false;
 
     // Setup PlottingHelper.
     string outdir  = "outputPlotting/";
@@ -49,7 +49,7 @@ int main (int argc, char* argv[]) {
     TFile outfile ((outdir + "plotting.root").c_str(), "RECREATE");
 
     //std::vector<std::string> analyses = { "BoostedJet+ISRgamma", "BoostedJet+ISRjet" };
-    std::vector<std::string> analyses = { "BoostedJet+ISRgamma/Tight" };
+    std::vector<std::string> analyses = { "BoostedJet+ISRgamma/Nominal" };
     //std::vector<std::string> analyses = { "BoostedJet+ISRjet" };
 
     // Loop analyses.
@@ -133,7 +133,7 @@ int main (int argc, char* argv[]) {
 	  ph.setYaxisTitle("Photons");
 	  ph.setPrintLines(lines);
 	  ph.setLuminosity(lumi);
-	  ph.setArrowsRight({150.});
+	  ph.setArrowsRight({155.});
 	  ph.setScaleBackground("Incl. #gamma", backgroundScale); 
 	  ph.draw();
 	} 
@@ -403,11 +403,11 @@ int main (int argc, char* argv[]) {
       } 
    
       // -- tau21DDT
-      if (fullSelection) { 
-	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:leading_LargeRadiusJets_tau21DDT", inputs);
+      if (true or fullSelection) { 
+	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:Jet_tau21DDT", inputs);
 	ph.setOutfile(&outfile);
 	ph.setAxis(nBins, 0., 1.2);
-	ph.setXaxisTitle("Leading jet #tau_{21}^{DDT}");
+	ph.setXaxisTitle("Signal jet #tau_{21}^{DDT}");
 	ph.setYaxisTitle("Events");
 	ph.setPrintLines(lines);
 	ph.setLuminosity(lumi);
@@ -418,11 +418,11 @@ int main (int argc, char* argv[]) {
       } 
 
       // -- tau21
-      if (fullSelection) { 
-	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:leading_LargeRadiusJets_tau21", inputs);
+      if (true or fullSelection) { 
+	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:Jet_tau21", inputs);
 	ph.setOutfile(&outfile);
 	ph.setAxis(nBins, -0.2, 1.0);
-	ph.setXaxisTitle("Leading jet #tau_{21}");
+	ph.setXaxisTitle("Signal jet #tau_{21}");
 	ph.setYaxisTitle("Events");
 	ph.setPrintLines(lines);
 	ph.setLuminosity(lumi);
@@ -450,11 +450,11 @@ int main (int argc, char* argv[]) {
       mass_bins_red.back() = 150.;
       /*
       { 
-	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:leading_LargeRadiusJets_m", inputs);
+	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/NumLargeRadiusJets/Postcut:Jet_m", inputs);
 	ph.setOutfile(&outfile);
 	ph.setAxis(30, 0., 150.);
 	//ph.setAxis(mass_bins);
-	ph.setXaxisTitle("Leading jet mass [GeV]");
+	ph.setXaxisTitle("Signal jet mass [GeV]");
 	ph.setYaxisTitle("Events");
 	ph.setPrintLines(lines);
 	ph.setLuminosity(lumi);
@@ -467,36 +467,46 @@ int main (int argc, char* argv[]) {
 	ph.draw();
       } 
       */
-      float mass = 80.;
-      float w    = 0.2;
+      float mass = 85.;
+      float w    = 0.3;
       lines.back() = "#tau_{21}^{DDT} < 0.50 (pass)";
+      lines.push_back("W/Z data not subtracted");
+      //lines.push_back("W/Z data subtracted");
       if (jetMass) {
-	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/tau21DDT_0p50/Postcut:leading_LargeRadiusJets_m", inputs);
+	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/Jet_tau21DDT/Postcut:Jet_m", inputs);
+	//ph.setDebug();
 	ph.setOutfile(&outfile);
+	//ph.setAxis(25, 50, 100);
+	ph.setAxis(30, 50, 110);
 	//ph.setAxis(60, 0, 300);
-	//ph.setAxis(14, 30, 100);
-	ph.setAxis(25, 50, 100);
 	//ph.setAxis(mass_bins);
 	//ph.setAxis(mass_bins_red);
-	ph.setXaxisTitle("Leading jet mass [GeV]");
+	ph.setXaxisTitle("Signal jet mass [GeV]");
 	ph.setYaxisTitle("Events");
 	ph.setPrintLines(lines);
 	ph.setLuminosity(lumi);
 	ph.setSortBackgrounds(false);
 	ph.setScaleSignal(1.);
+
 	ph.setLog(false);
+	//ph.setPlotmin(1E+03);
+
 	//ph.setPulls(true);
 	ph.setIncludeOverflow(false);
 	ph.setScaleBackground("#gamma + W", 1.28); 
 	ph.setScaleBackground("#gamma + Z", 1.38); 
 	
-	ph.subtract({"Incl. #gamma (d.d.)"});
-	ph.setPlotmax(800.);
-	ph.setPlotmin(-100.);
+	//ph.subtract({"Incl. #gamma (d.d.)"});
+	//ph.setPlotmax(800.);
+	//ph.setPlotmin(-100.);
 
-	ph.setArrowsDown({mass * (1 - w), mass * (1 - float(0.5 * w)), mass * ( 1 + float(0.5 * w)), mass * (1 + w)});
+	ph.addRegion({mass * (1 - 0.3), mass * (1 - 0.2)}, "VR", true);
+	ph.addRegion({mass * (1 - 0.2), mass * (1 + 0.2)}, "SR", true);
+	ph.addRegion({mass * (1 + 0.2), mass * (1 + 0.3)}, "VR", true);
+
+	ph.addSystematic("TF_UP", "TF_DOWN");
 	
-	/**/
+	/** /
 	ph.addSystematic([&mass, &w](TH1F* syst, const TH1F* data, const TH1F* background) { 
 
 	    // Get SR bins
@@ -572,6 +582,7 @@ int main (int argc, char* argv[]) {
 	/**/
 
 	ph.draw();
+	ph.getDataEstimateAgreement({6,7,8,9,27,28,29,30});
       } 
 
 
@@ -588,7 +599,7 @@ int main (int argc, char* argv[]) {
 	PlottingHelper<TH1F> ph (analysis + "/EventSelection/Pass/tau21DDT_" + cut_name + "/Postcut:leadingfatjet_m", inputs);
 	ph.setOutfile(&outfile);
 	ph.setAxis(nBins, 0, 300.);
-	ph.setXaxisTitle("Leading jet mass [GeV]");
+	ph.setXaxisTitle("Signal jet mass [GeV]");
 	ph.setYaxisTitle("Events");
 	ph.setPrintLines(lines);
 	ph.setLog(true);
