@@ -11,6 +11,10 @@ namespace AnalysisTools {
     setLimits(down, up);
   }
   
+  Range::Range (const std::vector<float>& limits) {
+    setLimits(limits);
+  }
+  
   
   // Set method(s).
   void Range::setLimits (const std::pair<float, float>& limits) {
@@ -23,6 +27,14 @@ namespace AnalysisTools {
     assert(down <= up);
     m_limits.first  = down;
     m_limits.second = up;
+    return;
+  }
+  
+  void Range::setLimits (const std::vector<float>& limits) {
+    assert(limits.size() == 2);
+    assert(limits[0] <= limits[1]);
+    m_limits.first  = limits[0];
+    m_limits.second = limits[1];
     return;
   }
   
@@ -73,5 +85,14 @@ namespace AnalysisTools {
   bool Range::containsExcl (const float& val) const {
     return val >  lowerLimit() && val <  upperLimit();
   }
+
+  bool Range::contains (const Range& other) const {
+    return contains(other.down()) && contains(other.up());
+  }
+
+  bool Range::overlaps (const Range& other) const {
+    return contains(other) || other.contains(*this) || contains(other.down()) || contains(other.up());
+  }
+
   
 }

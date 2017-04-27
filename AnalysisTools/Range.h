@@ -27,6 +27,7 @@ namespace AnalysisTools {
         Range () {};
         Range (const std::pair<float, float>& limits);
         Range (const float& down, const float& up);
+        Range (const std::vector<float>& limits);
         
         // Destructor(s).
         ~Range () {};
@@ -37,6 +38,7 @@ namespace AnalysisTools {
         // Set method(s).
         void setLimits (const std::pair<float, float>& limits);
         void setLimits (const float& down, const float& up);
+        void setLimits (const  std::vector<float>& limits);
 
         void setLowerLimit (const float& down);
         void setUpperLimit (const float& up);
@@ -53,9 +55,11 @@ namespace AnalysisTools {
         
         
         // High-level management method(s).
-	bool contains     (const float& val) const;
-        bool containsIncl (const float& val) const;
-        bool containsExcl (const float& val) const;
+	bool contains     (const float& val)   const;
+        bool containsIncl (const float& val)   const;
+        bool containsExcl (const float& val)   const;
+        bool contains     (const Range& other) const;
+        bool overlaps     (const Range& other) const;
         
         
     private:
