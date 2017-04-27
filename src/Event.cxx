@@ -6,7 +6,7 @@ namespace AnalysisTools {
     // ...
     
     // Set method(s).
-    void Event::addInfo (const string& name, const double& val) {
+    void Event::addInfo (const string& name, const float& val) {
         if ( m_info.count(name) != 0 ) {
 	    ERROR("Info named '%s' already exists.", name.c_str());
 	}
@@ -50,25 +50,31 @@ namespace AnalysisTools {
         return m_collections.at(name);
     }
     
-  PhysicsObjectPtrs& Event::mutableCollection (const string& name) {
+    PhysicsObjectPtrs& Event::mutableCollection (const string& name) {
         if ( m_collections.count(name) == 0 ) {
 	    ERROR("No collection named '%s' exists.", name.c_str());
 	}
         return m_collections.at(name);
     }
     
-    double Event::info (const string& name) const {
-        if (m_info.count(name) == 0) {
-	    ERROR("No info named '%s' was found", name.c_str());
-	}
+    float Event::info (const string& name) const {
+        assert(hasInfo(name));
         return m_info.at(name);
     }
     
+    bool Event::hasInfo (const string& name) const {
+        return m_info.count(name) > 0;
+    }
+    
     const PhysicsObject& Event::particle (const string& name) const {
-        if ( m_particles.count(name) == 0 ) {
+        if (!hasParticle(name)) {
 	    ERROR("No particle named '%s' exists.", name.c_str());
 	}
         return m_particles.at(name);
+    }
+    
+    bool Event::hasParticle (const string& name) const {
+         return m_particles.count(name) > 0;
     }
     
     GRL* Event::grl () const {

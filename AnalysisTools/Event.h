@@ -40,7 +40,7 @@ namespace AnalysisTools {
     public:
         
         // Set method(s).
-        void addInfo       (const string& name, const double&   val);
+        void addInfo       (const string& name, const float&   val);
         void addCollection (const string& name, PhysicsObjects* collection);
         void addGRL        (GRL* grl);
         void setParticle   (const string& name, const PhysicsObject& particle);
@@ -51,8 +51,10 @@ namespace AnalysisTools {
 	const PhysicsObjectPtrs&        collection (const string& name) const;
       	      PhysicsObjectPtrs& mutableCollection (const string& name);
 
-        double               info     (const string& name) const;
+        float               info     (const string& name) const;
+        bool                 hasInfo  (const string& name) const;
         const PhysicsObject& particle (const string& name) const;
+        bool                 hasParticle (const string& name) const;
         GRL*                 grl      ()                   const;
         
         
@@ -62,7 +64,7 @@ namespace AnalysisTools {
         
     private:
         
-        map<string, double> m_info;
+        map<string, float> m_info;
 	map<string, PhysicsObjectPtrs > m_collections;
         map<string, PhysicsObject> m_particles;
         GRL* m_grl = nullptr;
