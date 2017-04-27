@@ -189,9 +189,33 @@ namespace AnalysisTools {
   }
 
   template<class HistType>
+  void PlottingHelper<HistType>::addRegion (const std::vector<float>& limits, const std::string& title, const bool& snap, const bool& light) {
+    m_regions.push_back(std::tuple<Range, std::string, bool, bool>(Range(limits), title, snap, light));
+    return;
+  }
+
+  /*
+  template<class HistType>
+  void PlottingHelper<HistType>::addRegion (const std::vector<double>& limits, const std::string& title) {
+    addRegion(std::vector<float>(limits.begin(), limits.end()), title);
+    return;
+  }
+  */
+
+  template<class HistType>
   void PlottingHelper<HistType>::addSystematic (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f) {
     // Store function for later evaluation
     m_systematicCalls.push_back(f);
+    return;
+  }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::addSystematic (const std::string& cat_up, const std::string& cat_down) {
+    // Store category pair
+    assert(cat_up != cat_down);
+    assert(cat_up != "" && cat_down != "");
+    assert(cat_up != "Nominal" && cat_down != "Nominal");
+    m_systematicsCategories.push_back(std::make_pair(cat_up, cat_down));
     return;
   }
 
@@ -200,7 +224,40 @@ namespace AnalysisTools {
   /// Get method(s). 
   // ---------------------------------------------------------------------------
 
-  // ...
+  template<class HistType>
+  float PlottingHelper<HistType>::getDataEstimateAgreement (const std::vector<unsigned>& bins) {
+
+    // Check(s)
+    if (bins.size() == 0) {
+      WARNING("No bins were provided");
+      return 0;
+    }
+    if (!m_data) {
+      WARNING("No data was loaded");
+      return 0;
+    }
+    if (!m_background) {
+      WARNING("No background estimate was loaded");
+      return 0;
+    }
+
+    // Compute average z-statistic for requested bins.
+    float deviation = 0.;
+    for (const unsigned& bin : bins) {
+      float data_val  = m_data->GetBinContent(bin);
+      float data_stat = m_data->GetBinError  (bin);
+      float est_val  = m_background->GetBinContent(bin);
+      float est_stat = m_background->GetBinError  (bin);
+      float syst = (m_systematicsSum ? m_systematicsSum->GetBinError(bin) : 0);
+      deviation += std::fabs(data_val - est_val) / std::sqrt( sq(data_stat) + sq(est_stat) + sq(syst) );
+    }
+    deviation /= float(bins.size());
+
+    INFO("Data estimate agreement (average z-statistic) for %d bins: %.2f", bins.size(), deviation);
+
+    return deviation;
+  }
+  
   
   
   /// High-level management method(s).
@@ -234,8 +291,10 @@ namespace AnalysisTools {
       return false;
     }
 
+    getSystematicsFromCategories_();
+
     // Load histograms.
-    if (!loadHistograms_()) {
+    if (!loadHistograms_(m_input)) {
       return false;
     }
 
@@ -342,21 +401,11 @@ namespace AnalysisTools {
     /* Do this before subtracting background from data. */
     computeSystematics_();
     
-    bool first = true;
     for (const auto& syst : m_systematics) {
-      if (m_systematicsSum) {
-	for (unsigned bin = 1; bin <= m_systematicsSum->GetXaxis()->GetNbins(); bin++) {
-	  float c1 = m_systematicsSum->GetBinError(bin);
-	  float c2 = syst            ->GetBinError(bin);
-	  m_systematicsSum->SetBinError(bin, std::sqrt( std::pow(c1, 2) + std::pow(c2, 2) ));
-	}
-      } else {
-	m_systematicsSum = makeUniqueMove( (TH1F*) syst.get()->Clone("syst_sum") );
-      }
-      first = false;
+      addToSystematicsSum_(syst.get());
     }
 
-
+    
 
     // Add non-subtracted backgrounds
     std::unique_ptr<THStack> background (new THStack("StackedBackgrounds", ""));
@@ -370,14 +419,19 @@ namespace AnalysisTools {
       //}
 
       INFO(" -- Adding background '%s'.", p.first.c_str());
+      std::cout << p.second << std::endl;
+      INFO(" ----> Integral: %.4e", p.second->Integral());
       // Check whether to subtract this background.
       std::vector<std::string>::iterator pos = std::find(subtract.begin(), subtract.end(), p.first);
       if (pos != subtract.end()) {
+	INFO(" ---- Subtracting");
 	//m_data->Add(p.second, -1);
 	for (unsigned i = 0; i < m_nbinsx; i++) {
-	  double d  = m_data->GetBinContent(i + 1);
 	  double mc = p.second->GetBinContent(i + 1);
-	  m_data->SetBinContent(i + 1, d - mc);
+	  if (m_data) {
+	    double d  = m_data->GetBinContent(i + 1);
+	    m_data->SetBinContent(i + 1, d - mc);
+	  }
 	  m_sum->SetBinContent(i + 1, m_sum->GetBinContent(i + 1) - mc);
 	}
 
@@ -412,6 +466,7 @@ namespace AnalysisTools {
       }
     }
 
+    INFO(" ----> Data integral: %.4e", m_data->Integral());
 
     // Drawing (main pad).
     DEBUG("Going to first pad.");
@@ -480,82 +535,10 @@ namespace AnalysisTools {
       m_data->DrawCopy("PE same");
     }
     m_sum->DrawCopy("AXIS same");
-    
-    // -- Arrows
-    if (m_arrowsDown.size() + m_arrowsRight.size() + m_arrowsLeft.size() > 0) {
 
-      // Definitions
-      //float w = gPad->GetWw() * gPad->GetAbsWNDC();
-      //float h = gPad->GetWh() * gPad->GetAbsHNDC();
-      float ymin = (m_log ? plotmin : 0 );
-      float ymax = (m_log ? exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)) : m_padding * plotmax );
-      float xmin = gPad->GetUxmin();
-      float xmax = gPad->GetUxmax();
-
-      // Initialise and style TLine objects
-      TLine whiteLine, blackLine;
-      whiteLine.SetLineWidth(2);
-      blackLine.SetLineWidth(4);
-      whiteLine.SetLineColor(kWhite);
-      blackLine.SetLineColor(kBlack);
-
-      // Compute absolute arrow coordinates
-      float offset_bottom = (m_ratio ? 0.04 : 0.14); // relative
-      float arrow_head        = 0.01; // relative
-      float arrow_base_length = 0.10; // relative
-      float arrow_head_lengthx = arrow_head * (xmax - xmin);
-      float arrow_head_lengthy, arrow_head_lengthydown;
-      float arrow_ymin, arrow_ymax;
-      if (m_log) {
-	float logdy   = std::log(ymax) - std::log(ymin);
-	float logymin = std::log(ymin);
-	arrow_head_lengthy = std::exp((offset_bottom + arrow_head) * logdy + logymin) - std::exp(offset_bottom * logdy + logymin);
-	arrow_head_lengthydown = std::exp((offset_bottom) * logdy + logymin) - std::exp((offset_bottom - arrow_head) * logdy + logymin);
-	arrow_ymin = std::exp( offset_bottom * logdy + logymin);
-	arrow_ymax = std::exp((offset_bottom + arrow_base_length) * logdy + logymin);
-      } else {
-	arrow_head_lengthy = arrow_head * (ymax - ymin);
-	arrow_ymin = offset_bottom * (ymax - ymin) + ymin;
-	arrow_ymax = arrow_ymin + arrow_base_length * (ymax - ymin);
-      }
-
-      // Actually draw the arrows.
-      for (TLine* line : { &blackLine, &whiteLine }) {
-	float x, y1, y2, dx, dy;
-
-	dx = arrow_head_lengthx;
-	y1 = arrow_ymin;
-	y2 = arrow_ymax;
-	dy = arrow_head_lengthy;
-
-	// -- Down
-	for (const float& x : m_arrowsDown) {
-	  line->DrawLine(x, y1, x, y2);
-	  line->DrawLine(x, y1, x + dx, y1 + dy);
-	  line->DrawLine(x, y1, x - dx, y1 + dy);
-	}
-
-	// -- Right
-	float dydown = arrow_head_lengthydown;
-	for (const float& x : m_arrowsRight) {
-	  line->DrawLine(x, y1, x, y2);
-	  line->DrawLine(x, y1, x + 2 * dx, y1);
-	  line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 + dy);
-	  line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 - dydown);
-	}
-
-	// -- Left
-	for (const float& x : m_arrowsLeft) {
-	  line->DrawLine(x, y1, x, y2);
-	  line->DrawLine(x, y1, x - 2 * dx, y1);
-	  line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 + dy);
-	  line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 - dydown);
-	}
-
-      }
-
-    }
-
+    // Draw cosmetic stuff
+    drawArrows_ (plotmin, plotmax);
+    drawRegions_(plotmin, plotmax);
     
     // Ratio distributions.
     if (m_data) {
@@ -593,6 +576,7 @@ namespace AnalysisTools {
       }
 
       // Compute sum in quadrature of statistical and systematic uncertainty
+      INFO("Computing sum in quadrature of statistical and systematic uncertainty");
       m_ratiohists["StatsSystError"] = makeUniqueMove((HistType*) m_ratiohists.at("Ratio")->Clone("DataMC_StatsSystError"));
       if (m_systematicsSum) {
 	for (unsigned bin = 1; bin <= m_ratiohists.at("StatsSystError")->GetXaxis()->GetNbins(); bin++) {
@@ -600,11 +584,12 @@ namespace AnalysisTools {
 	  float e2 = m_background    ->GetBinError(bin);
 	  float c  = m_sum           ->GetBinContent(bin);
 	  m_ratiohists.at("StatsSystError")->SetBinContent(bin, 1);
-	  m_ratiohists.at("StatsSystError")->SetBinError(bin, std::sqrt( std::pow(e1, 2) + std::pow(e2, 2) ) / c);
+	  m_ratiohists.at("StatsSystError")->SetBinError(bin, c > 0 ? std::sqrt( std::pow(e1, 2) + std::pow(e2, 2) ) / c : 999. );
 	}
       }
       
       // Styling.
+      INFO("Styling");
       styleHist_(m_ratiohists.at("Ratio").get(),          false, "Ratio");
       styleHist_(m_ratiohists.at("StatsError").get(),     true,  "StatsError");
       styleHist_(m_ratiohists.at("StatsSystError").get(), true,  "StatsSystError");
@@ -647,6 +632,7 @@ namespace AnalysisTools {
 	  m_ratiohists.at("Pulls")->GetYaxis()->SetTitle("Pulls");
 	  m_ratiohists.at("Pulls")->Draw("HIST");
 	} else {
+	  //m_ratiohists.at("StatsError")->GetYaxis()->SetTitle("Data / Est."); // ... / MC
 	  m_ratiohists.at("StatsError")->GetYaxis()->SetTitle("Data / MC");
 	  m_ratiohists.at("StatsError")->Draw("E2"); 
 
@@ -1044,8 +1030,9 @@ namespace AnalysisTools {
     /* ... */
     return;
   }
-  
-  
+    
+
+
   /// Low-level management method(s).
   // ---------------------------------------------------------------------------
 
@@ -1092,7 +1079,7 @@ namespace AnalysisTools {
     TObject* obj = (TObject*) file->Get(path.c_str());
       
     if (obj == nullptr) {
-      DEBUG("Requested input '%s' could not be retrieved from file '%s'.", m_input.c_str(), file->GetName());
+      DEBUG("Requested input '%s' could not be retrieved from file '%s'.", path.c_str(), file->GetName());
       return nullptr;
     }
     
@@ -1130,7 +1117,7 @@ namespace AnalysisTools {
       t->SetBranchAddress("DSID", &DSID);
       t->GetEntry(0);
       delete t;
-      string histname = m_input + ":" + m_branch + "_autohist_" + to_string(DSID);
+      string histname = path + ":" + m_branch + "_autohist_" + to_string(DSID);
       
       // Move to output file.
       m_outfile->cd();
@@ -1177,10 +1164,10 @@ namespace AnalysisTools {
   
   
   template<class HistType>
-  bool PlottingHelper<HistType>::loadHistograms_ () {
+  bool PlottingHelper<HistType>::loadHistograms_ (const std::string& input) {
     
     DEBUG("Entering.");
-    INFO("Getting histogram/tree: '%s'", m_input.c_str());
+    INFO("Getting histogram/tree: '%s'", input.c_str());
 
     // Check whether any file names were provided.
     if (m_filenames.size() == 0) {
@@ -1191,6 +1178,10 @@ namespace AnalysisTools {
     // Initialise luminosity counter.
     //m_lumi = 0.;
     
+    // Resetting
+    m_data = nullptr;
+    m_backgrounds.clear();
+
     // Looping input files.
     // -------------------------------------------------------------------------
    
@@ -1208,8 +1199,7 @@ namespace AnalysisTools {
       // Open the current file.
       TFile file (filename.c_str(), "READ");
 
-      std::unique_ptr<HistType> hist (getHistogram_ (&file, m_input));
-
+      std::unique_ptr<HistType> hist (getHistogram_ (&file, input));
       if (!hist) { continue; }
       else { success = true; }
 
@@ -1342,8 +1332,8 @@ namespace AnalysisTools {
     
     // Perform styling.
     //styleHist_(m_sum.get(),  true,  "StatsError");
+
     styleHist_(m_data.get(), false, "Data");
-    
     m_outfile->cd();
     
     DEBUG("Exiting.");
@@ -1712,6 +1702,267 @@ namespace AnalysisTools {
     return;
   }
 
+  template<class HistType>
+  void PlottingHelper<HistType>::addToSystematicsSum_ (HistType* syst) {
+    if (m_systematicsSum) {
+      for (unsigned bin = 1; bin <= m_systematicsSum->GetXaxis()->GetNbins(); bin++) {
+	float c1 = m_systematicsSum->GetBinError(bin);
+	float c2 = syst            ->GetBinError(bin);
+	m_systematicsSum->SetBinError(bin, std::sqrt( std::pow(c1, 2) + std::pow(c2, 2) ));
+      }
+    } else {
+      m_systematicsSum = makeUniqueMove( (TH1F*) syst->Clone("syst_sum") );
+    }
+    return;
+  }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::getSystematicsFromCategories_ () {
+    
+    // Get systematics from pairs of categories.
+    DEBUG("Number of systematics category pairs to go through: %d", m_systematicsCategories.size());
+
+    if (m_systematicsCategories.size() == 0) { return; }
+
+    loadHistograms_(m_input);
+
+    // -- Nominal "variation"
+    std::map< std::string, std::unique_ptr<HistType> > variations;
+    variations["Nominal"] = std::move(getLeadingBackground_()); // < THIS IS SPECIALISED: GENERALLY SHOULDN'T JUST USE LEADING BACKGROUND
+
+    // -- Loop category pairs
+    for (const auto& pair : m_systematicsCategories) {
+      const std::string up   = pair.first;
+      const std::string down = pair.second;
+      DEBUG("  Going to retrieve data from categories '%s' and '%s'.", up.c_str(), down.c_str());
+      
+      for (const std::string& cat : {up, down}) {
+	auto fields = split(m_input, '/');
+	std::string new_input = replaceAll(m_input, fields[1], cat);
+	DEBUG("    Substituting '%s' -> '%s'", m_input.c_str(), new_input.c_str());
+
+	loadHistograms_(new_input);
+	variations[cat] = std::move(getLeadingBackground_());
+      }
+      
+      // Get systematics band
+      DEBUG("  Creating systematics histogram");
+      HistType* syst = (HistType*) variations["Nominal"]->Clone(("syst_" + up + "_" + down).c_str());
+      for (unsigned bin = 1; bin <= variations["Nominal"]->GetXaxis()->GetNbins(); bin++) {
+	float s_up   = std::fabs(variations[up]  ->GetBinContent(bin) - variations["Nominal"]->GetBinContent(bin));
+	float s_down = std::fabs(variations[down]->GetBinContent(bin) - variations["Nominal"]->GetBinContent(bin));
+	float stat   = 0.; //variations["Nominal"]->GetBinError(bin);
+	DEBUG("  %d : %4.1f / %4.1f / %4.1f", bin, s_up, s_down, stat);
+	syst->SetBinContent(bin, 1);
+	syst->SetBinError  (bin, std::max(std::max(s_up, s_down) - stat, float(0))); // < THIS IS SPECIALISED: GENERALLY SHOULDN'T SUBTRACT STATS. UNCERTAINTY
+      }
+      DEBUG("    Adding to systematics sum.");
+      addToSystematicsSum_(syst);
+      DEBUG("    Done");
+      delete syst; syst = nullptr;
+    }
+    
+    // Restoring stuff
+    DEBUG("Restoring stuff");
+    loadHistograms_(m_input);
+    
+    DEBUG("Done");
+    return;
+  }
+
+  template<class HistType>
+  std::unique_ptr<HistType> PlottingHelper<HistType>::getSumOfBackgrounds_ () {
+
+    // Check(s)
+    if (m_backgrounds.size() == 0) {
+      WARNING("No background were found.");
+      return nullptr;
+    }
+
+    // Loop backgrounds
+    std::unique_ptr<HistType> output(nullptr);
+    for (const auto& p : m_backgrounds) {
+
+      // Check whether sum-histogram already exists.
+      if (output) {
+        // If so, add contents of histogram to existing background.
+        output->Add(p.second.get());
+      } else {
+        // Otherwise move first histogram to background.
+        output = makeUniqueMove( (HistType*) p.second->Clone("sumOfBackgrounds") );
+      }
+
+    }
+    return std::move(output);
+  }
+  
+
+  template<class HistType>
+  std::unique_ptr<HistType> PlottingHelper<HistType>::getLeadingBackground_ () {
+
+    // Check(s)
+    if (m_backgrounds.size() == 0) {
+      WARNING("No background were found.");
+      return nullptr;
+    }
+
+    // Loop backgrounds
+    std::unique_ptr<HistType> output(nullptr);
+    for (const auto& p : m_backgrounds) {
+
+      // Check whether current background is largest
+      if (output == nullptr or p.second->Integral() > output->Integral()) {
+        output = makeUniqueMove( (HistType*) p.second->Clone("leadingBackgrounds") );
+      }
+
+    }
+
+    return std::move(output);
+  }
+
+
+  template<class HistType>
+  void PlottingHelper<HistType>::drawArrows_ (const float& plotmin, const float& plotmax) {
+
+    // Check(s)
+    if (m_arrowsDown.size() + m_arrowsRight.size() + m_arrowsLeft.size() == 0) { return; }
+    
+    // Definitions
+    float ymin = (m_log ? plotmin : 0 );
+    float ymax = (m_log ? exp(m_padding * (log(plotmax) - log(plotmin)) + log(plotmin)) : m_padding * plotmax );
+    float xmin = gPad->GetUxmin();
+    float xmax = gPad->GetUxmax();
+    
+    // Initialise and style TLine objects
+    TLine whiteLine, blackLine;
+    whiteLine.SetLineWidth(2);
+    blackLine.SetLineWidth(4);
+    whiteLine.SetLineColor(kWhite);
+    blackLine.SetLineColor(kBlack);
+    
+    // Compute absolute arrow coordinates
+    float offset_bottom = (m_ratio ? 0.04 : 0.14); // relative
+    float arrow_head        = 0.01; // relative
+    float arrow_base_length = 0.10; // relative
+    float arrow_head_lengthx = arrow_head * (xmax - xmin);
+    float arrow_head_lengthy, arrow_head_lengthydown;
+    float arrow_ymin, arrow_ymax;
+    if (m_log) {
+      float logdy   = std::log(ymax) - std::log(ymin);
+      float logymin = std::log(ymin);
+      arrow_head_lengthy = std::exp((offset_bottom + arrow_head) * logdy + logymin) - std::exp(offset_bottom * logdy + logymin);
+      arrow_head_lengthydown = std::exp((offset_bottom) * logdy + logymin) - std::exp((offset_bottom - arrow_head) * logdy + logymin);
+      arrow_ymin = std::exp( offset_bottom * logdy + logymin);
+      arrow_ymax = std::exp((offset_bottom + arrow_base_length) * logdy + logymin);
+    } else {
+      arrow_head_lengthy = arrow_head * (ymax - ymin);
+      arrow_ymin = offset_bottom * (ymax - ymin) + ymin;
+      arrow_ymax = arrow_ymin + arrow_base_length * (ymax - ymin);
+    }
+    
+    // Actually draw the arrows.
+    for (TLine* line : { &blackLine, &whiteLine }) {
+      float x, y1, y2, dx, dy;
+      
+      dx = arrow_head_lengthx;
+      y1 = arrow_ymin;
+      y2 = arrow_ymax;
+      dy = arrow_head_lengthy;
+      
+      // -- Down
+      for (const float& x : m_arrowsDown) {
+	line->DrawLine(x, y1, x, y2);
+	line->DrawLine(x, y1, x + dx, y1 + dy);
+	line->DrawLine(x, y1, x - dx, y1 + dy);
+      }
+      
+      // -- Right
+      float dydown = arrow_head_lengthydown;
+      for (const float& x : m_arrowsRight) {
+	line->DrawLine(x, y1, x, y2);
+	line->DrawLine(x, y1, x + 2 * dx, y1);
+	line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 + dy);
+	line->DrawLine(x + 2 * dx, y1, x + 1 * dx, y1 - dydown);
+      }
+      
+      // -- Left
+      for (const float& x : m_arrowsLeft) {
+	line->DrawLine(x, y1, x, y2);
+	line->DrawLine(x, y1, x - 2 * dx, y1);
+	line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 + dy);
+	line->DrawLine(x - 2 * dx, y1, x - 1 * dx, y1 - dydown);
+      }
+      
+    }
+    
+    return;
+  }
+
+  template<class HistType>
+  void PlottingHelper<HistType>::drawRegions_ (const float& plotmin, const float& plotmax) {
+
+    // Check(s)
+    if (m_regions.size() == 0) { return; }
+    
+    // Definitions
+    float ymin = (m_log ? plotmin : 0 );
+    float ymax = plotmax;
+    float xmin = gPad->GetUxmin();
+    float xmax = gPad->GetUxmax();
+    float dy = 0.05; // Relative offset below region title
+    dy = (m_log ? std::exp(dy * (std::log(ymax) - std::log(ymin)) + std::log(ymin)) - ymin : dy * (ymax - ymin));
+    
+    // Initialise and style TLine object
+    TLine line;
+    line.SetLineWidth(2);
+    line.SetLineStyle(2);
+    line.SetLineColor(kGray + 3);
+
+    // Initialise and style TLatex object
+    TLatex text;
+    text.SetTextAlign(21);
+    text.SetTextSize(s_fontSizeM);
+    text.SetTextFont(42);
+    
+    // Get pointer to x-axis.
+    TAxis* axis = m_background->GetXaxis();
+
+    // Draw the regions
+    std::vector<float> coords;
+    Range range;
+    std::string title;
+    bool snap, light;
+    for (const auto& tuple : m_regions) {
+
+      // Unpack region range, title, and "snap"
+      std::tie(range, title, snap, light) = tuple;
+
+      if (light) { text.SetTextColor(kWhite); }
+      else       { text.SetTextColor(kBlack); }
+
+      float x_down = std::max(range.down(), xmin);
+      float x_up   = std::min(range.up(),   xmax);
+      if (snap) {
+	x_down = snapToAxis(x_down, axis, SnapDirection::Nearest);
+	x_up   = snapToAxis(x_up,   axis, SnapDirection::Nearest);
+      }
+
+      // Draw lines delimiting regions
+      for (float x : {range.down(), range.up()}) {
+	if (snap) { x = snapToAxis(x, axis, SnapDirection::Nearest); }
+	if (contains(coords, x))    { continue; }
+	if (x <= xmin || x >= xmax) { continue; }
+	line.DrawLine(x, ymin, x, ymax);
+	coords.push_back(x);
+      }
+            
+      // Draw region title
+      text.DrawLatex(0.5 * (x_down + x_up), ymin + dy, title.c_str());
+      
+    }
+    
+    return;
+  }
 
   /// Explicitly instatiate templates.
   template class PlottingHelper<TH1F>;

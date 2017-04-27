@@ -12,7 +12,7 @@
 #include <vector> /* std::vector */
 #include <string> /* std::string */
 #include <map> /* std::map */
-#include <utility> /* std::pair, std::move */
+#include <utility> /* std::pair, std::move, std::tuple */
 #include <cassert> /* assert */
 #include <fstream> /* ifsteam */
 #include <sstream> /* stringstream */
@@ -44,6 +44,7 @@
 // AnalysisTools include(s).
 #include "AnalysisTools/Utilities.h"
 #include "AnalysisTools/Logger.h"
+#include "AnalysisTools/Range.h"
 
 // Typedef(s).
 typedef std::unique_ptr<TH1>     upTH1;
@@ -158,15 +159,18 @@ namespace AnalysisTools {
     inline void setArrowsRight(const std::vector<float>& arrowsRight) { m_arrowsRight = arrowsRight; }
     inline void setArrowsLeft (const std::vector<float>& arrowsLeft)  { m_arrowsLeft  = arrowsLeft; }
 
+    void addRegion(const std::vector<float>& limits, const std::string& title, const bool& snap = true, const bool& light = false);
+
     inline void subtract (const std::vector<std::string>& subtract) { m_subtract = subtract; }
 
     inline void setIncludeOverflow (const bool& includeOverflow) { m_includeOverflow = includeOverflow; }
 
     void addSystematic (const TH1F& hist);
     void addSystematic (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f);
+    void addSystematic (const std::string& cat_up, const std::string& cat_down);
     
     /// Get method(s).
-    // ...
+    float getDataEstimateAgreement (const std::vector<unsigned>& bins);
     
     
     /// High-level management method(s).
@@ -179,14 +183,25 @@ namespace AnalysisTools {
     /// Low-level management method(s).
     bool setupCanvas_ ();
     std::unique_ptr<HistType> getHistogram_ (TFile* file, const std::string& path);
-    bool loadHistograms_ ();
+    bool loadHistograms_ (const std::string& input);
     bool loadSampleInfo_ ();
     
     void styleHist_ (HistType* hist, const bool& isMC, const string& name); // const unsigned& DSID = 0);
     
     void computeSystematics_ ();
     void computeSystematic_  (const std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) >& f);
+
+    void addToSystematicsSum_ (HistType* syst);
+
+    void getSystematicsFromCategories_ ();
+
+    upHistType getSumOfBackgrounds_ ();
+    upHistType getLeadingBackground_ ();
+
+    void drawArrows_  (const float& plotmin, const float& plotmax);
+    void drawRegions_ (const float& plotmin, const float& plotmax);
     
+
   private:
 
     /// Data member(s).
@@ -236,6 +251,9 @@ namespace AnalysisTools {
     std::vector<float> m_arrowsRight = {};
     std::vector<float> m_arrowsLeft  = {};
 
+    //std::vector< std::pair<Range, std::string> > m_regions;
+    std::vector< std::tuple<Range, std::string, bool, bool> > m_regions;
+
     // Completely internal.
     upTCanvas m_canvas;
     pair< upTPad, upTPad > m_pads = {nullptr, nullptr};
@@ -264,6 +282,7 @@ namespace AnalysisTools {
     
     std::vector< upHistType > m_systematics = {};
     std::vector< std::function< void(TH1F* syst, const TH1F* data, const TH1F* background) > > m_systematicCalls = {};
+    std::vector< std::pair<std::string, std::string> > m_systematicsCategories;
     upHistType m_systematicsSum = nullptr;
 
   };
