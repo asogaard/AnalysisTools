@@ -58,9 +58,17 @@ class BasicInfo {
    * thrown if no pointer exists with the requested name and type.
    */
   template<class T>
-  const T* info (const std::string& name) {
+  inline const T* info (const std::string& name) {
     assert(infoContainer<T>().find(name) != infoContainer<T>().end());
     return infoContainer<T>().at(name);
+  }
+
+  /**
+   * Check whether auxiliary information exists with this type.
+   */
+  template<class T>
+  inline bool hasInfo (const std::string& name) {
+    return infoContainer<T>().find(name) != infoContainer<T>().end();
   }
 
   /**
@@ -91,11 +99,12 @@ class BasicInfo {
   /**
    * Type-specific auxiliary information containers.
    */
-  basicContainer_t<unsigned> m_unsigneds;
-  basicContainer_t<double>   m_doubles;
-  basicContainer_t<float>    m_floats;
-  basicContainer_t<bool>     m_bools;
-  basicContainer_t<int>      m_ints;
+  basicContainer_t<std::string> m_strings;
+  basicContainer_t<unsigned>    m_unsigneds;
+  basicContainer_t<double>      m_doubles;
+  basicContainer_t<float>       m_floats;
+  basicContainer_t<bool>        m_bools;
+  basicContainer_t<int>         m_ints;
   
  };
  
@@ -131,9 +140,17 @@ class VectorInfo {
    * thrown if no pointer exists with the requested name and type.
    */
   template<class T>
-  const std::vector<T>* info (const std::string& name) {
+  inline const std::vector<T>* info (const std::string& name) {
     assert(infoContainer<T>().find(name) != infoContainer<T>().end());
     return infoContainer<T>().at(name);
+  }
+
+  /**
+   * Check whether auxiliary information exists with this type.
+   */
+  template<class T>
+  inline bool hasInfo (const std::string& name) {
+    return infoContainer<T>().find(name) != infoContainer<T>().end();
   }
 
   /**
@@ -165,11 +182,12 @@ class VectorInfo {
   /**
    * Type-specific auxiliary information containers.
    */
-  vectorContainer_t<unsigned> m_unsigneds;
-  vectorContainer_t<double>   m_doubles;
-  vectorContainer_t<float>    m_floats;
-  vectorContainer_t<bool>     m_bools;
-  vectorContainer_t<int>      m_ints;
+  vectorContainer_t<std::string> m_strings;
+  vectorContainer_t<unsigned>    m_unsigneds;
+  vectorContainer_t<double>      m_doubles;
+  vectorContainer_t<float>       m_floats;
+  vectorContainer_t<bool>        m_bools;
+  vectorContainer_t<int>         m_ints;
   
 };
  
