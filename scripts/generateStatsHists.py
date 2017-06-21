@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-''' Script for producing histograms for the statistical procedure. '''
+""" Script for producing histograms for the statistical procedure. """
 
 # Basic
 import sys
@@ -18,6 +18,8 @@ from snippets.functions import *
 
 # Main function.
 def main ():
+
+    outdir = '/eos/atlas/user/a/asogaard/Analysis/2016/BoostedJetISR/StatsInputs/2017-06-19/'
 
     # Setup.
     # ----------------------------------------------------------------
@@ -38,108 +40,153 @@ def main ():
 
     # Specify which variables to get.
     print "-- Specify variables to read."
-    treename = 'BoostedJet+ISRgamma/Nominal/EventSelection/Pass/Jet_tau21DDT/Postcut'
-    prefix   = 'Jet_' # 'leading_LargeRadiusJets_'
+    categories = [
+        "Nominal",
+        "TF_UP",
+        "TF_DOWN",
+        "LARGER_JET_Comb_Baseline_Kin__1up",
+        "LARGER_JET_Comb_Baseline_Kin__1down",
+        "LARGER_JET_Comb_Modelling_Kin__1up",
+        "LARGER_JET_Comb_Modelling_Kin__1down",
+        "LARGER_JET_Comb_TotalStat_Kin__1up",
+        "LARGER_JET_Comb_TotalStat_Kin__1down",
+        "LARGER_JET_Comb_Tracking_Kin__1up",
+        "LARGER_JET_Comb_Tracking_Kin__1down",
+        "LARGER_JET_Rtrk_Baseline_Sub__1up",
+        "LARGER_JET_Rtrk_Baseline_Sub__1down",
+        "LARGER_JET_Rtrk_Modelling_Sub__1up",
+        "LARGER_JET_Rtrk_Modelling_Sub__1down",
+        "LARGER_JET_Rtrk_TotalStat_Sub__1up",
+        "LARGER_JET_Rtrk_TotalStat_Sub__1down",
+        "LARGER_JET_Rtrk_Tracking_Sub__1up",
+        "LARGER_JET_Rtrk_Tracking_Sub__1down",
+        "PHOTON_EG_RESOLUTION_ALL__1down",
+        "PHOTON_EG_RESOLUTION_ALL__1up",
+        "PHOTON_EG_SCALE_ALL__1down",
+        "PHOTON_EG_SCALE_ALL__1up",
+        ]
 
+    treename = 'BoostedJet+ISRgamma/{cat}/EventSelection/Pass/Jet_tau21DDT/Postcut'
+    prefix   = 'Jet_'
     getvars  = ['m']
 
     # Load data.
     print "-- Load data."
-    data = loadDataFast(paths, treename, getvars, prefix, xsec)
+    data = dict()
+    for cat in categories:
+        data[cat] = loadDataFast(paths, treename.format(cat=cat), getvars, prefix, xsec)
+        pass
 
     # Check output.
     print "-- Check output exists."
-    if not data:
+    if False in [bool(data[cat]) for cat in categories]:
         print "WARNING: No data was loaded."
         return
-
-    # Initialise total number of jets.
-    print "-- Initialise number of (good) jets."
-    N = len(data[getvars[0]])
 
 
     # Fill output histograms.
     # ----------------------------------------------------------------
     print "\nFill output histograms."
 
-    hists = list()
-    ranges = [
+    # Format: (isMC, (DSID_min, DSID_max), "name")
+    ranges = {
+        # Backgrounds
+        'bkg': [
+            (True, (100000 + mass, 100000 + mass), "bkg_%03d" % mass) for mass in np.linspace(100, 220, (220 - 100) / 5 + 1, endpoint=True)# data | TF
+            ],
 
-        # Backgrounds.
-        ((361039, 361062), "QCD"), # Sherpa gamma + jet
-        #((100080, 100080), "QCD"), # Sherpa gamma + jet
-        ((305435, 305439), "W"), # Sherpa gamma + W
-        ((305440, 305444), "Z"), # Sherpa gamma + Z
+        # Background (GBS)
+        'gbs': [
+            (True, (400000, 400000), "gbs"), # data | TF
+            ],
+
+        # W (qq) + gamma
+        'W': [
+            (True, (305435, 305439), "W"), # Sherpa gamma + W
+            ],
+
+        # Z (qq) + gamma
+        'Z': [
+            (True, (305440, 305444), "Z"), # Sherpa gamma + Z
+            ],
 
         # Signals.
-        ((308363, 308363), "mRp100_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph150_mRp100_mD10_gSp5_gD1
-        ((308364, 308364), "mRp130_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph195_mRp130_mD10_gSp5_gD1
-        ((308365, 308365), "mRp160_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph240_mRp160_mD10_gSp5_gD1
-        ((308366, 308366), "mRp190_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph285_mRp190_mD10_gSp5_gD1
-        ((308367, 308367), "mRp220_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph330_mRp220_mD10_gSp5_gD1
+        'sig': [
+            (True, (308363, 308363), "mRp100_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph150_mRp100_mD10_gSp5_gD1
+            (True, (308364, 308364), "mRp130_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph195_mRp130_mD10_gSp5_gD1
+            (True, (308365, 308365), "mRp160_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph240_mRp160_mD10_gSp5_gD1
+            (True, (308366, 308366), "mRp190_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph285_mRp190_mD10_gSp5_gD1
+            (True, (308367, 308367), "mRp220_mD10_gSp5_gD1"), # MGPy8EG_N30LO_A14N23LO_dmA_jja_Ph330_mRp220_mD10_gSp5_gD1
+            ],
 
-        ]
+        # W/Z (qq) + gamma
+        'data': [
+            (False, (0, 1E+07), "data"), # Sherpa incl. gamma
+            ],
+        }
+
+    # Signals. (interpolated)
+    for mass in np.linspace(100, 220, (220 - 100) / 5 + 1, endpoint=True):
+        if mass in [100, 130, 160, 190, 220]: continue
+        ranges['sig'].append( (True, (200000 + mass, 200000 + mass), "mRp%03d_xyz" % mass))
+        pass
 
     # Get titles.
-    new_ranges = list()
-    counter = 0
-    for DSIDs, name in ranges:
-        if name.startswith('mR'):
-            m = re.search('mR([0-9]*)p([0-9]+)*', name)
-            masstext = '%s%s' % (m.group(1), m.group(2).ljust(3, '0').lstrip('0'))
-            title = 'signal_%s' % masstext
-            mass = int(masstext.rjust(4, '0'))
-        else:
+    for key in ranges:
+        new_ranges = list()
+        for isMC, DSIDs, name in ranges[key]:
             title = name
-            mass = counter
-            counter += 1
+            if name.startswith('mR'):
+                m = re.search('mR([0-9]*)p([0-9]+)*', name)
+                masstext = '%s%s' % (m.group(1), m.group(2).ljust(3, '0').lstrip('0'))
+                title = 'signal_%s' % masstext
+                pass
+            new_ranges.append((isMC, DSIDs, title))
             pass
-        title = title
-        new_ranges.append((DSIDs, name, title, mass))
-        pass
-    ranges = new_ranges
-
-    # Write to signal file(s).
-    signalfile = TFile('ISRgamma_signals.root', 'RECREATE')
-    for DSIDs, _, title, mass in sorted(ranges, key = lambda t : t[3]):
-        if mass <= 2: continue
-
-        print "Filling tree for '%s'." % title
-        msk = np.where((data['DSID'] >= DSIDs[0]) & (data['DSID'] <= DSIDs[1]))
-
-        # Fill tree
-        M = [tuple(el) for el in np.hstack((np.atleast_2d(data['m']     [msk].ravel()).T,
-                                            np.atleast_2d(data['weight'][msk].ravel()).T)).tolist()]
-        arr = np.array(M, dtype=[('m_J',    'f4'),
-                                 ('weight', 'f4'),
-                                 ])
-
-        tree = array2tree(arr, title)
-        tree.Write()
+        ranges[key] = new_ranges
         pass
 
-    signalfile.Close()
+    # Write to file(s).
+    for key in ranges:
+        for isMC, DSIDs, title in ranges[key]:
+            print "Filling tree for '%s'." % title
+            f = TFile(outdir + '/ISRgamma_%s.root' % title, 'RECREATE')
 
-    # Writing to background file(s)
-    backgroundfile = TFile('ISRgamma_backgrounds.root', 'RECREATE')
-    for DSIDs, _, title, mass in sorted(ranges, key = lambda t : t[3]):
-        if mass > 2: continue
+            for cat in categories:
+                if 'data' in key.strip().lower() and cat != 'Nominal': continue
+                print " -- %s" % cat,
 
-        print "Filling tree for '%s'." % title
-        msk = np.where((data['DSID'] >= DSIDs[0]) & (data['DSID'] <= DSIDs[1]))
-        
-        # Fill tree
-        M = [tuple(el) for el in np.hstack((np.atleast_2d(data['m']     [msk].ravel()).T,
-                                            np.atleast_2d(data['weight'][msk].ravel()).T)).tolist()]
-        arr = np.array(M, dtype=[('m_J',    'f4'),
-                                 ('weight', 'f4'),
-                                 ])
+                msk = np.where((data[cat]['isMC'] == isMC) & (data[cat]['DSID'] >= DSIDs[0]) & (data[cat]['DSID'] <= DSIDs[1]))
 
-        tree = array2tree(arr, title)
-        tree.Write()
+                empty = (np.sum(msk) == 0) # No events with this variation -> use 'Nominal' instead
+                if empty:
+                    print "(defaulting to 'Nominal')"
+                    msk = np.where((data['Nominal']['DSID'] >= DSIDs[0]) & (data['Nominal']['DSID'] <= DSIDs[1]))
+                else:
+                    print ""
+                    pass
+
+                w = 36.1 if (isMC and DSIDs[0] > 300000 and DSIDs[1] < 400000) else 1.
+                if w != 1:
+                    print "----> Weight:", w
+                    pass
+
+                # Fill tree
+                M = [tuple(el) for el in np.hstack((np.atleast_2d(data[cat if not empty else 'Nominal']['m']     [msk].ravel()).T,
+                                                    np.atleast_2d(data[cat if not empty else 'Nominal']['weight'][msk].ravel() * w).T)).tolist()]
+
+                arr = np.array(M, dtype=[('mJ',    'f4'),
+                                         ('weight', 'f4'),
+                                         ])
+            
+                t = array2tree(arr, title.upper() + '_' + cat)
+                t.Write()
+                pass
+
+            f.Close()
+            pass
+
         pass
-
-    backgroundfile.Close()
 
     return
 
