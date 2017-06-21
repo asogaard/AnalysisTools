@@ -34,14 +34,12 @@ int main (int argc, char* argv[]) {
       return 0;
     }
 
-    const double lumi2015 = 3.1267209095999995;
-    const double lumi2016 = 33.13138242028672;
-    const double lumi = lumi2015 + lumi2016;
+    const double lumi = 36.1;
     
-    const float backgroundScale = 1.402; //1.300;
+    const float backgroundScale = 1.402;
 
-    bool fullSelection = false;
-    bool jetMass       = false;
+    bool fullSelection = true;
+    bool jetMass       = true;
 
     // Setup PlottingHelper.
     string outdir  = "outputPlotting/";
