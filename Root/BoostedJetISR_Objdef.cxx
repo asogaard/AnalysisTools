@@ -45,12 +45,12 @@ int main (int argc, char* argv[]) {
   const bool debug = false;
 
   // Blinding.
-  const bool blind = true;
+  const bool blind = false;
 
   // Analysis categories.
   const std::vector<std::string> categories = {
-    "Nominal" //,
-    /*
+    "Nominal",
+    /**/
     "LARGER_JET_Comb_Baseline_Kin__1up",
     "LARGER_JET_Comb_Baseline_Kin__1down",
     "LARGER_JET_Comb_Modelling_Kin__1up",
@@ -71,7 +71,7 @@ int main (int argc, char* argv[]) {
     "PHOTON_EG_RESOLUTION_ALL__1up",
     "PHOTON_EG_SCALE_ALL__1down",
     "PHOTON_EG_SCALE_ALL__1up",
-    */
+    /**/
   };
      
   // Load dictionaries and stuff.
@@ -138,7 +138,7 @@ int main (int argc, char* argv[]) {
     auto tau21DDT = [&rhoDDT](const PhysicsObject& p) {
       // Linear correction function.
       const float p0 =  0.687;
-      const float p1 = -0.0936;
+      const float p1 = -0.0935;
 
       const float rhoDDTmin = 1.5;
       auto linearCorrection = [&p0, &p1] (const float& x) { return p0 + p1 * x; };	  
@@ -156,7 +156,7 @@ int main (int argc, char* argv[]) {
     };
 
     // Data retrievers
-    EventRetriever eventRetriever ({"mcChannelNumber", "eventNumber",  "runNumber", "lumiBlock", "passedTriggers"});
+    EventRetriever eventRetriever ({"mcChannelNumber", "eventNumber",  "runNumber", "lumiBlock", "passedTriggers", "x1", "x2", "q", "pdgId1", "pdgId2"});
     eventRetriever.addInfo("isMC", [](const Event& e) { return e.info("mcChannelNumber") > 0; });
     eventRetriever.setDebug(debug);
     pEvent = eventRetriever.result();
@@ -167,7 +167,7 @@ int main (int argc, char* argv[]) {
     pPhotons = photonsRetriever.result();
 
     CollectionRetriever largeRadiusJetsRetriever (FromPtEtaPhiE("pt", "eta", "phi", "E"), "fatjet_");
-    largeRadiusJetsRetriever.addInfo({"tau21_wta", "D2", "pt_ungroomed", "tau21_wta_ungroomed"}, "fatjet_");
+    largeRadiusJetsRetriever.addInfo({"tau21_wta", "D2", "pt_ungroomed", "tau21_wta_ungroomed", "Split12", "Split23", "Split34", "ECF1", "ECF2", "ECF3", "C2", "nTracks"}, "fatjet_");
     largeRadiusJetsRetriever.rename("tau21_wta", "tau21");
     largeRadiusJetsRetriever.rename("tau21_wta_ungroomed", "tau21_ungroomed");
     largeRadiusJetsRetriever.addInfo("rho",        rho);
@@ -188,7 +188,7 @@ int main (int argc, char* argv[]) {
     // Get GRL.
     // -------------------------------------------------------------------       
     GRL grl2015 ("share/GRL/data15_13TeV.periodAllYear_DetStatus-v79-repro20-02_DQDefects-00-02-02_PHYS_StandardGRL_All_Good_25ns.txt");
-    GRL grl2016 ("share/GRL/data16_13TeV.periodAllYear_DetStatus-v83-pro20-15_DQDefects-00-02-04_PHYS_StandardGRL_All_Good_25ns.txt");
+    GRL grl2016 ("share/GRL/data16_13TeV.periodAllYear_DetStatus-v88-pro20-21_DQDefects-00-02-04_PHYS_StandardGRL_All_Good_25ns.txt");
     
     
     // Get file name.
@@ -390,6 +390,22 @@ int main (int argc, char* argv[]) {
     eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "D2"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "tau21_ungroomed"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "pt_ungroomed"));
+
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_info("q"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_info("x1"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_info("x2"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_info("pdgId1"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_info("pdgId2"));
+
+    // @TEMP: For ANN
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "Split12"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "Split23"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "Split34"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "ECF1"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "ECF2"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "ECF3"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "C2"));
+    eventSelection.addPlot(CutPosition::Post, get_plot_event_particle_info("Jet", "nTracks"));
 
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_E  ("Photons"));
     eventSelection.addPlot(CutPosition::Post, get_plot_event_leading_pt ("Photons"));
