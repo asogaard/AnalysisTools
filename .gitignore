@@ -14,3 +14,8 @@ scripts/plots/*
 *.pdf
 *__init__.py
 *.txt
+*.pkl
+*.d
+*.so
+*pcm
+*#*
