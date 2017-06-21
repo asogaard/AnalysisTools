@@ -1210,19 +1210,25 @@ namespace AnalysisTools {
        */
       unsigned DSID = 0;
       
-      vector<string> path_fields = split(filename, '/');
-      vector<string> filename_fields = split(path_fields.at(path_fields.size() - 1), '.');
-      vector<string> file_fields = split(filename_fields.at(filename_fields.size() - 2), '_');
+      std::vector<std::string> path_fields     = split(filename, '/');
+      std::vector<std::string> filename_fields = split(path_fields.at(path_fields.size() - 1), '.');
+      std::vector<std::string> file_fields     = split(filename_fields.at(filename_fields.size() - 2), '_');
       string DSID_string = file_fields.at(file_fields.size() - 1);
       DSID = stoi(DSID_string);
-      
-      if (m_info.count(DSID) == 0) {
+      bool data = (file_fields.at(1) == "data");
+      if (m_info.count(DSID) == 0 and (not data)) {
 	WARNING("DSID %d was not found in m_info.", DSID);
 	continue;
       }
 
       // Get sample info.
-      SampleInfo info = m_info.at(DSID);
+      SampleInfo info;
+      if (data) {
+	info.type = SampleType::Data;
+	info.name = "Data";
+      } else {
+	info = m_info.at(DSID);
+      }
       
       bool isMC     = (info.type != SampleType::Data);
       bool isSignal = (info.type == SampleType::Signal);
@@ -1479,7 +1485,7 @@ namespace AnalysisTools {
 	  signal = true;
 	}
 	else if (std::regex_match(ldn, re_match_name, re_ISRgammaSignal2)) {
-	  name = "Z' (" + string(re_match_name[2]) + "00 GeV)";
+	  name = "Z' (" + string(re_match_name[2]) + " GeV)";
 	  signal = true;
 	}
 	else if (std::regex_match(ldn, re_match_name, re_ISRjetSignal)) {
