@@ -45,7 +45,7 @@ namespace AnalysisTools {
     });
 
 
-   // Standard kinematic of leading PhysicsObject in collection in Event 
+   // Standard kinematic of leading PhysicsObject in collection in Event
   // ---------------------------------------------------------------------------
 
   // Leading PhysicsObject pT.
@@ -103,7 +103,7 @@ namespace AnalysisTools {
   }
 
 
-   // Standard kinematic of named PhysicsObject in Event 
+   // Standard kinematic of named PhysicsObject in Event
   // ---------------------------------------------------------------------------
 
   // Particle PhysicsObject pT.
@@ -185,7 +185,7 @@ namespace AnalysisTools {
   }
 
 
-   // Auxiliary information for (sub-)leading or named PhysicsObject in collection in Event 
+   // Auxiliary information for (sub-)leading or named PhysicsObject in collection in Event
   // ---------------------------------------------------------------------------
 
   // ...
